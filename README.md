@@ -69,6 +69,16 @@ Free-tier limits change, so check each site's current pricing page. Do not use R
 5. Go back to Render and set `CORS_ORIGINS` to the Vercel URL, e.g. `https://trade-guard.vercel.app`.
 6. Open the site and **Sign up**. Then set `ALLOW_REGISTRATION=false` on Render so nobody else can create accounts.
 
+### Auto-deploy (CI/CD)
+
+Once steps 1-6 are done, nothing else is needed per release:
+
+1. You push or merge to `main`.
+2. GitHub Actions (`.github/workflows/ci.yml`) runs the API tests on a real PostgreSQL, the frontend tests, and the production build.
+3. If CI is green, Render redeploys the API (`autoDeployTrigger: checksPass` in `render.yaml`) and Vercel rebuilds the web app. Pull requests get a Vercel preview URL but are never deployed to production.
+
+Turn on "Require status checks to pass" for `main` in GitHub → Settings → Branches so a red build can't be merged. Database tables are created on API startup, so schema changes in code roll out with the deploy; for destructive schema changes use a migration tool (e.g. Alembic) first.
+
 Optional: ping `<api-url>/api/health` every 10 minutes with a free monitor such as UptimeRobot to avoid the cold start.
 
 ## Configuration (API environment variables)
