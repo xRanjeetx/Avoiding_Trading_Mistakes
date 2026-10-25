@@ -188,6 +188,14 @@ function Journalled({ session, onLogout }) {
           <div className="head-title">
             <h1>{PAGE[tab][0]}</h1>
             <div className="muted">{PAGE[tab][1]}</div>
+            {tab === "checklist" && (
+              <figure className="head-quote">
+                <span className="hq-mark" aria-hidden="true">“</span>
+                <blockquote>
+                  Don’t lose patience. <b>Every great success</b> takes time and struggle.
+                </blockquote>
+              </figure>
+            )}
           </div>
         </div>
         <div className="head-right">
