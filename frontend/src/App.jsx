@@ -30,7 +30,7 @@ const PAGE = {
 
 function applyTheme(t) {
   document.documentElement.dataset.theme = t;
-  document.querySelector('meta[name="theme-color"]').content = t === "light" ? "#f3f5fb" : "#0b1020";
+  document.querySelector('meta[name="theme-color"]').content = t === "light" ? "#f1f7f5" : "#07110f";
 }
 
 export default function App() {

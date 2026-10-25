@@ -8,7 +8,7 @@ const KEY_THEME = "atm_theme";
 function toggleTheme() {
   const next = document.documentElement.dataset.theme === "light" ? "dark" : "light";
   document.documentElement.dataset.theme = next;
-  document.querySelector('meta[name="theme-color"]').content = next === "light" ? "#f3f5fb" : "#0b1020";
+  document.querySelector('meta[name="theme-color"]').content = next === "light" ? "#f1f7f5" : "#07110f";
   try { localStorage.setItem(KEY_THEME, next); } catch {}
 }
 
