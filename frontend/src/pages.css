@@ -1,5 +1,5 @@
 /* ---------- Page-level redesign: cards, forms, rules, entries, stats, settings, sheet ---------- */
-:root { --ring: rgba(99, 102, 241, 0.28); --soft: rgba(99, 102, 241, 0.12); }
+:root { --ring: rgba(var(--p-rgb), 0.28); --soft: rgba(var(--p-rgb), 0.12); }
 
 .ic { flex: none; display: inline-block; vertical-align: middle; }
 :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
@@ -20,8 +20,8 @@ html { scrollbar-width: thin; scrollbar-color: rgba(148, 163, 184, 0.35) transpa
 
 /* ----- Buttons ----- */
 .btn { transition: transform 0.1s, filter 0.2s, box-shadow 0.2s, background 0.2s, border-color 0.2s; }
-.btn:hover:not(:disabled) { filter: brightness(1.06); border-color: rgba(99, 102, 241, 0.4); }
-.btn.primary:hover:not(:disabled) { box-shadow: 0 14px 30px -10px rgba(99, 102, 241, 0.95); border-color: transparent; }
+.btn:hover:not(:disabled) { filter: brightness(1.06); border-color: rgba(var(--p-rgb), 0.4); }
+.btn.primary:hover:not(:disabled) { box-shadow: 0 14px 30px -10px rgba(var(--p-rgb), 0.95); border-color: transparent; }
 .btn.danger-outline:hover:not(:disabled) { background: rgba(244, 63, 94, 0.14); border-color: rgba(244, 63, 94, 0.7); }
 .btn.ghost:hover:not(:disabled) { background: var(--soft); }
 .btn .ic { margin-right: -1px; }
@@ -29,7 +29,7 @@ html { scrollbar-width: thin; scrollbar-color: rgba(148, 163, 184, 0.35) transpa
 /* ----- Forms ----- */
 .field > span { font-size: 11.5px; letter-spacing: 0.06em; }
 input, textarea { border-radius: 14px; background: var(--bg); transition: border-color 0.15s, box-shadow 0.15s, background 0.15s; }
-input:hover:not(:focus), textarea:hover:not(:focus) { border-color: rgba(99, 102, 241, 0.35); }
+input:hover:not(:focus), textarea:hover:not(:focus) { border-color: rgba(var(--p-rgb), 0.35); }
 input:focus, textarea:focus { box-shadow: 0 0 0 4px var(--ring); }
 .seg { background: var(--surface-2); border-radius: 16px; }
 .seg button {
@@ -80,7 +80,7 @@ input:focus, textarea:focus { box-shadow: 0 0 0 4px var(--ring); }
 .st.bad { color: #fff; background: var(--bad); box-shadow: 0 6px 14px -6px var(--bad); }
 .st.wait { color: var(--muted); background: var(--surface-2); }
 .yn button { border-radius: 11px; background: var(--surface); transition: transform 0.08s, background 0.15s, border-color 0.15s; }
-.yn button:hover:not(.on) { border-color: rgba(99, 102, 241, 0.5); }
+.yn button:hover:not(.on) { border-color: rgba(var(--p-rgb), 0.5); }
 .yn button.on.yes { box-shadow: 0 6px 14px -6px var(--good); }
 .yn button.on.no { box-shadow: 0 6px 14px -6px var(--bad); }
 
@@ -113,8 +113,8 @@ input:focus, textarea:focus { box-shadow: 0 0 0 4px var(--ring); }
 .meter.bad i { background: linear-gradient(90deg, #fb7185, var(--bad)); }
 .stats-grid.two .stat:first-child {
   grid-column: 1 / -1; padding: 20px;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.06)), var(--surface);
-  border-color: rgba(99, 102, 241, 0.35);
+  background: linear-gradient(135deg, rgba(var(--p-rgb), 0.2), rgba(var(--p2-rgb), 0.06)), var(--surface);
+  border-color: rgba(var(--p-rgb), 0.35);
 }
 .stats-grid.two .stat:first-child span { font-size: 36px; letter-spacing: -0.04em; }
 @media (min-width: 640px) { .stats-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -130,7 +130,7 @@ input:focus, textarea:focus { box-shadow: 0 0 0 4px var(--ring); }
 .entry::before { content: ""; position: absolute; left: 0; top: 14px; bottom: 14px; width: 4px; border-radius: 0 4px 4px 0; background: var(--border); }
 .entry.dir-buy::before { background: var(--good); }
 .entry.dir-sell::before { background: var(--bad); }
-.entry:hover { border-color: rgba(99, 102, 241, 0.4); }
+.entry:hover { border-color: rgba(var(--p-rgb), 0.4); }
 .entry .pair { font-size: 16px; letter-spacing: -0.01em; }
 .entry-head[data-toggle] { cursor: pointer; }
 .head-end { display: flex; align-items: center; gap: 8px; }
@@ -154,8 +154,8 @@ input:focus, textarea:focus { box-shadow: 0 0 0 4px var(--ring); }
 .search-wrap .search { margin: 0; padding-left: 42px; border-radius: 14px; }
 .pills { margin: 0 -16px; padding: 2px 16px 12px; }
 .pills button { transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.1s; }
-.pills button:hover:not(.on) { color: var(--text); border-color: rgba(99, 102, 241, 0.45); }
-.pills button.on { box-shadow: 0 8px 18px -8px rgba(99, 102, 241, 0.9); }
+.pills button:hover:not(.on) { color: var(--text); border-color: rgba(var(--p-rgb), 0.45); }
+.pills button.on { box-shadow: 0 8px 18px -8px rgba(var(--p-rgb), 0.9); }
 .day-head { margin: 22px 4px 8px; font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
 .day-head > span:first-child { color: var(--text); }
 
@@ -177,7 +177,7 @@ input:focus, textarea:focus { box-shadow: 0 0 0 4px var(--ring); }
 .cal-day:hover { transform: scale(1.06); border-color: var(--primary); }
 .cal-title strong { font-size: 15px; }
 .icon-btn.small { color: var(--text); }
-.icon-btn.small:hover { border-color: rgba(99, 102, 241, 0.5); color: var(--primary); }
+.icon-btn.small:hover { border-color: rgba(var(--p-rgb), 0.5); color: var(--primary); }
 
 /* ----- Settings ----- */
 .acct { display: flex; align-items: center; gap: 12px; }

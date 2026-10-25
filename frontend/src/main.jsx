@@ -5,6 +5,7 @@ import "./style.css";
 import "./landing.css";
 import "./shell.css";
 import "./pages.css";
+import "./theme.css";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
