@@ -2,10 +2,18 @@ import { useEffect, useRef, useState } from "react";
 import { RULES } from "../lib/rules.js";
 import { evaluate, ruleTitle, todayCounts } from "../lib/evaluate.js";
 import { num } from "../lib/format.js";
+import { CardHead, Icon } from "./ui.jsx";
 
 const fresh = (lot) => ({ pair: "", dir: null, setup: null, lot: String(lot), entry: "", sl: "", tp: "", notes: "", answers: {} });
 const AUTO = RULES.filter((r) => r.type === "auto");
 const SELF = RULES.filter((r) => r.type === "self");
+
+function Status({ pass }) {
+  return pass === true
+    ? <span className="st ok"><Icon name="check" size={16} /></span>
+    : pass === false ? <span className="st bad"><Icon name="x" size={16} /></span>
+    : <span className="st wait"><Icon name="clock" size={16} /></span>;
+}
 
 export default function Checklist({ active, entries, settings, now, onLog, onProgress }) {
   const [form, setForm] = useState(() => fresh(settings.lot));
@@ -32,8 +40,8 @@ export default function Checklist({ active, entries, settings, now, onLog, onPro
 
   const c = todayCounts(entries);
   const lockMsg = c.sl >= settings.maxSL
-    ? `🔒 ${c.sl} SL hit today. Trading is done for today. Close the charts.`
-    : c.trades >= settings.maxTrades ? `🔒 ${c.trades} trades taken today. Daily limit reached.` : "";
+    ? `${c.sl} SL hit today. Trading is done for today. Close the charts.`
+    : c.trades >= settings.maxTrades ? `${c.trades} trades taken today. Daily limit reached.` : "";
 
   async function log() {
     if (!ev.ok || busy) return;
@@ -58,20 +66,33 @@ export default function Checklist({ active, entries, settings, now, onLog, onPro
     ? { text: `RR 1:${ev.rr.toFixed(2)}`, cls: ev.res[2].pass ? "good" : "bad" }
     : { text: ev.res[2].pass === false ? "RR invalid" : "RR –", cls: ev.res[2].pass === false ? "bad" : "" };
 
+  const heroText = ev.failed.length ? "Rules broken. Do not trade." : ev.ok ? "All clear. OK to trade." : "Complete the checklist below.";
+
   return (
     <>
     <section id="checklist" className={`tab ${active ? "active" : ""}`}>
-      {lockMsg && <div className="banner">{lockMsg}</div>}
+      {lockMsg && <div className="banner lock"><Icon name="lock" size={20} />{lockMsg}</div>}
+
+      <div className={`ready ${state}`}>
+        <div className="ready-top">
+          <div><small>Trade readiness</small><strong>{heroText}</strong></div>
+          <span className="ready-count"><b>{passed}</b>/{RULES.length}</span>
+        </div>
+        <div className="ready-track"><i style={{ width: `${(passed / RULES.length) * 100}%` }} /></div>
+      </div>
 
       <div className="card">
-        <div className="card-head"><h2>Trade setup</h2><span className={`chip ${rrChip.cls}`}>{rrChip.text}</span></div>
+        <CardHead icon="sliders" title="Trade setup"><span className={`chip ${rrChip.cls}`}>{rrChip.text}</span></CardHead>
         <label className="field">
           <span>Pair</span>
           <input value={form.pair} onChange={(e) => set({ pair: e.target.value })} placeholder="e.g. XAUUSD" autoComplete="off" autoCapitalize="characters" spellCheck="false" />
         </label>
-        <div className="seg" id="dir">
-          <button type="button" data-val="buy" className={form.dir === "buy" ? "on" : ""} onClick={() => set({ dir: "buy" })}>▲ Buy</button>
-          <button type="button" data-val="sell" className={form.dir === "sell" ? "on" : ""} onClick={() => set({ dir: "sell" })}>▼ Sell</button>
+        <div className="field">
+          <span>Direction</span>
+          <div className="seg" id="dir">
+            <button type="button" data-val="buy" className={form.dir === "buy" ? "on" : ""} onClick={() => set({ dir: "buy" })}><Icon name="up" size={16} /> Buy</button>
+            <button type="button" data-val="sell" className={form.dir === "sell" ? "on" : ""} onClick={() => set({ dir: "sell" })}><Icon name="down" size={16} /> Sell</button>
+          </div>
         </div>
         <div className="field">
           <span>Setup</span>
@@ -93,10 +114,9 @@ export default function Checklist({ active, entries, settings, now, onLog, onPro
       </div>
 
       <div className="card">
-        <div className="card-head">
-          <h2>Auto checks</h2>
+        <CardHead icon="bolt" title="Auto checks">
           <span className={`chip ${autoFail ? "bad" : autoPass === AUTO.length ? "good" : ""}`}>{autoPass}/{AUTO.length}</span>
-        </div>
+        </CardHead>
         <ul className="rules">
           {AUTO.map((r) => {
             const { pass, detail } = ev.res[r.id];
@@ -104,7 +124,7 @@ export default function Checklist({ active, entries, settings, now, onLog, onPro
               <li key={r.id} className={pass === true ? "pass" : pass === false ? "fail" : ""}>
                 <span className="num">{r.id}</span>
                 <div className="body"><div className="title">{ruleTitle(r.id, settings)}</div><div className="sub">{detail}</div></div>
-                <span className="status">{pass === true ? "✅" : pass === false ? "❌" : "⏳"}</span>
+                <Status pass={pass} />
               </li>
             );
           })}
@@ -112,10 +132,9 @@ export default function Checklist({ active, entries, settings, now, onLog, onPro
       </div>
 
       <div className="card">
-        <div className="card-head">
-          <h2>Be honest with yourself</h2>
+        <CardHead icon="heart" title="Be honest with yourself">
           <span className={`chip ${selfFail ? "bad" : answered === SELF.length ? "good" : ""}`}>{answered}/{SELF.length} answered</span>
-        </div>
+        </CardHead>
         <ul className="rules">
           {SELF.map((r) => {
             const { pass } = ev.res[r.id];
@@ -138,19 +157,19 @@ export default function Checklist({ active, entries, settings, now, onLog, onPro
       <div id="verdict" ref={verdictRef} className={`verdict ${ev.failed.length ? "no" : ev.pending.length ? "pending" : "ok"}`}>
         {ev.failed.length ? (
           <>
-            <div className="icon">⛔</div><h3>DO NOT TRADE</h3>
+            <div className="v-ico"><Icon name="ban" size={30} /></div><h3>DO NOT TRADE</h3>
             <p>You are breaking {ev.failed.length} rule{ev.failed.length > 1 ? "s" : ""}. Close the chart and walk away.</p>
             <ul>{ev.failed.map((id) => <li key={id}><b>#{id}</b> {ruleTitle(id, settings)}</li>)}</ul>
           </>
         ) : ev.pending.length ? (
-          <><div className="icon">⏳</div><h3>Not ready yet</h3><p>{ev.pending.length} item{ev.pending.length > 1 ? "s" : ""} still to fill or answer.</p></>
+          <><div className="v-ico"><Icon name="clock" size={30} /></div><h3>Not ready yet</h3><p>{ev.pending.length} item{ev.pending.length > 1 ? "s" : ""} still to fill or answer.</p></>
         ) : (
-          <><div className="icon">✅</div><h3>OK TO TRADE</h3><p>All {RULES.length} rules respected. Stick to the plan, no changes after entry.</p></>
+          <><div className="v-ico"><Icon name="shield" size={30} /></div><h3>OK TO TRADE</h3><p>All {RULES.length} rules respected. Stick to the plan, no changes after entry.</p></>
         )}
       </div>
 
       <div className="actions">
-        <button className="btn primary" disabled={!ev.ok || busy} onClick={log}>✓ Log this trade</button>
+        <button className="btn primary" disabled={!ev.ok || busy} onClick={log}><Icon name="check" size={18} /> Log this trade</button>
         <button className="btn ghost" onClick={() => setForm(fresh(settings.lot))}>Reset form</button>
       </div>
 
@@ -158,9 +177,10 @@ export default function Checklist({ active, entries, settings, now, onLog, onPro
       {/* Outside the section: .tab animates with a transform, which would re-anchor a fixed child. */}
       {active && (
         <div id="dock" className={`dock ${state}`}>
-          <div>
-            {ev.failed.length ? `⛔ ${ev.failed.length} rule${ev.failed.length > 1 ? "s" : ""} broken`
-              : ev.ok ? "✅ OK to trade" : `⏳ ${ev.pending.length} left to check`}
+          <div className="dock-msg">
+            <Icon name={ev.failed.length ? "ban" : ev.ok ? "shield" : "clock"} size={20} />
+            {ev.failed.length ? `${ev.failed.length} rule${ev.failed.length > 1 ? "s" : ""} broken`
+              : ev.ok ? "OK to trade" : `${ev.pending.length} left to check`}
           </div>
           <button className="btn small" onClick={() => (ev.ok ? log() : verdictRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }))}>
             {ev.ok ? "Log trade" : "Review"}

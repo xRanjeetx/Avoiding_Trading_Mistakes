@@ -2,12 +2,13 @@ import { SETUPS } from "../lib/rules.js";
 import { closeTime, outcome, tradeR } from "../lib/stats.js";
 import { dateTimeOf, fmtMoney, fmtR, signClass, timeOf } from "../lib/format.js";
 import { ruleTitle } from "../lib/evaluate.js";
+import { Icon } from "./ui.jsx";
 
 const RESULT_LABEL = { tp: "TP", sl: "SL", be: "BE", ctc: "CTC", manual: "EARLY", open: "OPEN" };
 const TAG_BY_OUTCOME = { win: "tp", loss: "sl", be: "be", open: "open", skipped: "skipped" };
 
 export function Empty({ icon, children }) {
-  return <div className="empty"><span className="e-icon">{icon}</span>{children}</div>;
+  return <div className="empty"><span className="e-icon"><Icon name={icon} size={26} /></span><p>{children}</p></div>;
 }
 
 function Pnl({ e, currency }) {
@@ -24,15 +25,18 @@ export default function EntryCard({ e, mode, settings, open, onToggle, onQuick, 
   const when = mode === "today" ? timeOf(e.timestamp) : dateTimeOf(e.timestamp);
 
   const head = (
-    <div className="entry-head" onClick={mode === "log" ? onToggle : undefined}>
+    <div className="entry-head" onClick={mode === "log" ? onToggle : undefined} data-toggle={mode === "log" ? "" : undefined}>
       <div className="row-between">
         <div className="row">
-          <strong>{e.pair || "—"}</strong>
+          <strong className="pair">{e.pair || "—"}</strong>
           {e.dir && <span className={`tag ${e.dir}`}>{e.dir.toUpperCase()}</span>}
           <span className={`tag ${TAG_BY_OUTCOME[out]}`}>{out === "skipped" ? "SKIPPED" : RESULT_LABEL[e.result] || e.result.toUpperCase()}</span>
           {e.setup && SETUPS[e.setup] && <span className="tag setup">{SETUPS[e.setup]}</span>}
         </div>
-        <Pnl e={e} currency={cur} />
+        <div className="head-end">
+          <Pnl e={e} currency={cur} />
+          {mode === "log" && <span className="chev"><Icon name="chevron" size={18} /></span>}
+        </div>
       </div>
       <div className="meta">
         <span>{when}</span>
@@ -47,16 +51,16 @@ export default function EntryCard({ e, mode, settings, open, onToggle, onQuick, 
 
   if (mode === "today") {
     return (
-      <div className="entry">
+      <div className={`entry dir-${e.dir || "none"}`}>
         {head}
         {e.traded && e.result === "open" && (
           <>
             <div className="result-btns">
-              <button className="btn small" onClick={() => onQuick(e.id, "tp")}>TP hit</button>
-              <button className="btn small" onClick={() => onQuick(e.id, "sl")}>SL hit</button>
-              <button className="btn small" onClick={() => onQuick(e.id, "be")}>Break-even</button>
+              <button className="btn small res-tp" onClick={() => onQuick(e.id, "tp")}><Icon name="check" size={15} /> TP hit</button>
+              <button className="btn small res-sl" onClick={() => onQuick(e.id, "sl")}><Icon name="x" size={15} /> SL hit</button>
+              <button className="btn small res-be" onClick={() => onQuick(e.id, "be")}>Break-even</button>
             </div>
-            <button className="btn small ghost" onClick={() => onQuick(e.id, null)}>CTC / closed early / add notes</button>
+            <button className="btn small ghost" onClick={() => onQuick(e.id, null)}><Icon name="edit" size={15} /> CTC / closed early / add notes</button>
           </>
         )}
       </div>
@@ -69,7 +73,7 @@ export default function EntryCard({ e, mode, settings, open, onToggle, onQuick, 
     ["Closed", e.result === "open" ? "Still open" : dateTimeOf(closeTime(e))],
   ];
   return (
-    <div className={`entry ${open ? "open" : ""}`}>
+    <div className={`entry dir-${e.dir || "none"} ${open ? "open" : ""}`}>
       {head}
       <div className="more">
         <div className="kv">{kv.map(([k, v]) => <div key={k}><small>{k}</small><b>{v}</b></div>)}</div>
@@ -79,8 +83,8 @@ export default function EntryCard({ e, mode, settings, open, onToggle, onQuick, 
           <div className="note broken">Broken: {e.failedRules.map((id) => `#${id} ${ruleTitle(id, settings)}`).join(" · ")}</div>
         )}
         <div className="row">
-          <button className={`btn small ${e.result === "open" ? "primary" : ""}`} onClick={() => onEdit(e.id)}>{e.result === "open" ? "Close trade" : "Edit"}</button>
-          <button className="btn small danger-outline" aria-label="Delete" onClick={() => onDelete(e.id)}>Delete</button>
+          <button className={`btn small ${e.result === "open" ? "primary" : ""}`} onClick={() => onEdit(e.id)}><Icon name={e.result === "open" ? "check" : "edit"} size={15} /> {e.result === "open" ? "Close trade" : "Edit"}</button>
+          <button className="btn small danger-outline" aria-label="Delete" onClick={() => onDelete(e.id)}><Icon name="trash" size={15} /> Delete</button>
         </div>
       </div>
     </div>

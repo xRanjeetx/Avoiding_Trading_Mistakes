@@ -1,8 +1,9 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { SETUPS } from "../lib/rules.js";
 import { computeStats, dailyPnl, inRange, ymd } from "../lib/stats.js";
 import { compactMoney, fmtMoney, fmtR, signClass } from "../lib/format.js";
 import { Empty } from "./EntryCard.jsx";
+import { CardHead, Icon } from "./ui.jsx";
 
 const RANGES = [[7, "7D"], [30, "30D"], [90, "90D"], [0, "All time"]];
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -13,7 +14,7 @@ function Tile({ label, value, sub = "", cls = "" }) {
 }
 
 function Equity({ points, start }) {
-  if (points.length < 2) return <Empty icon="📈">Close a few trades with a P&amp;L amount<br />to see your equity curve.</Empty>;
+  if (points.length < 2) return <Empty icon="trend">Close a few trades with a P&amp;L amount<br />to see your equity curve.</Empty>;
   const W = 320, H = 150, pad = 8;
   const vals = points.map((p) => p.v + start);
   const lo = Math.min(start, ...vals), hi = Math.max(start, ...vals);
@@ -87,7 +88,6 @@ export default function Stats({ active, entries, settings }) {
 
   return (
     <section id="stats" className={`tab ${active ? "active" : ""}`}>
-      <h2 className="page-title">Statistics</h2>
       <div className="pills">
         {RANGES.map(([d, label]) => <button key={d} className={range === d ? "on" : ""} onClick={() => setRange(d)}>{label}</button>)}
       </div>
@@ -105,21 +105,19 @@ export default function Stats({ active, entries, settings }) {
       </div>
 
       <div className="card">
-        <div className="card-head">
-          <h2>Equity curve</h2>
+        <CardHead icon="trend" title="Equity curve">
           <span className={`chip ${s.hasPnl ? (last >= 0 ? "good" : "bad") : ""}`}>{s.hasPnl ? (start ? money(start + last, false) : money(last)) : "–"}</span>
-        </div>
+        </CardHead>
         <div><Equity points={s.equity} start={start} /></div>
       </div>
 
       <div className="card">
-        <div className="card-head">
-          <h2>Calendar</h2>
+        <CardHead icon="calendar" title="Calendar">
           <div className="row">
-            <button className="icon-btn small" aria-label="Previous month" onClick={() => shiftMonth(-1)}>‹</button>
-            <button className="icon-btn small" aria-label="Next month" onClick={() => shiftMonth(1)}>›</button>
+            <button className="icon-btn small" aria-label="Previous month" onClick={() => shiftMonth(-1)}><Icon name="left" size={18} /></button>
+            <button className="icon-btn small" aria-label="Next month" onClick={() => shiftMonth(1)}><Icon name="right" size={18} /></button>
           </div>
-        </div>
+        </CardHead>
         <div className="cal-title">
           <strong>{month.toLocaleDateString([], { month: "long", year: "numeric" })}</strong>
           <span className={`chip ${cal.anyPnl ? (cal.total >= 0 ? "good" : "bad") : ""}`}>
@@ -136,7 +134,7 @@ export default function Stats({ active, entries, settings }) {
       </div>
 
       <div className="card">
-        <div className="card-head"><h2>Results</h2></div>
+        <CardHead icon="pulse" title="Results" />
         <div>
           {resultTotal ? RESULTS.map(([label, key, cls]) => {
             const n = s.byResult[key] || 0;
@@ -146,27 +144,27 @@ export default function Stats({ active, entries, settings }) {
                 <div className="track"><div className="fill" style={{ width: `${(n / resultTotal) * 100}%` }} /></div>
               </div>
             );
-          }) : <Empty icon="📊">No trades in this period.</Empty>}
+          }) : <Empty icon="bars">No trades in this period.</Empty>}
         </div>
       </div>
 
       <div className="card">
-        <div className="card-head"><h2>By pair</h2></div>
+        <CardHead icon="swap" title="By pair" />
         <div>{pairs.length ? pairs.map(([pair, p]) => (
           <div className="pair-row" key={pair}>
             <div><b>{pair}</b><small>{p.n} trade{p.n > 1 ? "s" : ""}{p.wins + p.losses ? ` · ${Math.round((p.wins / (p.wins + p.losses)) * 100)}% win` : ""}</small></div>
             <div className={`pnl ${s.hasPnl ? signClass(p.pnl) : ""}`}>{s.hasPnl ? money(p.pnl) : ""}</div>
           </div>
-        )) : <Empty icon="💱">No trades in this period.</Empty>}</div>
+        )) : <Empty icon="swap">No trades in this period.</Empty>}</div>
       </div>
 
       <div className="card">
-        <div className="card-head"><h2>By setup</h2></div>
-        <div>{setups.length ? setups.map(([key, p]) => groupRow(key, p)) : <Empty icon="🎯">No trades in this period.</Empty>}</div>
+        <CardHead icon="target" title="By setup" />
+        <div>{setups.length ? setups.map(([key, p]) => groupRow(key, p)) : <Empty icon="target">No trades in this period.</Empty>}</div>
       </div>
 
       <div className="card">
-        <div className="card-head"><h2>By weekday</h2><span className="chip">P&amp;L</span></div>
+        <CardHead icon="calendar" title="By weekday"><span className="chip">P&amp;L</span></CardHead>
         <div>
           {s.n && s.hasPnl ? DAYS.map((d, i) => (
             <div className={`bar ${s.byWeekday[i] < 0 ? "" : "tp"}`} key={d}>
@@ -176,7 +174,7 @@ export default function Stats({ active, entries, settings }) {
               </div>
               <div className="track"><div className="fill" style={{ width: `${maxAbs ? (Math.abs(s.byWeekday[i]) / maxAbs) * 100 : 0}%` }} /></div>
             </div>
-          )) : <Empty icon="🗓️">Add P&amp;L amounts to see your best days.</Empty>}
+          )) : <Empty icon="calendar">Add P&amp;L amounts to see your best days.</Empty>}
         </div>
       </div>
     </section>

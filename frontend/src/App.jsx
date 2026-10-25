@@ -20,6 +20,13 @@ const ICONS = {
   settings: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></>,
 };
 const TABS = [["checklist", "Check"], ["today", "Today"], ["log", "Journal"], ["stats", "Stats"], ["settings", "Settings"]];
+const PAGE = {
+  checklist: ["Pre-trade checklist", "Pass every rule before you enter"],
+  today: ["Today", "Your trades and daily limits"],
+  log: ["Journal", "Every trade you have logged"],
+  stats: ["Statistics", "How your trading is performing"],
+  settings: ["Settings", "Limits, sessions and account"],
+};
 
 function applyTheme(t) {
   document.documentElement.dataset.theme = t;
@@ -178,12 +185,16 @@ function Journalled({ session, onLogout }) {
             <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
           </button>
           <img src="/icon.svg" alt="" className="logo" />
-          <div>
-            <h1>Trade Guard</h1>
-            <div className="muted">{now.toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit" })}</div>
+          <div className="head-title">
+            <h1>{PAGE[tab][0]}</h1>
+            <div className="muted">{PAGE[tab][1]}</div>
           </div>
         </div>
         <div className="head-right">
+          <div className="clock" title="Your local time">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+            <span>{now.toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit" })}</span>
+          </div>
           <button className="icon-btn" type="button" aria-label="Switch light/dark theme" title="Switch theme" onClick={toggleTheme}>
             <svg className="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>
             <svg className="icon-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /></svg>
@@ -213,18 +224,20 @@ function Journalled({ session, onLogout }) {
           <img src="/icon.svg" alt="" />
           <div><b>Trade Guard</b><small>Trade by the rules</small></div>
         </div>
+        <div className="side-label">Menu</div>
         {TABS.map(([key, label]) => (
-          <button key={key} className={tab === key ? "active" : ""} onClick={() => goto(key)}>
-            <svg viewBox="0 0 24 24">{ICONS[key]}</svg>
+          <button key={key} className={tab === key ? "active" : ""} aria-current={tab === key ? "page" : undefined} onClick={() => goto(key)}>
+            <span className="nav-ico"><svg viewBox="0 0 24 24">{ICONS[key]}</svg></span>
             <span>{label}</span>
           </button>
         ))}
         <div className="side-foot">
           <div className="user-chip" title={session.email}>
-            <span className="avatar">
-              <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" /></svg>
+            <span className="avatar">{session.email.charAt(0).toUpperCase()}</span>
+            <span className="user-meta">
+              <small>Signed in as</small>
+              <span className="user-email">{session.email}</span>
             </span>
-            <span className="user-email">{session.email}</span>
           </div>
           <button type="button" className="logout-btn" aria-label="Log out" title="Log out" onClick={onLogout}>
             <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>

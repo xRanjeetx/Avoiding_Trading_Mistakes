@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { fmtMoney, isAtCost, num } from "../lib/format.js";
+import { isAtCost, num } from "../lib/format.js";
+import { Icon } from "./ui.jsx";
 
 const RESULTS = [["tp", "TP hit"], ["sl", "SL hit"], ["be", "Break-even"], ["manual", "Closed early"], ["ctc", "CTC (cost after 1:1.5)"]];
 
@@ -53,7 +54,7 @@ export default function CloseSheet({ entry, preset, onSave, onClose }) {
         <div className="sheet-grab" />
         <div className="card-head">
           <h2 id="sheetTitle">{entry.result === "open" ? "Close trade" : "Edit trade"}</h2>
-          <button className="icon-btn small" type="button" aria-label="Close" onClick={onClose}>✕</button>
+          <button className="icon-btn small" type="button" aria-label="Close" onClick={onClose}><Icon name="x" size={18} /></button>
         </div>
         <p className="muted sheet-summary">{entry.pair || "—"} · {(entry.dir || "").toUpperCase()} · Lot {entry.lot ?? "–"} · Entry {entry.entry ?? "–"}</p>
 
@@ -85,7 +86,7 @@ export default function CloseSheet({ entry, preset, onSave, onClose }) {
           <textarea rows="2" placeholder="What went well? What would you change?" value={lesson} onChange={(e) => setLesson(e.target.value)} /></label>
 
         <div className="actions">
-          <button className="btn primary" type="button" disabled={busy} onClick={save}>Save</button>
+          <button className="btn primary" type="button" disabled={busy} onClick={save}><Icon name="check" size={18} /> Save</button>
           <button className="btn ghost" type="button" onClick={onClose}>Cancel</button>
         </div>
       </div>

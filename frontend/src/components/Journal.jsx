@@ -2,6 +2,7 @@ import { useState } from "react";
 import { computeStats, outcome, sum, ymd } from "../lib/stats.js";
 import { fmtMoney, signClass } from "../lib/format.js";
 import EntryCard, { Empty } from "./EntryCard.jsx";
+import { Icon } from "./ui.jsx";
 
 const FILTERS = [["all", "All"], ["open", "Open"], ["win", "Wins"], ["loss", "Losses"], ["be", "BE / CTC"]];
 
@@ -33,17 +34,19 @@ export default function Journal({ active, entries, settings, onEdit, onDelete })
 
   return (
     <section id="log" className={`tab ${active ? "active" : ""}`}>
-      <div className="page-head"><h2 className="page-title">Journal</h2><span className="chip">{entries.length}</span></div>
       <div className="summary-bar">
-        {s.n > 0 && (
+        {entries.length > 0 && (
           <>
-            <div><small>Closed</small><b>{s.n}</b></div>
+            <div><small>Trades</small><b>{entries.length}</b></div>
             <div><small>Win rate</small><b>{s.winRate == null ? "–" : Math.round(s.winRate * 100) + "%"}</b></div>
             <div><small>Net P&amp;L</small><b className={signClass(s.net)}>{s.hasPnl ? fmtMoney(s.net, cur) : "–"}</b></div>
           </>
         )}
       </div>
-      <input className="search" type="search" placeholder="Search pair or notes…" autoComplete="off" value={search} onChange={(e) => setSearch(e.target.value)} />
+      <div className="search-wrap">
+        <Icon name="search" size={18} />
+        <input className="search" type="search" placeholder="Search pair or notes…" autoComplete="off" value={search} onChange={(e) => setSearch(e.target.value)} />
+      </div>
       <div className="pills">
         {FILTERS.map(([key, label]) => <button key={key} className={filter === key ? "on" : ""} onClick={() => setFilter(key)}>{label}</button>)}
       </div>
@@ -51,8 +54,8 @@ export default function Journal({ active, entries, settings, onEdit, onDelete })
       <div>
         {!visible.length && (
           entries.length
-            ? <Empty icon="🔍">No trades match this filter.</Empty>
-            : <Empty icon="📒">Your journal is empty.<br />Log your first trade from the Check tab.</Empty>
+            ? <Empty icon="search">No trades match this filter.</Empty>
+            : <Empty icon="book">Your journal is empty.<br />Log your first trade from the Check tab.</Empty>
         )}
         {groups.map((g) => {
           const pnls = g.items.filter((e) => e.pnl != null && e.traded && e.result !== "open").map((e) => e.pnl);
