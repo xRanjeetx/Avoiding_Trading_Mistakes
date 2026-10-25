@@ -1,6 +1,11 @@
 import { ymd } from "./stats.js";
 
-export const num = (v) => (v === "" || v == null || isNaN(+v) ? null : +v);
+// Form text to a number. Blank, whitespace-only, NaN and Infinity all mean "no value" (null), never 0.
+export function num(v) {
+  if (v == null || (typeof v === "string" && v.trim() === "")) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
 export const isToday = (ts) => ymd(ts) === ymd(Date.now());
 
 export function minutesOf(hhmm) {

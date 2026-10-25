@@ -29,7 +29,24 @@ npm run dev
 
 To use local PostgreSQL instead of SQLite, set `DATABASE_URL=postgresql://user:pass@localhost:5432/tradeguard` before starting the API. Tables are created automatically on startup.
 
-Run the API tests with `cd backend; python -m pytest`.
+## Tests
+
+```powershell
+# API tests on SQLite (fast)
+cd backend; .\.venv\Scripts\python.exe -m pytest
+
+# API tests on the real local PostgreSQL. Uses a SEPARATE database named tradeguard_test
+# (create it once: CREATE DATABASE tradeguard_test). The tests refuse to run against any
+# database whose name does not look like a test database, so your journal is never touched.
+$env:TEST_DB = "postgres"; .\.venv\Scripts\python.exe -m pytest
+
+# Frontend logic (rules, stats, formatting)
+cd frontend; npm test
+
+# Browser end-to-end (needs Edge or Chrome). Start the API against the TEST database and the
+# frontend dev server first, e.g. API on :8765 and `API_PROXY=http://localhost:8765 npx vite --port 5199`
+$env:E2E_URL = "http://localhost:5199"; node e2e/app.e2e.mjs
+```
 
 ## Deploy for free
 
