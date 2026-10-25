@@ -88,6 +88,7 @@ body:not(.public) {
 
 /* Wide screens: roomier content area */
 @media (min-width: 900px) {
+  .app-header .logo { display: none; } /* the sidebar already shows the logo */
   .app-header { padding: 16px 32px; }
   .head-title h1 { font-size: 22px; }
   main { max-width: 760px; padding: 8px 32px 0; }

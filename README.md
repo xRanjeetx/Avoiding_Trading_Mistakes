@@ -29,7 +29,24 @@ npm run dev
 
 To use local PostgreSQL instead of SQLite, set `DATABASE_URL=postgresql://user:pass@localhost:5432/tradeguard` before starting the API. Tables are created automatically on startup.
 
-Run the API tests with `cd backend; python -m pytest`.
+## Tests
+
+```powershell
+# API tests on SQLite (fast)
+cd backend; .\.venv\Scripts\python.exe -m pytest
+
+# API tests on the real local PostgreSQL. Uses a SEPARATE database named tradeguard_test
+# (create it once: CREATE DATABASE tradeguard_test). The tests refuse to run against any
+# database whose name does not look like a test database, so your journal is never touched.
+$env:TEST_DB = "postgres"; .\.venv\Scripts\python.exe -m pytest
+
+# Frontend logic (rules, stats, formatting)
+cd frontend; npm test
+
+# Browser end-to-end (needs Edge or Chrome). Start the API against the TEST database and the
+# frontend dev server first, e.g. API on :8765 and `API_PROXY=http://localhost:8765 npx vite --port 5199`
+$env:E2E_URL = "http://localhost:5199"; node e2e/app.e2e.mjs
+```
 
 ## Deploy for free
 
@@ -51,6 +68,16 @@ Free-tier limits change, so check each site's current pricing page. Do not use R
 4. **Web app on Vercel.** New project → import the repo, set *Root Directory* to `frontend`, and add the environment variable `VITE_API_URL` = your Render URL (no trailing slash). Deploy.
 5. Go back to Render and set `CORS_ORIGINS` to the Vercel URL, e.g. `https://trade-guard.vercel.app`.
 6. Open the site and **Sign up**. Then set `ALLOW_REGISTRATION=false` on Render so nobody else can create accounts.
+
+### Auto-deploy (CI/CD)
+
+Once steps 1-6 are done, nothing else is needed per release:
+
+1. You push or merge to `main`.
+2. GitHub Actions (`.github/workflows/ci.yml`) runs the API tests on a real PostgreSQL, the frontend tests, and the production build.
+3. If CI is green, Render redeploys the API (`autoDeployTrigger: checksPass` in `render.yaml`) and Vercel rebuilds the web app. Pull requests get a Vercel preview URL but are never deployed to production.
+
+Turn on "Require status checks to pass" for `main` in GitHub → Settings → Branches so a red build can't be merged. Database tables are created on API startup, so schema changes in code roll out with the deploy; for destructive schema changes use a migration tool (e.g. Alembic) first.
 
 Optional: ping `<api-url>/api/health` every 10 minutes with a free monitor such as UptimeRobot to avoid the cold start.
 
