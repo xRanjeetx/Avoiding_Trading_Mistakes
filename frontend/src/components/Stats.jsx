@@ -3,6 +3,7 @@ import { SETUPS } from "../lib/rules.js";
 import { computeStats, dailyPnl, inRange, ymd } from "../lib/stats.js";
 import { compactMoney, fmtMoney, fmtR, signClass } from "../lib/format.js";
 import { Empty } from "./EntryCard.jsx";
+import Discipline from "./Discipline.jsx";
 import { CardHead, Icon } from "./ui.jsx";
 
 const RANGES = [[7, "7D"], [30, "30D"], [90, "90D"], [0, "All time"]];
@@ -91,6 +92,7 @@ export default function Stats({ active, entries, settings }) {
       <div className="pills">
         {RANGES.map(([d, label]) => <button key={d} className={range === d ? "on" : ""} onClick={() => setRange(d)}>{label}</button>)}
       </div>
+      <Discipline entries={entries} settings={settings} />
       <div className="stats-grid two">
         <Tile label="Net P&L" value={s.hasPnl ? money(s.net) : "–"} sub={bal || `${s.n} closed trade${s.n === 1 ? "" : "s"}`} cls={s.hasPnl ? signClass(s.net) : ""} />
         <Tile label="Win rate" value={s.winRate == null ? "–" : Math.round(s.winRate * 100) + "%"} sub={`${s.wins}W · ${s.losses}L · ${s.be}BE`} />

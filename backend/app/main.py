@@ -18,9 +18,11 @@ from .security import current_user, hash_password, make_token, verify_password
 
 def ensure_columns(eng) -> None:
     """create_all only creates missing tables, so add columns introduced after a table already exists."""
-    if "killzones" not in {c["name"] for c in inspect(eng).get_columns("user_settings")}:
-        with eng.begin() as conn:
-            conn.execute(text("ALTER TABLE user_settings ADD COLUMN killzones JSON"))
+    have = {c["name"] for c in inspect(eng).get_columns("user_settings")}
+    for col in ("killzones", "pairs"):
+        if col not in have:
+            with eng.begin() as conn:
+                conn.execute(text(f"ALTER TABLE user_settings ADD COLUMN {col} JSON"))
 
 
 @asynccontextmanager

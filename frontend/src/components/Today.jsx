@@ -2,6 +2,7 @@ import { closeTime, sum } from "../lib/stats.js";
 import { fmtMoney, isToday, signClass } from "../lib/format.js";
 import { todayCounts } from "../lib/evaluate.js";
 import EntryCard, { Empty } from "./EntryCard.jsx";
+import Discipline from "./Discipline.jsx";
 import { CardHead, Icon } from "./ui.jsx";
 
 export default function Today({ active, entries, settings, onQuick }) {
@@ -24,6 +25,7 @@ export default function Today({ active, entries, settings, onQuick }) {
         <div className="stat"><small><Icon name="wallet" size={14} /> P&amp;L today</small>
           <span className={closedToday.length ? signClass(pnl) : ""}>{closedToday.length ? fmtMoney(pnl, settings.currency) : "–"}</span></div>
       </div>
+      <Discipline entries={entries} settings={settings} compact />
       <div className="card">
         <CardHead icon="sun" title="Today's trades"><span className="chip">{today.length}</span></CardHead>
         {today.length

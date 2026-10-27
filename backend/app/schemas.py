@@ -52,6 +52,16 @@ DEFAULT_KILLZONES = [
 ]
 
 
+class PairLot(BaseModel):
+    """The fixed lot size for one trading pair."""
+
+    pair: str = Field(min_length=1, max_length=30, pattern=r"^[A-Z0-9._-]+$")
+    lot: FiniteFloat = Field(gt=0)
+
+
+DEFAULT_PAIRS = [{"pair": "XAUUSD", "lot": 0.02}, {"pair": "EURUSD", "lot": 0.2}]
+
+
 class SettingsOut(CamelModel):
     lot: FiniteFloat = Field(0.02, gt=0)
     min_rr: FiniteFloat = Field(2, gt=0, alias="minRR")
@@ -61,10 +71,24 @@ class SettingsOut(CamelModel):
     currency: str = Field("$", max_length=4)
     killzones: list[Killzone] = Field(default_factory=lambda: [Killzone(**z) for z in DEFAULT_KILLZONES], max_length=4)
 
+    pairs: list[PairLot] = Field(default_factory=lambda: [PairLot(**p) for p in DEFAULT_PAIRS], max_length=50)
+
     @field_validator("killzones", mode="before")
     @classmethod
     def _default_when_unset(cls, v):
         return DEFAULT_KILLZONES if v is None else v  # rows created before killzones existed
+
+    @field_validator("pairs", mode="before")
+    @classmethod
+    def _default_pairs_when_unset(cls, v):
+        return DEFAULT_PAIRS if v is None else v  # rows created before per-pair lots existed
+
+    @field_validator("pairs")
+    @classmethod
+    def _unique_pairs(cls, v: list[PairLot]) -> list[PairLot]:
+        if len({p.pair for p in v}) != len(v):
+            raise ValueError("Each pair can appear only once")
+        return v
 
     @field_validator("killzones")
     @classmethod

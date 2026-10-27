@@ -9,8 +9,10 @@ import Stats from "./components/Stats.jsx";
 import Settings from "./components/Settings.jsx";
 import SessionStrip from "./components/SessionStrip.jsx";
 import CloseSheet from "./components/CloseSheet.jsx";
+import { dueReminders, loadPrefs, markSent, notify, savePrefs, wasSent } from "./lib/reminders.js";
 
-const DEFAULT_SETTINGS = { lot: 0.02, minRR: 2, maxTrades: 4, maxSL: 4, balance: 0, currency: "$" };
+const DEFAULT_SETTINGS = { lot: 0.02, minRR: 2, maxTrades: 4, maxSL: 4, balance: 0, currency: "$",
+  pairs: [{ pair: "XAUUSD", lot: 0.02 }, { pair: "EURUSD", lot: 0.2 }] };
 const KEY_THEME = "atm_theme";
 
 const ICONS = {
@@ -88,11 +90,24 @@ function Journalled({ session, onLogout }) {
   }, [onLogout]);
   useEffect(() => { load(); }, [load]);
 
-  // Time-based rules re-check every 30s.
+  // Time-based rules (sessions, the loss cooldown) re-check every 10s.
   useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 30000);
+    const id = setInterval(() => setNow(new Date()), 10000);
     return () => clearInterval(id);
   }, []);
+
+  // Reminders: a session about to open, a trade open for too long. Each one is sent once.
+  const [reminders, setReminders] = useState(loadPrefs);
+  const changeReminders = (patch) => setReminders((p) => { const next = { ...p, ...patch }; savePrefs(next); return next; });
+  useEffect(() => {
+    if (status !== "ready") return;
+    for (const r of dueReminders({ entries, settings, prefs: reminders, now })) {
+      if (wasSent(r.key)) continue;
+      markSent(r.key);
+      say(r.title);
+      notify(r.title, r.body, r.key);
+    }
+  }, [now, status, entries, settings, reminders, say]);
 
   // Follow the phone's theme until the user picks one manually.
   useEffect(() => {
@@ -225,7 +240,7 @@ function Journalled({ session, onLogout }) {
         <Journal active={tab === "log"} entries={entries} settings={settings} onEdit={(id) => setSheet({ id, preset: null })}
           onDelete={deleteEntry} />
         <Stats active={tab === "stats"} entries={entries} settings={settings} />
-        <Settings active={tab === "settings"} settings={settings} email={session.email} onSave={saveSettings} onClearAll={clearAll} onLogout={onLogout} />
+        <Settings active={tab === "settings"} settings={settings} reminders={reminders} onReminders={changeReminders} onSave={saveSettings} onClearAll={clearAll} />
       </main>
 
       <div className={`scrim ${menu ? "show" : ""}`} onClick={() => setMenu(false)} />

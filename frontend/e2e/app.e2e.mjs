@@ -142,12 +142,12 @@ await step("Check tab shows the four sessions and which one is live", async () =
 await step("Settings lists the sessions with the default New York times", async () => {
   await nav("Settings");
   const row = (name) => page.locator(".kz-row", { hasText: name });
-  assert.equal(await page.locator(".kz-row").count(), 4);
+  assert.equal(await page.locator(".kz-row:has(.kz-times)").count(), 4); // the Pairs card reuses .kz-row
   assert.equal(await row("Asian").locator(".kz-times input").nth(0).inputValue(), "20:00");
   assert.equal(await row("Asian").locator(".kz-times input").nth(1).inputValue(), "00:00");
   assert.equal(await row("New York").locator(".kz-times input").nth(0).inputValue(), "07:00");
   assert.equal(await row("London Close").locator(".kz-times input").nth(1).inputValue(), "12:00");
-  const card = page.locator(".card", { has: page.locator(".kz-list") });
+  const card = page.locator(".card", { has: page.locator(".kz-times") });
   await card.scrollIntoViewIfNeeded();
   await page.waitForTimeout(600);
   await card.screenshot({ path: path.join(SHOTS, "04c-sessions-settings-dark.png") });
@@ -310,6 +310,69 @@ await step("API returns exactly the stored entry and settings", async () => {
   assert.equal(data.s.killzones.find((z) => z.key === "london").on, false);
   assert.equal(data.s.londonStart, undefined, "removed field is not returned");
   assert.equal(data.s.balance, 1000);
+});
+
+console.log("\nLoss cooldown, discipline, reminders");
+const fillTrade = async (pair) => {
+  await field("Pair").fill(pair);
+  await page.locator('#dir button[data-val="buy"]').click();
+  await page.locator('#setup button[data-val="fvg"]').click();
+  await field("Entry").fill("100");
+  await field("Stop loss").fill("98");
+  await field("Take profit").fill("104");
+  const yes = page.locator(".yn button.yes");
+  for (let i = 0, n = await yes.count(); i < n; i++) await yes.nth(i).click();
+};
+await step("after a stop loss the same pair is locked for 10 minutes, another pair is not", async () => {
+  await nav("Check");
+  await fillTrade("GBPJPY");
+  await page.locator("#verdict.ok").waitFor();
+  await page.getByRole("button", { name: /log this trade/i }).first().click();
+  await toast().filter({ hasText: "Trade logged" }).waitFor();
+  await nav("Today");
+  await page.locator("#today .entry", { hasText: "GBPJPY" }).getByRole("button", { name: /SL hit/ }).click();
+  await page.locator("#sheet").getByRole("button", { name: /^\s*Save/ }).click();
+  await toast().filter({ hasText: "Saved" }).waitFor();
+  await nav("Check");
+  await fillTrade("GBPJPY");
+  await page.locator("#verdict.no").waitFor();
+  assert.match(await page.locator("#verdict").innerText(), /Cooldown After a Loss/);
+  assert.match(await page.locator(".banner.lock").innerText(), /GBPJPY lost a trade/);
+  await shot("18-cooldown-locked-dark");
+  await field("Pair").fill("EURUSD");
+  await field("Lot size").fill("0.2");
+  await page.locator("#verdict.ok").waitFor();
+  await field("Pair").fill("GBPJPY");
+  await field("Lot size").fill("0.02");
+  await page.locator("#verdict.no").waitFor();
+  await page.clock.fastForward(11 * 60000); // ten minutes later the pair is free again
+  await page.locator("#verdict.ok").waitFor();
+});
+await step("Stats and Today show the discipline score and streaks", async () => {
+  await nav("Stats");
+  const card = page.locator("#stats .disc");
+  assert.match(await card.innerText(), /Discipline/);
+  assert.match(await card.innerText(), /clean trades in a row/);
+  await shot("19-discipline-stats-dark");
+  await nav("Today");
+  assert.match(await page.locator("#today .disc").innerText(), /clean trading days in a row/);
+});
+await step("Settings has a Reminders card with the two limits", async () => {
+  await nav("Settings");
+  const card = page.locator("#settings .card", { hasText: "Reminders" }).first();
+  await card.waitFor();
+  assert.equal(await card.locator('input[type="number"]').first().inputValue(), "5");
+  assert.equal(await card.locator('input[type="number"]').nth(1).inputValue(), "120");
+  await shot("20-reminders-settings-dark");
+});
+await step("remove the extra test trade again", async () => {
+  await nav("Journal");
+  const entry = page.locator("#log .entry", { hasText: "GBPJPY" });
+  await entry.locator(".entry-head").click();
+  page.once("dialog", (d) => d.accept());
+  await entry.getByRole("button", { name: /delete/i }).click();
+  await page.waitForTimeout(500);
+  assert.equal(await page.locator("#log .entry", { hasText: "GBPJPY" }).count(), 0);
 });
 
 console.log("\nLight mode");
