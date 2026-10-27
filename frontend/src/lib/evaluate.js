@@ -1,5 +1,6 @@
 import { RULES, SETUPS } from "./rules.js";
-import { inWindow, isToday } from "./format.js";
+import { isToday } from "./format.js";
+import { KILLZONE_NAMES, activeZones, fmtDuration, marketStatus, minutesLeft, nextZone, normalizeKillzones } from "./killzones.js";
 
 export function ruleTitle(id, settings) {
   const r = RULES.find((r) => r.id === id);
@@ -42,13 +43,21 @@ export function evaluate({ f, answers, entries, settings, now = new Date() }) {
     ? { pass: null, detail: `Enter lot size (must be ${settings.lot})` }
     : { pass: Math.abs(f.lot - settings.lot) < 1e-9, detail: `Lot ${f.lot} (fixed ${settings.lot})` };
 
-  // 4: London session
-  const inLondon = inWindow(settings.londonStart, settings.londonEnd, now);
-  res[4] = { pass: !inLondon, detail: inLondon ? `London session is live now (${settings.londonStart}–${settings.londonEnd})` : "Outside London session" };
-
-  // 11: my session
-  const inSession = inWindow(settings.sessionStart, settings.sessionEnd, now);
-  res[11] = { pass: inSession, detail: inSession ? "Inside your trading session" : `Outside your session (${settings.sessionStart}–${settings.sessionEnd})` };
+  // 11: trade only inside a market session (the enabled ones in Settings, in New York time)
+  const zones = normalizeKillzones(settings.killzones);
+  const [live] = activeZones(zones, now);
+  const market = marketStatus(now);
+  if (!market.open) {
+    res[11] = { pass: false, detail: `Market is closed for the weekend. It reopens in ${fmtDuration(market.reopensInMin)}` };
+  } else if (live) {
+    res[11] = { pass: true, detail: `${KILLZONE_NAMES[live.key]} session is live (ends in ${fmtDuration(minutesLeft(live, now))})` };
+  } else {
+    const next = nextZone(zones, now);
+    res[11] = {
+      pass: false,
+      detail: next ? `No market session is live. ${KILLZONE_NAMES[next.zone.key]} opens in ${fmtDuration(next.inMin)}` : "All market sessions are switched off in Settings",
+    };
+  }
 
   // 8: same direction already open
   if (!f.pair || !f.dir) {

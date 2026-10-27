@@ -7,9 +7,10 @@ import Today from "./components/Today.jsx";
 import Journal from "./components/Journal.jsx";
 import Stats from "./components/Stats.jsx";
 import Settings from "./components/Settings.jsx";
+import SessionStrip from "./components/SessionStrip.jsx";
 import CloseSheet from "./components/CloseSheet.jsx";
 
-const DEFAULT_SETTINGS = { lot: 0.02, minRR: 2, maxTrades: 4, maxSL: 4, londonStart: "12:30", londonEnd: "17:30", sessionStart: "18:00", sessionEnd: "22:30", balance: 0, currency: "$" };
+const DEFAULT_SETTINGS = { lot: 0.02, minRR: 2, maxTrades: 4, maxSL: 4, balance: 0, currency: "$" };
 const KEY_THEME = "atm_theme";
 
 const ICONS = {
@@ -218,6 +219,7 @@ function Journalled({ session, onLogout }) {
       </header>
 
       <main>
+        {tab === "checklist" && <SessionStrip settings={settings} now={now} />}
         <Checklist active={tab === "checklist"} entries={entries} settings={settings} now={now} onLog={logTrade} onProgress={setProgress} />
         <Today active={tab === "today"} entries={entries} settings={settings} onQuick={(id, preset) => setSheet({ id, preset })} />
         <Journal active={tab === "log"} entries={entries} settings={settings} onEdit={(id) => setSheet({ id, preset: null })}

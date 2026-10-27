@@ -6,6 +6,7 @@ import jwt
 import pytest
 
 from app import config
+from app.schemas import DEFAULT_KILLZONES
 from conftest import signup
 
 NOW = 1_760_000_000_000
@@ -110,17 +111,73 @@ def test_token_for_deleted_or_unknown_user_is_401(client):
 # ---------------- settings ----------------
 def test_settings_defaults_and_full_roundtrip(client, auth):
     s = client.get("/api/settings", headers=auth).json()
-    assert s == {"lot": 0.02, "minRR": 2, "maxTrades": 4, "maxSL": 4, "londonStart": "12:30", "londonEnd": "17:30",
-                 "sessionStart": "18:00", "sessionEnd": "22:30", "balance": 0, "currency": "$"}
-    new = {**s, "lot": 0.1, "minRR": 1.5, "maxTrades": 2, "maxSL": 1, "londonStart": "08:00", "londonEnd": "12:00",
-           "sessionStart": "13:00", "sessionEnd": "21:00", "balance": 5000.5, "currency": "€"}
+    assert s == {"lot": 0.02, "minRR": 2, "maxTrades": 4, "maxSL": 4, "balance": 0, "currency": "$",
+                 "killzones": DEFAULT_KILLZONES}
+    new = {**s, "lot": 0.1, "minRR": 1.5, "maxTrades": 2, "maxSL": 1, "balance": 5000.5, "currency": "€"}
     assert client.put("/api/settings", json=new, headers=auth).json() == new
     assert client.get("/api/settings", headers=auth).json() == new
 
 
+# ---------------- killzones ----------------
+def test_killzone_defaults_match_the_new_york_sessions(client, auth):
+    zones = {z["key"]: (z["start"], z["end"]) for z in client.get("/api/settings", headers=auth).json()["killzones"]}
+    assert zones == {"asian": ("20:00", "00:00"), "london": ("02:00", "05:00"),
+                     "newyork": ("07:00", "10:00"), "londonclose": ("10:00", "12:00")}
+
+
+def test_killzones_can_be_edited_and_switched_off(client, auth):
+    s = client.get("/api/settings", headers=auth).json()
+    zones = [{**z} for z in s["killzones"]]
+    zones[1].update(start="03:00", end="06:30", on=False, color="#112233")
+    saved = client.put("/api/settings", json={**s, "killzones": zones}, headers=auth).json()
+    assert saved["killzones"] == zones
+    assert client.get("/api/settings", headers=auth).json()["killzones"] == zones
+
+
+@pytest.mark.parametrize("change", [
+    {"start": "25:00"}, {"end": "9:00"}, {"color": "red"}, {"color": "#12345"}, {"key": "tokyo"}, {"on": "maybe"},
+])
+def test_killzone_validation(client, auth, change):
+    s = client.get("/api/settings", headers=auth).json()
+    zones = [{**s["killzones"][0], **change}, *s["killzones"][1:]]
+    assert client.put("/api/settings", json={**s, "killzones": zones}, headers=auth).status_code == 422
+
+
+def test_killzones_reject_duplicates_and_too_many(client, auth):
+    s = client.get("/api/settings", headers=auth).json()
+    dup = [s["killzones"][0], s["killzones"][0]]
+    assert client.put("/api/settings", json={**s, "killzones": dup}, headers=auth).status_code == 422
+    too_many = s["killzones"] + [s["killzones"][0]]
+    assert client.put("/api/settings", json={**s, "killzones": too_many}, headers=auth).status_code == 422
+
+
+def test_killzones_are_per_user(client):
+    a, b = signup(client, "alice"), signup(client, "bobby")
+    s = client.get("/api/settings", headers=a).json()
+    zones = [{**z, "on": False} for z in s["killzones"]]
+    client.put("/api/settings", json={**s, "killzones": zones}, headers=a)
+    assert all(z["on"] for z in client.get("/api/settings", headers=b).json()["killzones"])
+
+
+def test_existing_database_gets_the_killzones_column():
+    """A database created before killzones existed (like the live one) is upgraded in place, keeping its rows."""
+    from sqlalchemy import create_engine, inspect, text
+    from app.main import ensure_columns
+
+    eng = create_engine("sqlite://")
+    with eng.begin() as c:
+        c.execute(text("create table user_settings (user_id integer primary key, lot float)"))
+        c.execute(text("insert into user_settings values (1, 0.05)"))
+    ensure_columns(eng)
+    ensure_columns(eng)  # running it again is harmless
+    assert "killzones" in {c["name"] for c in inspect(eng).get_columns("user_settings")}
+    with eng.connect() as c:
+        assert c.execute(text("select lot, killzones from user_settings")).one() == (0.05, None)
+
+
 @pytest.mark.parametrize("patch", [
     {"lot": 0}, {"lot": -1}, {"minRR": 0}, {"maxTrades": 0}, {"maxSL": 0}, {"balance": -1},
-    {"currency": "12345"}, {"londonStart": "9:00"}, {"londonStart": "nope"}, {"maxTrades": 1.5},
+    {"currency": "12345"}, {"maxTrades": 1.5},
 ])
 def test_settings_validation(client, auth, patch):
     s = client.get("/api/settings", headers=auth).json()
@@ -130,14 +187,25 @@ def test_settings_validation(client, auth, patch):
 @pytest.mark.parametrize("value", ["99:99", "24:00", "12:60", "25:30", "00:99"])
 def test_settings_rejects_impossible_clock_times(client, auth, value):
     s = client.get("/api/settings", headers=auth).json()
-    for key in ("londonStart", "londonEnd", "sessionStart", "sessionEnd"):
-        assert client.put("/api/settings", json={**s, key: value}, headers=auth).status_code == 422
+    for key in ("start", "end"):
+        zones = [{**s["killzones"][0], key: value}, *s["killzones"][1:]]
+        assert client.put("/api/settings", json={**s, "killzones": zones}, headers=auth).status_code == 422
 
 
 @pytest.mark.parametrize("value", ["00:00", "23:59", "12:30"])
 def test_settings_accepts_valid_clock_times(client, auth, value):
     s = client.get("/api/settings", headers=auth).json()
-    assert client.put("/api/settings", json={**s, "londonStart": value}, headers=auth).status_code == 200
+    zones = [{**s["killzones"][0], "start": value}, *s["killzones"][1:]]
+    assert client.put("/api/settings", json={**s, "killzones": zones}, headers=auth).status_code == 200
+
+
+def test_old_clients_may_still_send_the_removed_session_fields(client, auth):
+    """The London / My session times are gone; extra fields from an older app version are ignored, not an error."""
+    s = client.get("/api/settings", headers=auth).json()
+    old = {**s, "londonStart": "12:30", "londonEnd": "17:30", "sessionStart": "18:00", "sessionEnd": "22:30"}
+    saved = client.put("/api/settings", json=old, headers=auth)
+    assert saved.status_code == 200
+    assert "londonStart" not in saved.json() and "sessionStart" not in saved.json()
 
 
 def test_settings_are_per_user(client):

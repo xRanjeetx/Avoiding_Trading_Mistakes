@@ -33,6 +33,8 @@ const browser = await chromium.launch({ channel: "msedge", headless: true });
 const context = await browser.newContext({ viewport: { width: 1366, height: 700 }, colorScheme: "dark", reducedMotion: "reduce" });
 context.setDefaultTimeout(8000);
 const page = await context.newPage();
+// A fixed Tuesday, so the market-session rule does not depend on the day the test happens to run.
+await page.clock.install({ time: new Date("2026-10-27T15:00:00Z") });
 page.on("pageerror", (e) => problems.push(`pageerror: ${e.message}`));
 page.on("console", (m) => {
   if (m.type() === "error" && !/Failed to load resource|fonts\.g/.test(m.text())) problems.push(`console.error: ${m.text()}`);
@@ -113,12 +115,8 @@ await step("creating an account lands in the app, signed in", async () => {
 });
 
 console.log("\nSettings");
-await step("set a quiet London window and an all-day session so the checklist is deterministic", async () => {
+await step("set a starting balance and save", async () => {
   await nav("Settings");
-  await field("London start").fill("03:00");
-  await field("London end").fill("03:01");
-  await field("My session start").fill("00:00");
-  await field("My session end").fill("23:59");
   await field("Starting balance").fill("1000");
   await page.getByRole("button", { name: /save settings/i }).click();
   await toast().filter({ hasText: "Settings saved" }).waitFor();
@@ -127,8 +125,65 @@ await step("set a quiet London window and an all-day session so the checklist is
 await step("settings persist after reopening the tab", async () => {
   await nav("Check");
   await nav("Settings");
-  assert.equal(await field("London start").inputValue(), "03:00");
   assert.equal(await field("Starting balance").inputValue(), "1000");
+  assert.equal(await page.getByText("London start").count(), 0, "the old London / My session card is gone");
+  assert.equal(await page.getByText("My session start").count(), 0);
+});
+
+console.log("\nMarket sessions");
+await step("Check tab shows the four sessions and which one is live", async () => {
+  await nav("Check");
+  await page.locator(".kz-strip").waitFor();
+  assert.deepEqual(await page.locator(".kz-chips li span").allInnerTexts(), ["Asian", "London", "New York", "London Close"]);
+  assert.match(await page.locator(".kz-status b").innerText(), /is live|No session live/);
+  assert.match(await page.locator(".kz-status .chip").innerText(), /^NY \d\d:\d\d$/);
+  await shot("04b-sessions-strip-dark");
+});
+await step("Settings lists the sessions with the default New York times", async () => {
+  await nav("Settings");
+  const row = (name) => page.locator(".kz-row", { hasText: name });
+  assert.equal(await page.locator(".kz-row").count(), 4);
+  assert.equal(await row("Asian").locator(".kz-times input").nth(0).inputValue(), "20:00");
+  assert.equal(await row("Asian").locator(".kz-times input").nth(1).inputValue(), "00:00");
+  assert.equal(await row("New York").locator(".kz-times input").nth(0).inputValue(), "07:00");
+  assert.equal(await row("London Close").locator(".kz-times input").nth(1).inputValue(), "12:00");
+  const card = page.locator(".card", { has: page.locator(".kz-list") });
+  await card.scrollIntoViewIfNeeded();
+  await page.waitForTimeout(600);
+  await card.screenshot({ path: path.join(SHOTS, "04c-sessions-settings-dark.png") });
+});
+await step("a session can be edited and switched off, and the change survives a reload", async () => {
+  const row = (name) => page.locator(".kz-row", { hasText: name });
+  await row("London Close").locator(".kz-times input").nth(0).fill("10:30");
+  await row("London").first().locator('input[type="checkbox"]').uncheck();
+  // Asian all day, so the "trade only in a market session" rule passes whatever time the test runs
+  await row("Asian").locator(".kz-times input").nth(0).fill("00:00");
+  await row("Asian").locator(".kz-times input").nth(1).fill("23:59");
+  await page.getByRole("button", { name: /save settings/i }).click();
+  await toast().filter({ hasText: "Settings saved" }).waitFor();
+  await page.reload();
+  await page.locator(".app-header h1").waitFor();
+  await nav("Settings");
+  assert.equal(await row("London Close").locator(".kz-times input").nth(0).inputValue(), "10:30");
+  assert.equal(await row("Asian").locator(".kz-times input").nth(0).inputValue(), "00:00");
+  assert.equal(await row("Asian").locator(".kz-times input").nth(1).inputValue(), "23:59");
+  assert.equal(await row("London").first().locator('input[type="checkbox"]').isChecked(), false);
+  assert.equal(await row("Asian").locator('input[type="checkbox"]').isChecked(), true);
+  await nav("Check");
+  assert.ok(await page.locator(".kz-chips li.off", { hasText: "London" }).first().isVisible());
+  assert.match(await page.locator(".kz-status b").innerText(), /Asian is live/);
+});
+
+await step("on a Saturday the strip says the market is closed, and Monday-Friday it is live again", async () => {
+  await nav("Check");
+  await page.clock.setSystemTime(new Date("2026-10-31T15:00:00Z")); // Saturday 11:00 in New York
+  await page.clock.runFor(31000);                                    // the page re-checks the time every 30 s
+  assert.match(await page.locator(".kz-status b").innerText(), /Market closed for the weekend/);
+  assert.equal(await page.locator(".kz-chips li.now").count(), 0);
+  await shot("04d-sessions-weekend-dark");
+  await page.clock.setSystemTime(new Date("2026-10-27T15:00:00Z")); // back to Tuesday
+  await page.clock.runFor(31000);
+  assert.match(await page.locator(".kz-status b").innerText(), /Asian is live/);
 });
 
 console.log("\nChecklist");
@@ -250,7 +305,10 @@ await step("API returns exactly the stored entry and settings", async () => {
   assert.equal(data.e.length, 1);
   assert.deepEqual([data.e[0].pair, data.e[0].dir, data.e[0].setup, data.e[0].result, data.e[0].pnl], ["XAUUSD", "buy", "fvg", "tp", 24.5]);
   assert.equal(data.e[0].rr, 2);
-  assert.equal(data.s.londonStart, "03:00");
+  const asian = data.s.killzones.find((z) => z.key === "asian");
+  assert.deepEqual([asian.start, asian.end, asian.on], ["00:00", "23:59", true]);
+  assert.equal(data.s.killzones.find((z) => z.key === "london").on, false);
+  assert.equal(data.s.londonStart, undefined, "removed field is not returned");
   assert.equal(data.s.balance, 1000);
 });
 
@@ -292,7 +350,7 @@ await step("logging back in with the same account works", async () => {
   await page.locator(".af-submit").click();
   await page.locator(".app-header h1").waitFor({ timeout: 90000 });
   await nav("Settings");
-  assert.equal(await field("London start").inputValue(), "03:00");
+  assert.equal(await page.locator(".kz-row", { hasText: "Asian" }).locator(".kz-times input").nth(1).inputValue(), "23:59");
 });
 await step("signing up again with the same email is refused", async () => {
   await page.getByRole("button", { name: "Log out" }).first().click();

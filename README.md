@@ -92,5 +92,5 @@ Optional: ping `<api-url>/api/health` every 10 minutes with a free monitor such 
 | `TOKEN_DAYS` | `30` | How long a login lasts |
 
 ## Notes
-- Session times use the device's local time. The defaults are for IST: London 12:30–17:30, your session 18:00–22:30. Change them in **Settings**.
+- **Market sessions** (Asian 20:00-00:00, London 02:00-05:00, New York 07:00-10:00, London Close 10:00-12:00) are set in **Settings** in New York time, so US daylight saving needs no edit. The checklist rule "Trade Only in a Market Session" passes only while one of the switched-on sessions is live, and the Check tab shows which one that is, in your own clock. Existing databases get the new column automatically at startup.
 - The offline/PWA service worker was dropped, because the app now needs the API. Your journal lives in PostgreSQL; Neon keeps its own backups and point-in-time restore.
