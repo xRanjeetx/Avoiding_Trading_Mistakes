@@ -2,6 +2,7 @@
 // type "auto": checked by the app from inputs, time or today's log.
 // type "self": you must answer honestly. "Yes" always means the rule is respected.
 const RULES = [
+  { id: 31, title: "No Confirmation Bias",               type: "self", q: "Did I weigh evidence against my bias too, not only what supports my view and ignoring what contradicts it?" },
   { id: 1,  title: "No Indicator Trading",               type: "self", q: "Is this entry based on price action only, without indicators?" },
   { id: 2,  title: "TP & SL Fixed 1:2 RR",               type: "auto" },
   { id: 3,  title: "Lot Size Fixed",                     type: "auto" },
@@ -9,14 +10,13 @@ const RULES = [
   { id: 6,  title: "No Trade in Ranging Market",         type: "self", q: "Is the market trending, not ranging?" },
   { id: 7,  title: "No FOMO",                            type: "self", q: "Am I calm, and not chasing a move I missed?" },
   { id: 8,  title: "No Multiple Trades in Same Direction", type: "auto" },
-  { id: 30, title: "Cooldown After a Loss (Same Pair)",   type: "auto" },
+  { id: 30, title: "Cooldown After a Loss", type: "auto" },
   { id: 9,  title: "Full TP",                           type: "self", q: "Will I hold this trade until the full TP?" },
   { id: 10, title: "No Scalping",                        type: "self", q: "Is this a planned setup, not a quick scalp?" },
   { id: 11, title: "Trade Only in a Market Session",     type: "auto" },
   { id: 13, title: "No Revenge Trading",                 type: "self", q: "Am I taking this trade on its own merits, not to win back a loss?" },
   { id: 14, title: "Safe TP Always",                     type: "self", q: "Is my TP placed safely before the next key level?" },
   { id: 15, title: "Max Trades per Day",                 type: "auto" },
-  { id: 16, title: "Wait After Setup Forms",             type: "self", q: "Did I wait for the setup to fully form?" },
   { id: 17, title: "If Rejection, Then Wait",            type: "self", q: "If there was a rejection, did I wait for it to resolve?" },
   { id: 18, title: "5m Healthy Candle, Then Entry",      type: "self", q: "Did a healthy 5m candle close before my entry?" },
   { id: 19, title: "After Max SL, Stop Trading",         type: "auto" },

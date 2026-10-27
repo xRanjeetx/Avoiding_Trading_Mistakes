@@ -121,11 +121,11 @@ export default function Checklist({ active, entries, settings, now, onLog, onPro
           <span className={`chip ${autoFail ? "bad" : autoPass === AUTO.length ? "good" : ""}`}>{autoPass}/{AUTO.length}</span>
         </CardHead>
         <ul className="rules">
-          {AUTO.map((r) => {
+          {AUTO.map((r, i) => {
             const { pass, detail } = ev.res[r.id];
             return (
               <li key={r.id} className={pass === true ? "pass" : pass === false ? "fail" : ""}>
-                <span className="num">{r.id}</span>
+                <span className="num">{i + 1}</span>
                 <div className="body"><div className="title">{ruleTitle(r.id, settings)}</div><div className="sub">{detail}</div></div>
                 <Status pass={pass} />
               </li>
@@ -139,13 +139,13 @@ export default function Checklist({ active, entries, settings, now, onLog, onPro
           <span className={`chip ${selfFail ? "bad" : answered === SELF.length ? "good" : ""}`}>{answered}/{SELF.length} answered</span>
         </CardHead>
         <ul className="rules">
-          {SELF.map((r) => {
+          {SELF.map((r, i) => {
             const { pass } = ev.res[r.id];
             const a = form.answers[r.id];
             const answer = (v) => set({ answers: { ...form.answers, [r.id]: v } });
             return (
               <li key={r.id} className={pass === true ? "pass" : pass === false ? "fail" : ""}>
-                <span className="num">{r.id}</span>
+                <span className="num">{AUTO.length + i + 1}</span>
                 <div className="body"><div className="title">{r.title}</div><div className="sub">{r.q}</div></div>
                 <div className="yn">
                   <button className={`yes ${a === true ? "on" : ""}`} onClick={() => answer(true)}>Yes</button>
@@ -162,7 +162,7 @@ export default function Checklist({ active, entries, settings, now, onLog, onPro
           <>
             <div className="v-ico"><Icon name="ban" size={30} /></div><h3>DO NOT TRADE</h3>
             <p>You are breaking {ev.failed.length} rule{ev.failed.length > 1 ? "s" : ""}. Close the chart and walk away.</p>
-            <ul>{ev.failed.map((id) => <li key={id}><b>#{id}</b> {ruleTitle(id, settings)}</li>)}</ul>
+            <ul>{ev.failed.map((id) => <li key={id}>{ruleTitle(id, settings)}</li>)}</ul>
           </>
         ) : ev.pending.length ? (
           <><div className="v-ico"><Icon name="clock" size={30} /></div><h3>Not ready yet</h3><p>{ev.pending.length} item{ev.pending.length > 1 ? "s" : ""} still to fill or answer.</p></>

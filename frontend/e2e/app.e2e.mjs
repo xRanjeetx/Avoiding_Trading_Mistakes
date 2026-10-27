@@ -369,8 +369,8 @@ await step("remove the extra test trade again", async () => {
   await nav("Journal");
   const entry = page.locator("#log .entry", { hasText: "GBPJPY" });
   await entry.locator(".entry-head").click();
-  page.once("dialog", (d) => d.accept());
   await entry.getByRole("button", { name: /delete/i }).click();
+  await page.locator(".confirm-toast").getByRole("button", { name: "Delete", exact: true }).click();
   await page.waitForTimeout(500);
   assert.equal(await page.locator("#log .entry", { hasText: "GBPJPY" }).count(), 0);
 });
@@ -390,15 +390,16 @@ await step("every tab renders in light mode (screenshots)", async () => {
 console.log("\nDelete, logout, login");
 await step("deleting a trade asks for confirmation", async () => {
   await nav("Journal");
-  page.once("dialog", (d) => d.dismiss());
   await page.locator("#log .entry", { hasText: "XAUUSD" }).locator(".entry-head").click().catch(() => {});
   const del = page.locator("#log .entry", { hasText: "XAUUSD" }).getByRole("button", { name: /delete/i });
   if (!(await del.isVisible())) await page.locator("#log .entry", { hasText: "XAUUSD" }).locator(".entry-head").click();
+  const confirmBox = page.locator(".confirm-toast");
   await del.click();
+  await confirmBox.getByRole("button", { name: "Cancel" }).click();
   await page.waitForTimeout(300);
-  assert.equal(await page.locator("#log .entry", { hasText: "XAUUSD" }).count(), 1, "dismissing the confirm must keep the trade");
-  page.once("dialog", (d) => d.accept());
+  assert.equal(await page.locator("#log .entry", { hasText: "XAUUSD" }).count(), 1, "cancelling the confirm must keep the trade");
   await del.click();
+  await confirmBox.getByRole("button", { name: "Delete", exact: true }).click();
   await page.locator("#log .empty").waitFor();
 });
 await step("logout returns to the landing page and clears the session", async () => {
