@@ -58,6 +58,17 @@ function Journalled({ session, onLogout }) {
   const [progress, setProgress] = useState({ passed: 0, state: "pending" });
   const toastTimer = useRef();
 
+  // In-app replacement for window.confirm: resolves true on confirm, false on cancel/Escape/backdrop.
+  const [ask, setAsk] = useState(null); // { title, text, okLabel, resolve }
+  const confirmToast = useCallback((opts) => new Promise((resolve) => setAsk({ ...opts, resolve })), []);
+  const answerAsk = (ok) => { ask.resolve(ok); setAsk(null); };
+  useEffect(() => {
+    if (!ask) return undefined;
+    const onKey = (e) => { if (e.key === "Escape") { ask.resolve(false); setAsk(null); } };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [ask]);
+
   const say = useCallback((msg) => {
     setToast(msg);
     clearTimeout(toastTimer.current);
@@ -151,7 +162,8 @@ function Journalled({ session, onLogout }) {
   };
 
   const deleteEntry = async (id) => {
-    if (!confirm("Delete this trade from your journal?")) return;
+    const ok = await confirmToast({ title: "Delete this trade?", text: "It will be removed from your journal.", okLabel: "Delete" });
+    if (!ok) return;
     const done = await attempt(async () => { await api.deleteEntry(id); return true; });
     if (done) setEntries((list) => list.filter((e) => e.id !== id));
   };
@@ -165,7 +177,8 @@ function Journalled({ session, onLogout }) {
   };
 
   const clearAll = async () => {
-    if (!confirm("Delete ALL trades and history? This cannot be undone.")) return;
+    const ok = await confirmToast({ title: "Delete all data?", text: "All trades and history will be erased. This cannot be undone.", okLabel: "Delete all" });
+    if (!ok) return;
     const done = await attempt(async () => { await api.deleteAllEntries(); return true; });
     if (done) {
       setEntries([]);
@@ -273,6 +286,22 @@ function Journalled({ session, onLogout }) {
       {sheetEntry && (
         <CloseSheet key={sheetEntry.id + (sheet.preset || "")} entry={sheetEntry} preset={sheet.preset}
           onSave={saveEntry} onClose={() => setSheet(null)} />
+      )}
+
+      {ask && (
+        <div className="confirm-backdrop" onClick={() => answerAsk(false)}>
+          <div className="confirm-toast" role="alertdialog" aria-labelledby="confirmTitle" aria-describedby="confirmText" onClick={(e) => e.stopPropagation()}>
+            <div className="confirm-ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6" /></svg>
+            </div>
+            <h3 id="confirmTitle">{ask.title}</h3>
+            <p id="confirmText">{ask.text}</p>
+            <div className="confirm-btns">
+              <button type="button" className="btn ghost" autoFocus onClick={() => answerAsk(false)}>Cancel</button>
+              <button type="button" className="btn danger-outline" onClick={() => answerAsk(true)}>{ask.okLabel}</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {toast && <div className="toast">{toast}</div>}

@@ -80,7 +80,7 @@ export default function EntryCard({ e, mode, settings, open, onToggle, onQuick, 
         {e.notes && <div className="note"><small>Why I took it</small>{e.notes}</div>}
         {e.lesson && <div className="note"><small>Lesson</small>{e.lesson}</div>}
         {e.failedRules?.length > 0 && (
-          <div className="note broken">Broken: {e.failedRules.map((id) => `#${id} ${ruleTitle(id, settings)}`).join(" · ")}</div>
+          <div className="note broken">Broken: {e.failedRules.map((id) => ruleTitle(id, settings)).join(" · ")}</div>
         )}
         <div className="row">
           <button className={`btn small ${e.result === "open" ? "primary" : ""}`} onClick={() => onEdit(e.id)}><Icon name={e.result === "open" ? "check" : "edit"} size={15} /> {e.result === "open" ? "Close trade" : "Edit"}</button>

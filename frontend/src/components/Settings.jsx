@@ -83,7 +83,7 @@ export default function Settings({ active, settings, reminders, onReminders, onS
             <div key={p.pair} className="kz-row">
               <b className="kz-name">{p.pair}</b>
               <input type="number" step="any" inputMode="decimal" aria-label={`${p.pair} lot size`} value={p.lot} onChange={(e) => editPair(i, { lot: e.target.value })} />
-              <button type="button" className="btn small" aria-label={`Remove ${p.pair}`} onClick={() => setPairs((ps) => ps.filter((_, j) => j !== i))}><Icon name="trash" size={16} /></button>
+              <button type="button" className="btn small danger-outline" aria-label={`Remove ${p.pair}`} onClick={() => setPairs((ps) => ps.filter((_, j) => j !== i))}><Icon name="trash" size={16} /></button>
             </div>
           ))}
           <div className="kz-row">

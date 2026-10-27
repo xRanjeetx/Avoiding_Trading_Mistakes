@@ -103,7 +103,7 @@ export default function Stats({ active, entries, settings }) {
         <Tile label="Max drawdown" value={s.hasPnl && s.maxDD ? money(-s.maxDD) : "–"} cls={s.maxDD ? "neg" : ""} />
         <Tile label="Max profit streak" value={s.maxWinStreak} sub={`Winning trades in a row · now ${s.curWinStreak}`} cls={s.maxWinStreak ? "pos" : ""} />
         <Tile label="Max loss streak" value={s.maxLossStreak} sub={`Losing trades in a row · now ${s.curLossStreak}`} cls={s.maxLossStreak ? "neg" : ""} />
-        <Tile label="Max CTC streak" value={s.maxCtcStreak} sub={`CTC trades in a row · now ${s.curCtcStreak}`} />
+        <Tile label="Max CTC streak" value={s.maxCtcStreak} sub={`CTC trades in a row · now ${s.curCtcStreak}`} cls={s.maxCtcStreak ? "warn" : ""} />
       </div>
 
       <div className="card">
