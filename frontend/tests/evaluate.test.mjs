@@ -151,7 +151,7 @@ test("setup must be picked", () => {
 test("todayCounts and ruleTitle", () => {
   const c = todayCounts([trade(), trade({ result: "sl" }), trade({ result: "sl", traded: false }), trade({ timestamp: Date.now() - 3 * 86400000, result: "sl" })]);
   assert.deepEqual(c, { trades: 2, sl: 1 });
-  assert.equal(ruleTitle(3, settings), "Lot Size Fixed 0.02");
+  assert.equal(ruleTitle(3, settings), "Lot Size Fixed");
   assert.equal(ruleTitle(7, settings), "No FOMO");
   assert.equal(ruleTitle(999, settings), "Rule #999"); // a rule removed from the app but still in old entries
 });
@@ -164,4 +164,40 @@ test("rule definitions are consistent", () => {
     assert.ok(r.type === "auto" || r.type === "self");
     if (r.type === "self") assert.ok(r.q, `self rule ${r.id} needs a question`);
   }
+});
+
+test("a loss locks the same pair for 10 minutes, other pairs stay open", () => {
+  const T = evening.getTime();
+  const lost = (minAgo, over = {}) => trade({ result: "sl", pair: "XAUUSD", timestamp: T - 3600000, closedAt: T - minAgo * 60000, ...over });
+  const r = run({}, { entries: [lost(3)] });
+  assert.equal(r.res[30].pass, false);
+  assert.match(r.res[30].detail, /locked 7 more min/i);
+  assert.equal(r.ok, false);
+  const eur = { settings: { ...settings, pairs: [{ pair: "EURUSD", lot: 0.2 }] }, entries: [lost(3)] };
+  assert.equal(run({ pair: "EURUSD", lot: 0.2 }, eur).res[30].pass, true);
+  assert.equal(run({}, { entries: [lost(10)] }).res[30].pass, true); // exactly 10 minutes later: free
+  assert.equal(run({}, { entries: [lost(9.5)] }).res[30].pass, false);
+  assert.equal(run({}, { entries: [lost(3, { result: "tp" })] }).res[30].pass, true); // a win does not lock
+  assert.equal(run({}, { entries: [lost(3, { result: "open" })] }).res[30].pass, true);
+  assert.equal(run({}, { entries: [lost(3, { traded: false })] }).res[30].pass, true);
+  assert.equal(run({ pair: "xauusd" }, { entries: [lost(3)] }).res[30].pass, false); // case-insensitive
+  assert.equal(run({ pair: "" }).res[30].pass, null);
+});
+
+test("only an SL hit starts the cooldown, not a negative P&L from another close", () => {
+  const T = evening.getTime();
+  const e = trade({ result: "manual", pnl: -5, timestamp: T - 3600000, closedAt: T - 60000 });
+  assert.equal(run({}, { entries: [e] }).res[30].pass, true);
+  assert.equal(run({}, { entries: [{ ...e, result: "sl" }] }).res[30].pass, false);
+  assert.equal(run({}, { entries: [{ ...e, result: "sl", pnl: 5 }] }).res[30].pass, false); // SL result is what counts
+});
+
+test("lot rule uses the lot set for the pair, falling back to the default lot", () => {
+  const s = { ...settings, pairs: [{ pair: "XAUUSD", lot: 0.02 }, { pair: "EURUSD", lot: 0.2 }] };
+  const lot = (over) => run(over, { settings: s }).res[3].pass;
+  assert.equal(lot({ pair: "EURUSD", lot: 0.2 }), true);
+  assert.equal(lot({ pair: "EURUSD", lot: 0.02 }), false);
+  assert.equal(lot({ pair: "XAUUSD", lot: 0.02 }), true);
+  assert.equal(lot({ pair: "XAUUSD", lot: 0.2 }), false);
+  assert.equal(lot({ pair: "GBPUSD", lot: 0.02 }), true); // not listed: default lot
 });

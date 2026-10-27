@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { RULES } from "../lib/rules.js";
 import Login from "./Login.jsx";
 import MarketBackdrop from "./MarketBackdrop.jsx";
@@ -27,6 +27,15 @@ function Check() {
 
 export default function Landing({ onAuth }) {
   const [mode, setMode] = useState("register");
+  const authRef = useRef(null);
+
+  // On stacked (phone/tablet) layouts the form sits below the fold, so bring it into view
+  function openAuth(next) {
+    setMode(next);
+    if (window.matchMedia("(max-width: 959px)").matches) {
+      authRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }
 
   return (
     <div className="lp">
@@ -38,8 +47,8 @@ export default function Landing({ onAuth }) {
             <svg className="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>
             <svg className="icon-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /></svg>
           </button>
-          <button className="lp-link-btn" type="button" onClick={() => setMode("login")}>Log in</button>
-          <button className="btn primary small" type="button" onClick={() => setMode("register")}>Get started</button>
+          <button className="lp-link-btn" type="button" onClick={() => openAuth("login")}>Log in</button>
+          <button className="btn primary small" type="button" onClick={() => openAuth("register")}>Get started</button>
         </div>
       </header>
 
@@ -67,7 +76,7 @@ export default function Landing({ onAuth }) {
 
         <div className="lp-visual">
           <div className="lp-glow" />
-          <div className="lp-auth"><Login mode={mode} onMode={setMode} onAuth={onAuth} /></div>
+          <div className="lp-auth" ref={authRef}><Login mode={mode} onMode={setMode} onAuth={onAuth} /></div>
         </div>
       </main>
     </div>

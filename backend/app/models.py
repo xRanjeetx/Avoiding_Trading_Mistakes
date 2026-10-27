@@ -30,6 +30,8 @@ class UserSettings(Base):
     currency: Mapped[str] = mapped_column(String(4), default="$")
     # Market killzones in New York time. NULL means "use the defaults" (see schemas.DEFAULT_KILLZONES).
     killzones: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    # Fixed lot size per pair. NULL means "use the defaults" (see schemas.DEFAULT_PAIRS).
+    pairs: Mapped[list | None] = mapped_column(JSON, nullable=True)
 
 
 class Entry(Base):

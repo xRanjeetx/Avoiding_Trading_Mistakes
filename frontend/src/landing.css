@@ -12,15 +12,6 @@ body.public { padding: 0; }
 
 /* Nav: never wrap the brand or the buttons, tighten on phones */
 .lp-brand, .lp-link-btn, .lp-nav .btn { white-space: nowrap; }
-@media (max-width: 440px) {
-  .lp-nav { gap: 8px; }
-  .lp-nav-r { gap: 4px; }
-  .lp-brand { font-size: 16px; gap: 8px; }
-  .lp-brand img { width: 30px; height: 30px; }
-  .lp-link-btn { padding: 8px 6px; font-size: 13.5px; }
-  .lp-nav .btn.small { padding: 9px 12px; font-size: 13px; }
-  .lp-nav .icon-btn { width: 36px; height: 36px; }
-}
 
 /* Nav */
 .lp-nav {
@@ -32,6 +23,17 @@ body.public { padding: 0; }
 .lp-nav-r { display: flex; align-items: center; gap: 10px; }
 .lp-link-btn { background: none; border: 0; color: var(--text); font: inherit; font-weight: 650; font-size: 14px; cursor: pointer; padding: 8px 6px; }
 .lp-link-btn:hover { color: var(--primary); }
+.lp-nav > * { min-width: 0; }
+@media (max-width: 440px) {
+  .lp-nav { gap: 6px; padding-left: 12px; padding-right: 12px; }
+  .lp-nav-r { gap: 2px; }
+  .lp-brand { font-size: 15px; gap: 6px; }
+  .lp-brand img { width: 28px; height: 28px; }
+  .lp-link-btn { padding: 8px 6px; font-size: 13px; }
+  .lp-nav .btn.small { padding: 8px 11px; font-size: 12.5px; }
+  .lp-nav .icon-btn { width: 34px; height: 34px; }
+}
+@media (max-width: 350px) { .lp-brand span { display: none; } }
 .lp .btn.primary:hover { filter: brightness(1.08); }
 
 /* Hero fills the remaining screen */

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { RULES } from "../lib/rules.js";
-import { evaluate, ruleTitle, todayCounts } from "../lib/evaluate.js";
+import { cooldownFor, evaluate, lotFor, ruleTitle, todayCounts } from "../lib/evaluate.js";
 import { num } from "../lib/format.js";
 import { CardHead, Icon } from "./ui.jsx";
 
@@ -21,7 +21,7 @@ export default function Checklist({ active, entries, settings, now, onLog, onPro
   const verdictRef = useRef(null);
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
 
-  useEffect(() => { set({ lot: String(settings.lot) }); }, [settings.lot]);
+  useEffect(() => { set({ lot: String(lotFor(settings, form.pair)) }); }, [settings.lot, settings.pairs]);
 
   const f = {
     pair: form.pair.trim().toUpperCase(), dir: form.dir, setup: form.setup,
@@ -38,6 +38,7 @@ export default function Checklist({ active, entries, settings, now, onLog, onPro
   const answered = SELF.filter((r) => form.answers[r.id] !== undefined).length;
   const selfFail = SELF.some((r) => ev.res[r.id].pass === false);
 
+  const cooling = cooldownFor(entries, f.pair, now);
   const c = todayCounts(entries);
   const lockMsg = c.sl >= settings.maxSL
     ? `${c.sl} SL hit today. Trading is done for today. Close the charts.`
@@ -72,6 +73,7 @@ export default function Checklist({ active, entries, settings, now, onLog, onPro
     <>
     <section id="checklist" className={`tab ${active ? "active" : ""}`}>
       {lockMsg && <div className="banner lock"><Icon name="lock" size={20} />{lockMsg}</div>}
+      {cooling && <div className="banner lock"><Icon name="lock" size={20} />{f.pair} lost a trade. Locked for {cooling.leftMin} more min. Breathe, or look at another pair.</div>}
 
       <div className={`ready ${state}`}>
         <div className="ready-top">
@@ -85,7 +87,8 @@ export default function Checklist({ active, entries, settings, now, onLog, onPro
         <CardHead icon="sliders" title="Trade setup"><span className={`chip ${rrChip.cls}`}>{rrChip.text}</span></CardHead>
         <label className="field">
           <span>Pair</span>
-          <input value={form.pair} onChange={(e) => set({ pair: e.target.value })} placeholder="e.g. XAUUSD" autoComplete="off" autoCapitalize="characters" spellCheck="false" />
+          <input list="pair-options" value={form.pair} onChange={(e) => set({ pair: e.target.value, lot: String(lotFor(settings, e.target.value)) })} placeholder="e.g. XAUUSD" autoComplete="off" autoCapitalize="characters" spellCheck="false" />
+          <datalist id="pair-options">{(settings.pairs || []).map((p) => <option key={p.pair} value={p.pair} />)}</datalist>
         </label>
         <div className="field">
           <span>Direction</span>

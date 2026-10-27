@@ -9,7 +9,8 @@ const RULES = [
   { id: 6,  title: "No Trade in Ranging Market",         type: "self", q: "Is the market trending, not ranging?" },
   { id: 7,  title: "No FOMO",                            type: "self", q: "Am I calm, and not chasing a move I missed?" },
   { id: 8,  title: "No Multiple Trades in Same Direction", type: "auto" },
-  { id: 9,  title: "Full TP",                            type: "self", q: "Will I hold this trade until the full TP?" },
+  { id: 30, title: "Cooldown After a Loss (Same Pair)",   type: "auto" },
+  { id: 9,  title: "Full TP",                           type: "self", q: "Will I hold this trade until the full TP?" },
   { id: 10, title: "No Scalping",                        type: "self", q: "Is this a planned setup, not a quick scalp?" },
   { id: 11, title: "Trade Only in a Market Session",     type: "auto" },
   { id: 13, title: "No Revenge Trading",                 type: "self", q: "Am I taking this trade on its own merits, not to win back a loss?" },
@@ -33,4 +34,7 @@ const RULES = [
 // The two entry setups. The checklist requires one of them to be picked.
 const SETUPS = { fvg: "5m FVG", wick: "5m Wick FVG" };
 
-export { RULES, SETUPS };
+// After a losing trade on a pair, that pair is locked for this many minutes (other pairs stay open).
+const COOLDOWN_MIN = 10;
+
+export { RULES, SETUPS, COOLDOWN_MIN };

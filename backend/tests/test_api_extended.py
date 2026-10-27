@@ -6,7 +6,7 @@ import jwt
 import pytest
 
 from app import config
-from app.schemas import DEFAULT_KILLZONES
+from app.schemas import DEFAULT_KILLZONES, DEFAULT_PAIRS
 from conftest import signup
 
 NOW = 1_760_000_000_000
@@ -112,10 +112,19 @@ def test_token_for_deleted_or_unknown_user_is_401(client):
 def test_settings_defaults_and_full_roundtrip(client, auth):
     s = client.get("/api/settings", headers=auth).json()
     assert s == {"lot": 0.02, "minRR": 2, "maxTrades": 4, "maxSL": 4, "balance": 0, "currency": "$",
-                 "killzones": DEFAULT_KILLZONES}
+                 "killzones": DEFAULT_KILLZONES, "pairs": DEFAULT_PAIRS}
     new = {**s, "lot": 0.1, "minRR": 1.5, "maxTrades": 2, "maxSL": 1, "balance": 5000.5, "currency": "€"}
     assert client.put("/api/settings", json=new, headers=auth).json() == new
     assert client.get("/api/settings", headers=auth).json() == new
+
+
+def test_pairs_default_edit_and_validation(client, auth):
+    s = client.get("/api/settings", headers=auth).json()
+    assert {"pair": "EURUSD", "lot": 0.2} in s["pairs"]
+    pairs = [*s["pairs"], {"pair": "GBPUSD", "lot": 0.1}]
+    assert client.put("/api/settings", json={**s, "pairs": pairs}, headers=auth).json()["pairs"] == pairs
+    for bad in ([{"pair": "EURUSD", "lot": 0.2}] * 2, [{"pair": "eur usd", "lot": 1}], [{"pair": "EURUSD", "lot": 0}]):
+        assert client.put("/api/settings", json={**s, "pairs": bad}, headers=auth).status_code == 422
 
 
 # ---------------- killzones ----------------
