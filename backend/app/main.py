@@ -5,7 +5,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from sqlalchemy import delete, select
+from sqlalchemy import delete, inspect, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -16,9 +16,17 @@ from .schemas import Credentials, EntryIn, EntryOut, SettingsOut, Token
 from .security import current_user, hash_password, make_token, verify_password
 
 
+def ensure_columns(eng) -> None:
+    """create_all only creates missing tables, so add columns introduced after a table already exists."""
+    if "killzones" not in {c["name"] for c in inspect(eng).get_columns("user_settings")}:
+        with eng.begin() as conn:
+            conn.execute(text("ALTER TABLE user_settings ADD COLUMN killzones JSON"))
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     Base.metadata.create_all(engine)
+    ensure_columns(engine)
     yield
 
 

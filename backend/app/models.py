@@ -20,12 +20,16 @@ class UserSettings(Base):
     min_rr: Mapped[float] = mapped_column(Float, default=2)
     max_trades: Mapped[int] = mapped_column(Integer, default=4)
     max_sl: Mapped[int] = mapped_column(Integer, default=4)
+    # The four time columns below are no longer used (replaced by `killzones`). They stay in the model because
+    # existing databases have them as NOT NULL, so new rows must keep supplying their defaults.
     london_start: Mapped[str] = mapped_column(String(5), default="12:30")
     london_end: Mapped[str] = mapped_column(String(5), default="17:30")
     session_start: Mapped[str] = mapped_column(String(5), default="18:00")
     session_end: Mapped[str] = mapped_column(String(5), default="22:30")
     balance: Mapped[float] = mapped_column(Float, default=0)
     currency: Mapped[str] = mapped_column(String(4), default="$")
+    # Market killzones in New York time. NULL means "use the defaults" (see schemas.DEFAULT_KILLZONES).
+    killzones: Mapped[list | None] = mapped_column(JSON, nullable=True)
 
 
 class Entry(Base):

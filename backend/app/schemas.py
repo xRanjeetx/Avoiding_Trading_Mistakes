@@ -34,17 +34,44 @@ class Token(BaseModel):
     email: str
 
 
+class Killzone(BaseModel):
+    """One market session. Times are New York clock times, so daylight saving needs no manual change."""
+
+    key: Literal["asian", "london", "newyork", "londonclose"]
+    start: str = Field(pattern=CLOCK)
+    end: str = Field(pattern=CLOCK)
+    on: bool = True
+    color: str = Field(pattern=r"^#[0-9a-fA-F]{6}$")
+
+
+DEFAULT_KILLZONES = [
+    {"key": "asian", "start": "20:00", "end": "00:00", "on": True, "color": "#06b6d4"},
+    {"key": "london", "start": "02:00", "end": "05:00", "on": True, "color": "#f59e0b"},
+    {"key": "newyork", "start": "07:00", "end": "10:00", "on": True, "color": "#a78bfa"},
+    {"key": "londonclose", "start": "10:00", "end": "12:00", "on": True, "color": "#ec4899"},
+]
+
+
 class SettingsOut(CamelModel):
     lot: FiniteFloat = Field(0.02, gt=0)
     min_rr: FiniteFloat = Field(2, gt=0, alias="minRR")
     max_trades: int = Field(4, ge=1)
     max_sl: int = Field(4, ge=1, alias="maxSL")
-    london_start: str = Field("12:30", pattern=CLOCK)
-    london_end: str = Field("17:30", pattern=CLOCK)
-    session_start: str = Field("18:00", pattern=CLOCK)
-    session_end: str = Field("22:30", pattern=CLOCK)
     balance: FiniteFloat = Field(0, ge=0)
     currency: str = Field("$", max_length=4)
+    killzones: list[Killzone] = Field(default_factory=lambda: [Killzone(**z) for z in DEFAULT_KILLZONES], max_length=4)
+
+    @field_validator("killzones", mode="before")
+    @classmethod
+    def _default_when_unset(cls, v):
+        return DEFAULT_KILLZONES if v is None else v  # rows created before killzones existed
+
+    @field_validator("killzones")
+    @classmethod
+    def _unique_keys(cls, v: list[Killzone]) -> list[Killzone]:
+        if len({z.key for z in v}) != len(v):
+            raise ValueError("Each session can appear only once")
+        return v
 
 
 class EntryIn(CamelModel):

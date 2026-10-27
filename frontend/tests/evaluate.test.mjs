@@ -3,8 +3,9 @@ import assert from "node:assert/strict";
 import { RULES } from "../src/lib/rules.js";
 import { evaluate, ruleTitle, todayCounts } from "../src/lib/evaluate.js";
 
-const settings = { lot: 0.02, minRR: 2, maxTrades: 4, maxSL: 4, londonStart: "12:30", londonEnd: "17:30", sessionStart: "18:00", sessionEnd: "22:30" };
-const evening = new Date(2026, 9, 26, 19, 0); // outside London, inside my session
+const settings = { lot: 0.02, minRR: 2, maxTrades: 4, maxSL: 4 }; // killzones omitted: the default sessions apply
+// 26 Oct 2026 is EDT (UTC-4): 12:00Z is 08:00 in New York, inside the New York session (07:00-10:00).
+const evening = new Date("2026-10-26T12:00:00Z");
 const SELF = RULES.filter((r) => r.type === "self");
 const allYes = Object.fromEntries(SELF.map((r) => [r.id, true]));
 const good = { pair: "XAUUSD", dir: "buy", setup: "fvg", lot: 0.02, entry: 100, sl: 98, tp: 104 };
@@ -64,17 +65,42 @@ test("lot must match the fixed lot", () => {
   assert.equal(run({ lot: null }).res[3].pass, null);
 });
 
-test("London session blocks trading; my session is required", () => {
-  const london = new Date(2026, 9, 26, 14, 0);
-  assert.equal(run({}, { now: london }).res[4].pass, false);
-  assert.equal(run({}, { now: london }).res[11].pass, false);
-  const early = new Date(2026, 9, 26, 9, 0);
-  assert.equal(run({}, { now: early }).res[4].pass, true);
-  assert.equal(run({}, { now: early }).res[11].pass, false);
-  const late = new Date(2026, 9, 26, 23, 0);
-  assert.equal(run({}, { now: late }).res[11].pass, false);
-  assert.equal(run({}, { now: new Date(2026, 9, 26, 18, 0) }).ok, true);   // session opens at 18:00
-  assert.equal(run({}, { now: new Date(2026, 9, 26, 22, 30) }).res[11].pass, false); // and closes at 22:30
+test("trading is allowed only while a market session is live", () => {
+  const ny = (iso) => ({ now: new Date(iso) });
+  // each default session, in New York time (EDT, UTC-4)
+  assert.equal(run({}, ny("2026-10-26T06:30:00Z")).res[11].pass, true);  // 02:30 London
+  assert.equal(run({}, ny("2026-10-26T12:00:00Z")).res[11].pass, true);  // 08:00 New York
+  assert.equal(run({}, ny("2026-10-26T14:30:00Z")).res[11].pass, true);  // 10:30 London Close
+  assert.equal(run({}, ny("2026-10-27T01:00:00Z")).res[11].pass, true);  // 21:00 Asian
+  // gaps between sessions
+  assert.equal(run({}, ny("2026-10-26T16:00:00Z")).res[11].pass, false); // 12:00, London Close just ended
+  assert.equal(run({}, ny("2026-10-26T20:00:00Z")).res[11].pass, false); // 16:00
+  assert.equal(run({}, ny("2026-10-26T05:00:00Z")).res[11].pass, false); // 01:00, before London
+  assert.match(run({}, ny("2026-10-26T05:00:00Z")).res[11].detail, /London opens in 1h/);
+  assert.equal(run({}, ny("2026-10-26T12:00:00Z")).ok, true);
+  assert.equal(run({}, ny("2026-10-26T20:00:00Z")).ok, false);
+});
+
+test("no trading at the weekend, even inside a session window", () => {
+  const sat = run({}, { now: new Date("2026-10-31T12:00:00Z") }); // Saturday 08:00 New York, the New York window
+  assert.equal(sat.res[11].pass, false);
+  assert.match(sat.res[11].detail, /closed for the weekend.*reopens in 1d/);
+  assert.equal(sat.ok, false);
+  const fri = run({}, { now: new Date("2026-10-30T22:00:00Z") }); // Friday 18:00 New York, after the weekly close
+  assert.equal(fri.res[11].pass, false);
+  const sunNight = run({}, { now: new Date("2026-10-26T00:30:00Z") }); // Sunday 20:30 New York: Asian is live
+  assert.equal(sunNight.res[11].pass, true);
+  assert.match(sunNight.res[11].detail, /Asian/);
+});
+
+test("the old London-session rule is gone and a switched-off session does not count", () => {
+  assert.equal(RULES.some((r) => r.id === 4), false);
+  assert.equal(run().res[4], undefined);
+  const noNy = { ...settings, killzones: [{ key: "newyork", start: "07:00", end: "10:00", on: false, color: "#a78bfa" }] };
+  const r = run({}, { settings: noNy }); // evening is 08:00 New York, but New York is off; Asian etc. use their defaults
+  assert.equal(r.res[11].pass, false);
+  const allOff = { ...settings, killzones: ["asian", "london", "newyork", "londonclose"].map((key) => ({ key, start: "00:00", end: "23:59", on: false, color: "#000000" })) };
+  assert.match(run({}, { settings: allOff }).res[11].detail, /switched off/);
 });
 
 test("an open trade in the same direction on the same pair blocks a new one", () => {

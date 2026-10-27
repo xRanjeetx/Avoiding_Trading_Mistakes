@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { num } from "../lib/format.js";
+import { KILLZONE_NAMES, normalizeKillzones, nyClock, nyToLocal } from "../lib/killzones.js";
 import { CardHead, Icon } from "./ui.jsx";
 
-const DEFAULTS = { lot: 0.02, minRR: 2, maxTrades: 4, maxSL: 4, londonStart: "12:30", londonEnd: "17:30", sessionStart: "18:00", sessionEnd: "22:30", balance: 0, currency: "$" };
+const DEFAULTS = { lot: 0.02, minRR: 2, maxTrades: 4, maxSL: 4, balance: 0, currency: "$" };
 
 export default function Settings({ active, settings, onSave, onClearAll, onLogout, email }) {
   const [v, setV] = useState({});
@@ -11,8 +12,12 @@ export default function Settings({ active, settings, onSave, onClearAll, onLogou
 
   // Reload the form from saved settings whenever the tab is opened.
   useEffect(() => {
-    if (active) setV({ ...settings, balance: settings.balance || "" });
+    if (active) setV({ ...settings, balance: settings.balance || "", killzones: normalizeKillzones(settings.killzones) });
   }, [active, settings]);
+
+  const zones = v.killzones || normalizeKillzones(settings.killzones);
+  const editZone = (key, patch) => setV((x) => ({ ...x, killzones: zones.map((z) => (z.key === key ? { ...z, ...patch } : z)) }));
+  const now = new Date();
 
   function save() {
     onSave({
@@ -22,10 +27,7 @@ export default function Settings({ active, settings, onSave, onClearAll, onLogou
       maxSL: Math.max(1, Math.round(num(v.maxSL) ?? DEFAULTS.maxSL)),
       balance: Math.max(0, num(v.balance) ?? 0),
       currency: String(v.currency || "").trim() || DEFAULTS.currency,
-      londonStart: v.londonStart || DEFAULTS.londonStart,
-      londonEnd: v.londonEnd || DEFAULTS.londonEnd,
-      sessionStart: v.sessionStart || DEFAULTS.sessionStart,
-      sessionEnd: v.sessionEnd || DEFAULTS.sessionEnd,
+      killzones: normalizeKillzones(zones),
     });
   }
 
@@ -48,14 +50,26 @@ export default function Settings({ active, settings, onSave, onClearAll, onLogou
         </div>
       </div>
       <div className="card">
-        <CardHead icon="globe" title="Sessions"><span className="chip">device time</span></CardHead>
-        <div className="grid2">
-          <label className="field"><span>London start</span><input type="time" {...bind("londonStart")} /></label>
-          <label className="field"><span>London end</span><input type="time" {...bind("londonEnd")} /></label>
-          <label className="field"><span>My session start</span><input type="time" {...bind("sessionStart")} /></label>
-          <label className="field"><span>My session end</span><input type="time" {...bind("sessionEnd")} /></label>
+        <CardHead icon="clock" title="Market sessions"><span className="chip">New York time</span></CardHead>
+        <div className="kz-list">
+          {zones.map((z) => (
+            <div key={z.key} className={`kz-row ${z.on ? "" : "off"}`} style={{ "--kz": z.color }}>
+              <label className="kz-name">
+                <input type="checkbox" checked={z.on} onChange={(e) => editZone(z.key, { on: e.target.checked })} />
+                <i aria-hidden="true" />
+                <b>{KILLZONE_NAMES[z.key]}</b>
+              </label>
+              <div className="kz-times">
+                <input type="time" aria-label={`${KILLZONE_NAMES[z.key]} start`} value={z.start} onChange={(e) => e.target.value && editZone(z.key, { start: e.target.value })} />
+                <span>–</span>
+                <input type="time" aria-label={`${KILLZONE_NAMES[z.key]} end`} value={z.end} onChange={(e) => e.target.value && editZone(z.key, { end: e.target.value })} />
+              </div>
+              <input type="color" className="kz-color" aria-label={`${KILLZONE_NAMES[z.key]} colour`} value={z.color} onChange={(e) => editZone(z.key, { color: e.target.value })} />
+              <small className="kz-local">{nyToLocal(z.start, now)}–{nyToLocal(z.end, now)} your time</small>
+            </div>
+          ))}
         </div>
-        <p className="muted hint">The defaults are set for India (IST). Adjust them when daylight saving time changes in London or New York.</p>
+        <p className="muted hint">Times are New York time (now {nyClock(now).label}), so daylight saving changes there need no edit. The checklist allows a trade only while one of the switched-on sessions is live.</p>
       </div>
       <div className="actions">
         <button className="btn primary" onClick={save}><Icon name="check" size={18} /> Save settings</button>
