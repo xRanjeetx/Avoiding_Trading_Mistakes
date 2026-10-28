@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { api, ApiError } from "../api.js";
+import AdminCharts from "./AdminCharts.jsx";
 import { CardHead, Icon } from "./ui.jsx";
 
 const TILES = [
@@ -9,6 +11,17 @@ const TILES = [
 
 const day = (iso) => (iso ? new Date(iso + "Z").toLocaleDateString() : "—");
 
+function Status({ u, showAdmin }) {
+  return (
+    <>
+      {showAdmin && u.isAdmin && <span className="chip admin">Admin</span>}
+      {!u.isActive ? <span className="chip bad">Disabled</span>
+        : !u.emailVerified ? <span className="chip warn">Unverified</span>
+        : <span className="chip good">Active</span>}
+    </>
+  );
+}
+
 // Admin-only page. Shows counts and win rate per user, never trade contents.
 export default function Admin({ active, confirm, say, onExpired }) {
   const [overview, setOverview] = useState(null);
@@ -16,6 +29,11 @@ export default function Admin({ active, confirm, say, onExpired }) {
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(null); // `${id}:${action}`
   const [error, setError] = useState("");
+  const [growth, setGrowth] = useState(null);
+  const [days, setDays] = useState(30);
+  const [openId, setOpenId] = useState(null);
+  const sel = users.find((u) => u.id === openId) || null;
+  const drawerOpen = !!sel;
 
   const guard = useCallback(async (fn) => {
     try {
@@ -31,14 +49,15 @@ export default function Admin({ active, confirm, say, onExpired }) {
   const load = useCallback(async () => {
     setError("");
     try {
-      const [o, u] = await Promise.all([api.adminOverview(), api.adminUsers(q)]);
+      const [o, u, g] = await Promise.all([api.adminOverview(), api.adminUsers(q), api.adminGrowth(days)]);
       setOverview(o);
       setUsers(u);
+      setGrowth(g.days);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) onExpired();
       else setError(err.message);
     }
-  }, [q, onExpired]);
+  }, [q, days, onExpired]);
 
   // Refresh when the tab opens and (debounced) when the search changes.
   useEffect(() => {
@@ -46,6 +65,15 @@ export default function Admin({ active, confirm, say, onExpired }) {
     const id = setTimeout(load, 250);
     return () => clearTimeout(id);
   }, [active, load]);
+
+  useEffect(() => {
+    if (!drawerOpen) return undefined;
+    // Escape also closes the confirm dialog on top; leave the drawer open in that case.
+    const onKey = (e) => e.key === "Escape" && !document.querySelector(".confirm-backdrop") && setOpenId(null);
+    document.addEventListener("keydown", onKey);
+    document.body.classList.add("noscroll");
+    return () => { document.removeEventListener("keydown", onKey); document.body.classList.remove("noscroll"); };
+  }, [drawerOpen]);
 
   const run = async (user, action, fn, doneMsg) => {
     setBusy(`${user.id}:${action}`);
@@ -63,7 +91,7 @@ export default function Admin({ active, confirm, say, onExpired }) {
   };
   const remove = async (u) => {
     const ok = await confirm({ title: "Delete this user?", text: `${u.email} and all of their trades will be erased. This cannot be undone.`, okLabel: "Delete user" });
-    if (ok) run(u, "delete", () => api.adminDeleteUser(u.id), "User deleted.");
+    if (ok) { await run(u, "delete", () => api.adminDeleteUser(u.id), "User deleted."); setOpenId(null); }
   };
 
   return (
@@ -79,6 +107,8 @@ export default function Admin({ active, confirm, say, onExpired }) {
         ))}
       </div>
 
+      {growth && <AdminCharts data={growth} days={days} onDays={setDays} />}
+
       <div className="card">
         <CardHead icon="user" title="Users">
           <label className="admin-search">
@@ -89,41 +119,61 @@ export default function Admin({ active, confirm, say, onExpired }) {
         <div className="admin-scroll">
           <table className="admin-table">
             <thead>
-              <tr><th>Email</th><th>Status</th><th>Joined</th><th>Trades</th><th>Closed</th><th>Win %</th><th /></tr>
+              <tr><th>Email</th><th>Status</th><th /></tr>
             </thead>
             <tbody>
               {users.map((u) => (
                 <tr key={u.id} className={u.isActive ? "" : "off"}>
                   <td className="em">{u.email}</td>
-                  <td>
-                    {u.isAdmin && <span className="chip admin">Admin</span>}
-                    {!u.isActive ? <span className="chip bad">Disabled</span>
-                      : !u.emailVerified ? <span className="chip warn">Unverified</span>
-                      : <span className="chip good">Active</span>}
-                  </td>
-                  <td>{day(u.createdAt)}</td>
-                  <td>{u.entries}</td>
-                  <td>{u.closedTrades}</td>
-                  <td>{u.winRate == null ? "—" : `${u.winRate}%`}</td>
+                  <td><Status u={u} /></td>
                   <td className="acts">
-                    {!u.isAdmin && (
-                      <>
-                        {!u.emailVerified && (
-                          <button type="button" className="btn ghost sm" disabled={!!busy} onClick={() => run(u, "verify", () => api.adminVerify(u.id), "Email marked verified.")}>Verify</button>
-                        )}
-                        <button type="button" className="btn ghost sm" disabled={!!busy} onClick={() => run(u, "reset", () => api.adminSendReset(u.id), "Password reset email sent.")}>Reset</button>
-                        <button type="button" className="btn ghost sm" disabled={!!busy} onClick={() => toggle(u)}>{u.isActive ? "Disable" : "Enable"}</button>
-                        <button type="button" className="btn danger-outline sm" disabled={!!busy} onClick={() => remove(u)}>Delete</button>
-                      </>
-                    )}
+                    <button type="button" className="btn ghost sm" onClick={() => setOpenId(u.id)}>Detail</button>
                   </td>
                 </tr>
               ))}
-              {overview && users.length === 0 && <tr><td colSpan="7" className="muted">No users found.</td></tr>}
+              {overview && users.length === 0 && <tr><td colSpan="3" className="muted">No users found.</td></tr>}
             </tbody>
           </table>
         </div>
       </div>
+
+      {sel && createPortal(
+        <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="adminSheetTitle" onClick={(e) => e.target === e.currentTarget && setOpenId(null)}>
+          <div className="sheet-card">
+            <div className="sheet-grab" />
+            <div className="card-head">
+              <h2 id="adminSheetTitle" className="admin-sheet-title"><span className="admin-sheet-ico"><Icon name="user" size={18} /></span>User details</h2>
+              <button className="icon-btn small" type="button" aria-label="Close" onClick={() => setOpenId(null)}><Icon name="x" size={18} /></button>
+            </div>
+            <p className="admin-sheet-email">{sel.email}</p>
+            <div className="admin-sheet-status"><Status u={sel} showAdmin /></div>
+
+            <div className="admin-kv">
+              <div><small>Joined</small><b>{day(sel.createdAt)}</b></div>
+              <div><small>Email</small><b>{sel.emailVerified ? "Verified" : "Not verified"}</b></div>
+              <div><small>Trades</small><b>{sel.entries}</b></div>
+              <div><small>Closed</small><b>{sel.closedTrades}</b></div>
+              <div><small>Win rate</small><b>{sel.winRate == null ? "—" : `${sel.winRate}%`}</b></div>
+            </div>
+
+            {sel.isAdmin ? (
+              <p className="muted">Admin accounts can't be changed from here.</p>
+            ) : (
+              <div className="admin-sheet-actions">
+                {!sel.emailVerified && (
+                  <button type="button" className="btn ghost" disabled={!!busy} onClick={() => run(sel, "verify", () => api.adminVerify(sel.id), "Email marked verified.")}><Icon name="shield" size={18} /> Mark verified</button>
+                )}
+                <button type="button" className="btn ghost" disabled={!!busy} onClick={() => run(sel, "reset", () => api.adminSendReset(sel.id), "Password reset email sent.")}><Icon name="mail" size={18} /> Send password reset</button>
+                <button type="button" className="btn ghost" disabled={!!busy} onClick={() => toggle(sel)}>
+                  <Icon name={sel.isActive ? "ban" : "check"} size={18} /> {sel.isActive ? "Disable account" : "Enable account"}
+                </button>
+                <button type="button" className="btn danger-outline" disabled={!!busy} onClick={() => remove(sel)}><Icon name="trash" size={18} /> Delete user</button>
+              </div>
+            )}
+          </div>
+        </div>,
+        document.body
+      )}
     </section>
   );
 }

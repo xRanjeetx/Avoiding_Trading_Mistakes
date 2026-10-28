@@ -10,6 +10,7 @@ from conftest import signup
 ADMIN_PATHS = [
     ("get", "/api/admin/overview"),
     ("get", "/api/admin/users"),
+    ("get", "/api/admin/growth"),
     ("patch", "/api/admin/users/1"),
     ("delete", "/api/admin/users/1"),
     ("post", "/api/admin/users/1/verify"),
@@ -133,3 +134,23 @@ def test_create_admin_logs_in_as_admin_and_promotes_existing(client):
     assert client.get("/api/auth/me", headers=h).json()["isAdmin"] is True
     assert client.get("/api/admin/overview", headers=h).status_code == 200
     assert create_admin("fresh@example.com", "password123") == "created"
+
+
+def test_growth_counts_signups_and_active_users_per_day(client):
+    import time
+    admin = signup_admin(client)
+    bob = signup(client, "bob")
+    carol = signup(client, "carol")
+    now = int(time.time() * 1000)
+    add_entry(bob, client, timestamp=now)
+    add_entry(bob, client, timestamp=now - 1000)  # same user twice counts once
+    add_entry(carol, client, timestamp=now)
+    add_entry(carol, client, timestamp=now - 3 * 86_400_000)
+    r = client.get("/api/admin/growth?days=7", headers=admin)
+    assert r.status_code == 200
+    days = r.json()["days"]
+    assert len(days) == 7 and days == sorted(days, key=lambda d: d["date"])
+    assert days[-1]["signups"] == 3 and sum(d["signups"] for d in days) == 3
+    assert days[-1]["active"] == 2 and days[-4]["active"] == 1
+    assert client.get("/api/admin/growth?days=3", headers=admin).status_code == 422
+    assert "SECRET" not in r.text

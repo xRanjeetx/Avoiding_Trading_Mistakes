@@ -2,7 +2,7 @@
 import logging
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy import case, delete, func, select
 from sqlalchemy.orm import Session
 
@@ -51,6 +51,32 @@ def overview(_: User = Depends(require_admin), db: Session = Depends(get_db)):
         "activeLast7Days": active_users,
         "totalEntries": db.scalar(select(func.count()).select_from(Entry)) or 0,
     }
+
+
+@router.get("/growth")
+def growth(days: int = Query(30, ge=7, le=90), _: User = Depends(require_admin), db: Session = Depends(get_db)):
+    """Per UTC day for the last `days` days: new signups, and users who logged at least one trade (active)."""
+    today = _now().date()
+    first = today - timedelta(days=days - 1)
+    first_ms = _ms(datetime.combine(first, datetime.min.time()))
+    signups = {
+        str(d): n
+        for d, n in db.execute(
+            select(func.date(User.created_at), func.count()).where(User.created_at >= first).group_by(func.date(User.created_at))
+        )
+    }
+    day_idx = Entry.timestamp // 86_400_000  # whole days since 1970 (UTC)
+    active = dict(
+        db.execute(
+            select(day_idx, func.count(func.distinct(Entry.user_id))).where(Entry.timestamp >= first_ms).group_by(day_idx)
+        ).all()
+    )
+    epoch = datetime(1970, 1, 1).date()
+    out = []
+    for i in range(days):
+        d = first + timedelta(days=i)
+        out.append({"date": d.isoformat(), "signups": signups.get(d.isoformat(), 0), "active": active.get((d - epoch).days, 0)})
+    return {"days": out}
 
 
 @router.get("/users")

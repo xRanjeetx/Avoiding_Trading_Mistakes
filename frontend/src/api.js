@@ -52,6 +52,7 @@ export const api = {
   resetPassword: (token, password) => request("POST", "/auth/reset-password", { token, password }),
   me: () => request("GET", "/auth/me"),
   adminOverview: () => request("GET", "/admin/overview"),
+  adminGrowth: (days) => request("GET", `/admin/growth?days=${days}`),
   adminUsers: (q = "") => request("GET", `/admin/users?q=${encodeURIComponent(q)}`),
   adminSetActive: (id, isActive) => request("PATCH", `/admin/users/${id}`, { isActive }),
   adminDeleteUser: (id) => request("DELETE", `/admin/users/${id}`),
