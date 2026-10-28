@@ -320,7 +320,6 @@ function Journalled({ session, onLogout }) {
           <img src="/icon.svg" alt="" />
           <div><b>Trade Guard</b><small>Trade by the rules</small></div>
         </div>
-        <div className="side-label">Menu</div>
         {tabs.map(([key, label]) => (
           <button key={key} className={tab === key ? "active" : ""} aria-current={tab === key ? "page" : undefined} onClick={() => goto(key)}>
             <span className="nav-ico"><svg viewBox="0 0 24 24">{ICONS[key]}</svg></span>
