@@ -112,7 +112,9 @@ def test_token_for_deleted_or_unknown_user_is_401(client):
 def test_settings_defaults_and_full_roundtrip(client, auth):
     s = client.get("/api/settings", headers=auth).json()
     assert s == {"lot": 0.02, "minRR": 2, "maxTrades": 4, "maxSL": 4, "balance": 0, "currency": "$",
-                 "killzones": DEFAULT_KILLZONES, "pairs": DEFAULT_PAIRS}
+                 "killzones": DEFAULT_KILLZONES, "pairs": DEFAULT_PAIRS,
+                 "rules": {"disabled": [], "custom": [], "nextId": 1000},
+                 "news": {"leadMin": 120, "events": []}}
     new = {**s, "lot": 0.1, "minRR": 1.5, "maxTrades": 2, "maxSL": 1, "balance": 5000.5, "currency": "€"}
     assert client.put("/api/settings", json=new, headers=auth).json() == new
     assert client.get("/api/settings", headers=auth).json() == new
@@ -179,9 +181,15 @@ def test_existing_database_gets_the_killzones_column():
         c.execute(text("insert into user_settings values (1, 0.05)"))
         c.execute(text("create table users (id integer primary key, email text, password_hash text)"))
         c.execute(text("insert into users values (1, 'old@example.com', 'x')"))
+        c.execute(text("create table entries (user_id integer, id varchar(40), pair varchar(30))"))
+        c.execute(text("insert into entries values (1, 'a', 'XAUUSD')"))
     ensure_columns(eng)
     ensure_columns(eng)  # running it again is harmless
     assert "killzones" in {c["name"] for c in inspect(eng).get_columns("user_settings")}
+    # Trades that predate emotion tags keep their data and simply have no tag.
+    assert {"emotion", "emotion_after"} <= {c["name"] for c in inspect(eng).get_columns("entries")}
+    with eng.connect() as c:
+        assert c.execute(text("select pair, emotion, emotion_after from entries")).one() == ("XAUUSD", None, None)
     with eng.connect() as c:
         assert c.execute(text("select lot, killzones from user_settings")).one() == (0.05, None)
         # Accounts that predate email verification stay able to log in.

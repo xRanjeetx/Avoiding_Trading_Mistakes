@@ -22,6 +22,10 @@ TOKEN_DAYS = int(os.environ.get("TOKEN_DAYS", "30"))
 ALLOW_REGISTRATION = os.environ.get("ALLOW_REGISTRATION", "true").lower() == "true"
 CORS_ORIGINS = [o.strip() for o in os.environ.get("CORS_ORIGINS", "http://localhost:5173").split(",") if o.strip()]
 
+# ---------- Learning library ----------
+# PDFs placed in this folder are loaded into the database at startup and shown to every signed-in user (read-only).
+LIBRARY_DIR = os.environ.get("LIBRARY_DIR", "").strip() or os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "library")
+
 # ---------- Email (verification + password reset) ----------
 # Any SMTP provider works (Gmail app password, Brevo, Resend SMTP, ...). With SMTP_HOST empty, emails are not
 # sent: the link is printed to the server log instead and verification is not required, so local dev still works.

@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { computeStats, outcome, sum, ymd } from "../lib/stats.js";
+import { useMemo, useState } from "react";
+import { computeStats, sum, ymd } from "../lib/stats.js";
+import { NO_FILTER, filterEntries, isFiltered } from "../lib/filters.js";
+import { SETUPS } from "../lib/rules.js";
 import { fmtMoney, signClass } from "../lib/format.js";
 import EntryCard, { Empty } from "./EntryCard.jsx";
 import { Icon } from "./ui.jsx";
@@ -7,9 +9,10 @@ import { Icon } from "./ui.jsx";
 const FILTERS = [["all", "All"], ["open", "Open"], ["win", "Wins"], ["loss", "Losses"], ["be", "BE / CTC"]];
 
 export default function Journal({ active, entries, settings, onEdit, onDelete }) {
-  const [filter, setFilter] = useState("all");
-  const [search, setSearch] = useState("");
+  const [f, setF] = useState(NO_FILTER);
+  const set = (patch) => setF((x) => ({ ...x, ...patch }));
   const [expanded, setExpanded] = useState(() => new Set());
+  const pairs = useMemo(() => [...new Set(entries.map((e) => e.pair).filter(Boolean))].sort(), [entries]);
   const cur = settings.currency;
 
   const toggle = (id) => setExpanded((s) => {
@@ -18,10 +21,7 @@ export default function Journal({ active, entries, settings, onEdit, onDelete })
     return n;
   });
 
-  const q = search.trim().toLowerCase();
-  const visible = entries
-    .filter((e) => (filter === "all" || outcome(e) === filter) && (!q || [e.pair, e.notes, e.lesson].join(" ").toLowerCase().includes(q)))
-    .sort((a, b) => b.timestamp - a.timestamp);
+  const visible = filterEntries(entries, f).sort((a, b) => b.timestamp - a.timestamp);
 
   const s = computeStats(entries);
 
@@ -45,11 +45,34 @@ export default function Journal({ active, entries, settings, onEdit, onDelete })
       </div>
       <div className="search-wrap">
         <Icon name="search" size={18} />
-        <input className="search" type="search" placeholder="Search pair or notes…" autoComplete="off" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <input className="search" type="search" placeholder="Search pair, notes or lessons…" autoComplete="off" value={f.q} onChange={(e) => set({ q: e.target.value })} />
       </div>
       <div className="pills">
-        {FILTERS.map(([key, label]) => <button key={key} className={filter === key ? "on" : ""} onClick={() => setFilter(key)}>{label}</button>)}
+        {FILTERS.map(([key, label]) => <button key={key} className={f.result === key ? "on" : ""} onClick={() => set({ result: key })}>{label}</button>)}
       </div>
+      <div className="jr-filters">
+        <label className="field"><span>From</span><input type="date" value={f.from} max={f.to || undefined} onChange={(e) => set({ from: e.target.value })} /></label>
+        <label className="field"><span>To</span><input type="date" value={f.to} min={f.from || undefined} onChange={(e) => set({ to: e.target.value })} /></label>
+        <label className="field"><span>Pair</span>
+          <select value={f.pair} onChange={(e) => set({ pair: e.target.value })}>
+            <option value="all">All pairs</option>
+            {pairs.map((p) => <option key={p} value={p}>{p}</option>)}
+          </select>
+        </label>
+        <label className="field"><span>Setup</span>
+          <select value={f.setup} onChange={(e) => set({ setup: e.target.value })}>
+            <option value="all">All setups</option>
+            {Object.entries(SETUPS).map(([key, name]) => <option key={key} value={key}>{name}</option>)}
+            <option value="none">Not tagged</option>
+          </select>
+        </label>
+      </div>
+      {isFiltered(f) && (
+        <div className="jr-count">
+          <span className="muted">Showing {visible.length} of {entries.length} trade{entries.length === 1 ? "" : "s"}</span>
+          <button type="button" className="btn ghost sm" onClick={() => setF(NO_FILTER)}><Icon name="x" size={14} /> Clear filters</button>
+        </div>
+      )}
 
       <div>
         {!visible.length && (

@@ -2,6 +2,8 @@
 
 A pre-trade checklist built from 27 personal trading rules, plus a full trading journal (P&L, R-multiples, equity curve, calendar, profit factor, drawdown, win rate, results by pair, setup and weekday). It shows **OK TO TRADE** only when every rule passes, and locks for the day once the trade or SL limit is reached.
 
+Also: editable rules (switch any off, add your own), a lock before high-impact news you add, an emotion tag on every trade, CSV export and import, and a **Learning** tab with a fixed set of PDF books (strategy, psychology, analysis) that everyone reads in the app, with each user's page remembered on every device.
+
 **Stack:** React (Vite) · FastAPI · PostgreSQL. Each user has a login, and the journal is stored in the database, so it follows you across devices.
 
 ```
@@ -96,6 +98,7 @@ Optional: ping `<api-url>/api/health` every 10 minutes with a free monitor such 
 | `SMTP_USER` / `SMTP_PASSWORD` | empty | SMTP login (for Gmail use an app password) |
 | `SMTP_FROM` | `SMTP_USER` | The From address on emails |
 | `REQUIRE_EMAIL_VERIFICATION` | `true` when `SMTP_HOST` is set | New accounts must click the emailed link before logging in. Accounts created earlier count as verified |
+| `LIBRARY_DIR` | `backend/library` | Folder of PDFs loaded into the Learning tab at startup, shown to every user (read-only). See `backend/library/README.md` |
 | `VERIFY_HOURS` / `RESET_MINUTES` | `48` / `60` | How long the verification and reset links last |
 
 Forgot password and email verification use signed, expiring links, so they need no extra database tables. A reset link works once.

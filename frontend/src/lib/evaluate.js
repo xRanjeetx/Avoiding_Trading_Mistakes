@@ -1,4 +1,4 @@
-import { COOLDOWN_MIN, RULES, SETUPS } from "./rules.js";
+import { COOLDOWN_MIN, NO_NEWS, SETUPS, activeRules, allRules } from "./rules.js";
 import { isToday } from "./format.js";
 import { closeTime } from "./stats.js";
 import { KILLZONE_NAMES, activeZones, fmtDuration, marketStatus, minutesLeft, nextZone, normalizeKillzones } from "./killzones.js";
@@ -11,7 +11,7 @@ export function lotFor(settings, pair) {
 }
 
 export function ruleTitle(id, settings) {
-  const r = RULES.find((r) => r.id === id);
+  const r = allRules(settings).find((r) => r.id === id);
   if (!r) return `Rule #${id}`; // a rule that was removed, still referenced by old journal entries
   return id === 3 ? "Lot Size Fixed" : r.title;
 }
@@ -31,6 +31,26 @@ export function cooldownFor(entries, pair, now = new Date()) {
   const until = lostAt + COOLDOWN_MIN * 60000;
   return lostAt && until > nowMs ? { lostAt, until, leftMin: Math.ceil((until - nowMs) / 60000) } : null;
 }
+
+// The high-impact news that currently blocks trading, or null. Trading stops `leadMin` minutes before an event and the
+// lock ends when the event time passes. Returns { event, inMin } for the soonest such event (inMin rounds up).
+export function newsLock(settings, now = new Date()) {
+  const { leadMin, events } = { ...NO_NEWS, ...settings?.news };
+  const t = now.getTime();
+  const hit = events
+    .filter((e) => e.at > t && e.at - leadMin * 60000 <= t)
+    .sort((a, b) => a.at - b.at)[0];
+  return hit ? { event: hit, inMin: Math.ceil((hit.at - t) / 60000) } : null;
+}
+
+// The soonest news that has not happened yet, or null.
+export function nextNews(settings, now = new Date()) {
+  const t = now.getTime();
+  return (settings?.news?.events || []).filter((e) => e.at > t).sort((a, b) => a.at - b.at)[0] || null;
+}
+
+const newsName = (e) => (e.title ? e.title : "High-impact news");
+const newsTime = (at) => new Date(at).toLocaleString([], { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
 export function todayCounts(entries) {
   const today = entries.filter((e) => isToday(e.timestamp));
@@ -85,6 +105,18 @@ export function evaluate({ f, answers, entries, settings, now = new Date() }) {
     };
   }
 
+  // 32: no trading in the hours before high-impact news (the events and lead time are set in Settings)
+  const lock = newsLock(settings, now);
+  const upcoming = nextNews(settings, now);
+  const lead = settings?.news?.leadMin ?? NO_NEWS.leadMin;
+  if (lock) {
+    res[32] = { pass: false, detail: `${newsName(lock.event)} at ${newsTime(lock.event.at)}, in ${fmtDuration(lock.inMin)}. No trading in the last ${fmtDuration(lead)} before news` };
+  } else if (upcoming) {
+    res[32] = { pass: true, detail: `Next news: ${newsName(upcoming)}, ${newsTime(upcoming.at)}` };
+  } else {
+    res[32] = { pass: true, detail: "No high-impact news added in Settings" };
+  }
+
   // 8: same direction already open
   if (!f.pair || !f.dir) {
     res[8] = { pass: null, detail: "Enter pair and direction" };
@@ -114,13 +146,15 @@ export function evaluate({ f, answers, entries, settings, now = new Date() }) {
   // 19: SL per day
   res[19] = { pass: c.sl < settings.maxSL, detail: `${c.sl}/${settings.maxSL} SL hit today` };
 
-  // Self rules
-  for (const r of RULES.filter((r) => r.type === "self")) {
+  // Self rules (built-in and the user's own)
+  for (const r of allRules(settings).filter((r) => r.type === "self")) {
     const a = answers[r.id];
     res[r.id] = { pass: a === undefined ? null : a };
   }
 
-  const failed = RULES.filter((r) => res[r.id].pass === false).map((r) => r.id);
-  const pending = RULES.filter((r) => res[r.id].pass === null).map((r) => r.id);
+  // Only the rules switched on count. Results for switched-off rules are still computed, and just ignored.
+  const rules = activeRules(settings);
+  const failed = rules.filter((r) => res[r.id].pass === false).map((r) => r.id);
+  const pending = rules.filter((r) => res[r.id].pass === null).map((r) => r.id);
   return { rr, res, failed, pending, ok: failed.length === 0 && pending.length === 0 };
 }

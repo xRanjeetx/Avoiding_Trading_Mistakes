@@ -1,7 +1,9 @@
+import logging
 import uuid
 from contextlib import asynccontextmanager
+from typing import Annotated
 
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request, status
+from fastapi import BackgroundTasks, Body, Depends, FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -10,11 +12,14 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from . import config
-from .db import Base, engine, get_db
+from .db import Base, SessionLocal, engine, get_db
 from .mailer import send_link_email
 from .models import Entry, User, UserSettings
 from .admin import router as admin_router
-from .schemas import Credentials, EmailOnly, EntryIn, EntryOut, MeOut, RegisterOut, ResetIn, SettingsOut, Token, TokenIn
+from .library import delete_progress_for, router as library_router, sync_library
+from .schemas import (
+    Credentials, DeleteAccountIn, EmailOnly, EntryIn, EntryOut, MeOut, RegisterOut, ResetIn, SettingsOut, Token, TokenIn,
+)
 from .security import (
     current_user, hash_password, make_purpose_token, make_token, user_from_purpose_token, verify_password,
 )
@@ -23,10 +28,15 @@ from .security import (
 def ensure_columns(eng) -> None:
     """create_all only creates missing tables, so add columns introduced after a table already exists."""
     have = {c["name"] for c in inspect(eng).get_columns("user_settings")}
-    for col in ("killzones", "pairs"):
+    for col in ("killzones", "pairs", "rules", "news"):
         if col not in have:
             with eng.begin() as conn:
                 conn.execute(text(f"ALTER TABLE user_settings ADD COLUMN {col} JSON"))
+    entry_cols = {c["name"] for c in inspect(eng).get_columns("entries")} if inspect(eng).has_table("entries") else None
+    for col in ("emotion", "emotion_after"):
+        if entry_cols is not None and col not in entry_cols:
+            with eng.begin() as conn:
+                conn.execute(text(f"ALTER TABLE entries ADD COLUMN {col} VARCHAR(20)"))
     # Accounts that already exist are treated as verified (the DEFAULT TRUE backfills them).
     user_cols = {c["name"] for c in inspect(eng).get_columns("users")}
     if "email_verified" not in user_cols:
@@ -46,6 +56,11 @@ def ensure_columns(eng) -> None:
 async def lifespan(_: FastAPI):
     Base.metadata.create_all(engine)
     ensure_columns(engine)
+    try:
+        with SessionLocal() as db:
+            sync_library(db)  # the PDFs in the library folder become the Learning books
+    except Exception:
+        logging.getLogger("tradeguard.library").exception("Could not load the library folder; the app starts without it")
     yield
 
 
@@ -59,6 +74,7 @@ app.add_middleware(
 
 
 app.include_router(admin_router)
+app.include_router(library_router)
 
 
 @app.exception_handler(RequestValidationError)
@@ -136,6 +152,22 @@ def login(body: Credentials, db: Session = Depends(get_db)):
 @app.get("/api/auth/me", response_model=MeOut)
 def me(user: User = Depends(current_user)):
     return MeOut(email=user.email, is_admin=user.is_admin).model_dump(by_alias=True)
+
+
+@app.post("/api/auth/delete-account", status_code=status.HTTP_204_NO_CONTENT)
+def delete_account(body: DeleteAccountIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Erases the signed-in user and all of their data, after re-entering the password."""
+    if user.is_admin:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Admin accounts cannot be deleted here")
+    # 403, not 401: the frontend treats a 401 as an expired login and signs the user out.
+    if not verify_password(body.password, user.password_hash):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Wrong password")
+    # Explicit deletes: SQLite (dev/tests) does not enforce ON DELETE CASCADE by default.
+    db.execute(delete(Entry).where(Entry.user_id == user.id))
+    db.execute(delete(UserSettings).where(UserSettings.user_id == user.id))
+    delete_progress_for(db, user.id)
+    db.delete(user)
+    db.commit()
 
 
 @app.post("/api/auth/verify-email", response_model=Token)
@@ -223,6 +255,25 @@ def create_entry(body: EntryIn, user: User = Depends(current_user), db: Session 
     db.add(row)
     db.commit()
     return row
+
+
+@app.post("/api/entries/import")
+def import_entries(
+    body: Annotated[list[EntryIn], Body(max_length=5000)], user: User = Depends(current_user), db: Session = Depends(get_db)
+):
+    """Bulk add (CSV import). Entries whose id already exists are skipped, so importing the same file twice is safe."""
+    have = set(db.scalars(select(Entry.id).where(Entry.user_id == user.id)))
+    imported = skipped = 0
+    for item in body:
+        entry_id = item.id or uuid.uuid4().hex
+        if entry_id in have:
+            skipped += 1
+            continue
+        have.add(entry_id)
+        db.add(Entry(user_id=user.id, id=entry_id, **item.model_dump(exclude={"id"})))
+        imported += 1
+    db.commit()
+    return {"imported": imported, "skipped": skipped}
 
 
 @app.put("/api/entries/{entry_id}", response_model=EntryOut)

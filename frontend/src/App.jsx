@@ -1,19 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError, clearSession, getSession, setSession } from "./api.js";
-import { RULES } from "./lib/rules.js";
+import { NO_NEWS, NO_RULE_EDITS, activeRules } from "./lib/rules.js";
+import { parseCsv } from "./lib/csv.js";
 import Landing from "./components/Landing.jsx";
 import Checklist from "./components/Checklist.jsx";
 import Today from "./components/Today.jsx";
 import Journal from "./components/Journal.jsx";
 import Stats from "./components/Stats.jsx";
 import Settings from "./components/Settings.jsx";
+import Learning from "./components/Learning.jsx";
 import Admin from "./components/Admin.jsx";
 import SessionStrip from "./components/SessionStrip.jsx";
 import CloseSheet from "./components/CloseSheet.jsx";
 import { dueReminders, loadPrefs, markSent, notify, savePrefs, wasSent } from "./lib/reminders.js";
 
 const DEFAULT_SETTINGS = { lot: 0.02, minRR: 2, maxTrades: 4, maxSL: 4, balance: 0, currency: "$",
-  pairs: [{ pair: "XAUUSD", lot: 0.02 }, { pair: "EURUSD", lot: 0.2 }] };
+  pairs: [{ pair: "XAUUSD", lot: 0.02 }, { pair: "EURUSD", lot: 0.2 }], rules: NO_RULE_EDITS, news: NO_NEWS };
 const KEY_THEME = "atm_theme";
 
 const ICONS = {
@@ -21,16 +23,18 @@ const ICONS = {
   today: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></>,
   log: <path d="M4 6h16M4 12h16M4 18h10" />,
   stats: <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />,
+  learn: <><path d="M5 4h13a1 1 0 0 1 1 1v14H6a1 1 0 0 0-1 1z" /><path d="M5 4v16M9 8h6" /></>,
   admin: <><path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6z" /><path d="M9 12l2 2 4-4" /></>,
   settings: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></>,
 };
-const TABS = [["checklist", "Check"], ["today", "Today"], ["log", "Journal"], ["stats", "Stats"], ["settings", "Settings"]];
+const TABS = [["checklist", "Check"], ["today", "Today"], ["log", "Journal"], ["stats", "Stats"], ["learn", "Learning"], ["settings", "Settings"]];
 const ADMIN_TAB = ["admin", "Admin"];
 const PAGE = {
   checklist: ["Pre-trade checklist", "Pass every rule before you enter"],
   today: ["Today", "Your trades and daily limits"],
   log: ["Journal", "Every trade you have logged"],
   stats: ["Statistics", "How your trading is performing"],
+  learn: ["Learning", "Your strategy and trading books"],
   settings: ["Settings", "Limits, sessions and account"],
   admin: ["Admin", "Users and account management"],
 };
@@ -214,6 +218,29 @@ function Journalled({ session, onLogout }) {
     }
   };
 
+  const importCsv = async (file) => {
+    if (file.size > 5 * 1024 * 1024) return say("That file is too large (5 MB at most).");
+    let list;
+    try {
+      list = parseCsv(await file.text());
+    } catch (err) {
+      return say(err.message);
+    }
+    if (list.length > 5000) return say("A file can hold up to 5000 trades. Split it and import in parts.");
+    const res = await attempt(() => api.importEntries(list));
+    if (!res) return;
+    const fresh = await attempt(() => api.listEntries());
+    if (fresh) setEntries(fresh);
+    say(`Imported ${res.imported} trade${res.imported === 1 ? "" : "s"}${res.skipped ? `, ${res.skipped} already in your journal` : ""}.`);
+  };
+
+  const deleteAccount = async (password) => {
+    const done = await attempt(async () => { await api.deleteAccount(password); return true; });
+    if (done) onLogout();
+    return !!done;
+  };
+
+  const ruleCount = activeRules(settings).length;
   const sheetEntry = sheet && entries.find((e) => e.id === sheet.id);
   const goto = (t) => { setTab(t); setMenu(false); window.scrollTo({ top: 0 }); };
 
@@ -267,9 +294,9 @@ function Journalled({ session, onLogout }) {
           <div className={`ring ${progress.state}`} title="Rules passed">
             <svg viewBox="0 0 44 44">
               <circle cx="22" cy="22" r="19" className="ring-bg" />
-              <circle cx="22" cy="22" r="19" className="ring-fg" style={{ strokeDashoffset: 119.4 * (1 - progress.passed / RULES.length) }} />
+              <circle cx="22" cy="22" r="19" className="ring-fg" style={{ strokeDashoffset: 119.4 * (1 - (ruleCount ? progress.passed / ruleCount : 1)) }} />
             </svg>
-            <span>{progress.passed}/{RULES.length}</span>
+            <span>{progress.passed}/{ruleCount}</span>
           </div>
         </div>
       </header>
@@ -281,7 +308,9 @@ function Journalled({ session, onLogout }) {
         <Journal active={tab === "log"} entries={entries} settings={settings} onEdit={(id) => setSheet({ id, preset: null })}
           onDelete={deleteEntry} />
         <Stats active={tab === "stats"} entries={entries} settings={settings} />
-        <Settings active={tab === "settings"} settings={settings} reminders={reminders} onReminders={changeReminders} onSave={saveSettings} onClearAll={clearAll} />
+        <Learning active={tab === "learn"} onExpired={onLogout} />
+        <Settings active={tab === "settings"} settings={settings} reminders={reminders} onReminders={changeReminders} onSave={saveSettings} onClearAll={clearAll}
+          entries={entries} onImport={importCsv} onDeleteAccount={deleteAccount} isAdmin={session.isAdmin} />
         {session.isAdmin && <Admin active={tab === "admin"} confirm={confirmToast} say={say} onExpired={onLogout} />}
       </main>
 

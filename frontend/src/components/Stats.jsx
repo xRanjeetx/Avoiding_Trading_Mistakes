@@ -1,5 +1,6 @@
 ﻿import { useState } from "react";
 import { SETUPS } from "../lib/rules.js";
+import { STAGE_TITLE, emotionInsight, emotionOf } from "../lib/emotions.js";
 import { computeStats, dailyPnl, inRange, ymd } from "../lib/stats.js";
 import { compactMoney, fmtMoney, fmtR, signClass } from "../lib/format.js";
 import { Empty } from "./EntryCard.jsx";
@@ -59,6 +60,7 @@ function calendarData(entries, month) {
 
 export default function Stats({ active, entries, settings }) {
   const [range, setRange] = useState(0);
+  const [emoStage, setEmoStage] = useState("before");
   const [month, setMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const cur = settings.currency;
   const all = computeStats(entries);
@@ -76,6 +78,12 @@ export default function Stats({ active, entries, settings }) {
   const resultTotal = RESULTS.reduce((a, [, k]) => a + (s.byResult[k] || 0), 0);
   const pairs = Object.entries(s.byPair).sort((a, b) => b[1].pnl - a[1].pnl || b[1].n - a[1].n);
   const setups = Object.entries(s.bySetup).sort((a, b) => b[1].pnl - a[1].pnl || b[1].n - a[1].n);
+  // Win rate per emotion, best first. Emotions with no win or loss yet go last.
+  const emoBy = emoStage === "before" ? s.byEmotion : s.byEmotionAfter;
+  const rate = (p) => (p.wins + p.losses ? p.wins / (p.wins + p.losses) : -1);
+  const emotions = Object.entries(emoBy).sort((a, b) => rate(b[1]) - rate(a[1]) || b[1].n - a[1].n);
+  const insight = emotionInsight(emoBy);
+  const emoLabel = (key) => { const e = emotionOf(key, emoStage); return `${e.emoji} ${e.label}`; };
   const maxAbs = Math.max(...s.byWeekday.map(Math.abs), 0);
 
   const groupRow = (name, p) => (
@@ -161,6 +169,28 @@ export default function Stats({ active, entries, settings }) {
       <div className="card">
         <CardHead icon="target" title="By setup" />
         <div>{setups.length ? setups.map(([key, p]) => groupRow(key, p)) : <Empty icon="target">No trades in this period.</Empty>}</div>
+      </div>
+
+      <div className="card">
+        <CardHead icon="heart" title="By emotion">
+          <div className="seg emo-seg">
+            {Object.keys(STAGE_TITLE).map((k) => (
+              <button key={k} type="button" className={emoStage === k ? "on" : ""} onClick={() => setEmoStage(k)}>{STAGE_TITLE[k]}</button>
+            ))}
+          </div>
+        </CardHead>
+        <div>{emotions.length ? emotions.map(([key, p]) => (
+          <div className="pair-row" key={key}>
+            <div><b>{emoLabel(key)}</b>
+              <small>{p.n} trade{p.n > 1 ? "s" : ""}{p.wins + p.losses ? ` · ${Math.round((p.wins / (p.wins + p.losses)) * 100)}% win` : ""}</small></div>
+            <div className={`pnl ${s.hasPnl ? signClass(p.pnl) : ""}`}>{s.hasPnl ? money(p.pnl) : ""}</div>
+          </div>
+        )) : <Empty icon="heart">Tag how you felt on your trades to see your win rate per emotion.</Empty>}</div>
+        {insight && (
+          <p className="muted hint">
+            Best when {emoLabel(insight.best.key)} ({Math.round(insight.best.rate * 100)}% win). Weakest when {emoLabel(insight.worst.key)} ({Math.round(insight.worst.rate * 100)}%).
+          </p>
+        )}
       </div>
 
       <div className="card">

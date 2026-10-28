@@ -93,6 +93,21 @@ function computeStats(all) {
     s.pnl += e.pnl ?? 0;
   }
 
+  // Per emotion tag, for closed trades that carry one: how often you win when you feel that way.
+  const groupByEmotion = (field) => {
+    const out = {};
+    for (const e of closed) {
+      if (!e[field]) continue;
+      const g = (out[e[field]] ??= { n: 0, wins: 0, losses: 0, pnl: 0 });
+      g.n++;
+      const o = outcome(e);
+      if (o === "win") g.wins++;
+      if (o === "loss") g.losses++;
+      g.pnl += e.pnl ?? 0;
+    }
+    return out;
+  };
+
   const byPair = {};
   for (const e of closed) {
     const p = (byPair[e.pair || "—"] ??= { n: 0, wins: 0, losses: 0, pnl: 0 });
@@ -135,6 +150,8 @@ function computeStats(all) {
     curLossStreak: curType === "loss" ? curLen : 0,
     curCtcStreak: ctcRun,
     bySetup,
+    byEmotion: groupByEmotion("emotion"),
+    byEmotionAfter: groupByEmotion("emotionAfter"),
     totalR: rs.length ? sum(rs) : null,
     avgR: rs.length ? sum(rs) / rs.length : null,
     equity,

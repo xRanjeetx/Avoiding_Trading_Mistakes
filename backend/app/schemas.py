@@ -1,10 +1,12 @@
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, FiniteFloat, field_validator
+from pydantic import BaseModel, ConfigDict, Field, FiniteFloat, StringConstraints, field_validator, model_validator
 from pydantic.alias_generators import to_camel
 
 # 24-hour clock, "00:00" to "23:59".
 CLOCK = r"^([01]\d|2[0-3]):[0-5]\d$"
+# An emotion key such as "calm" or "fomo". The app decides which keys exist, so the API only checks the shape.
+EMOTION = r"^[a-z][a-z_]{0,19}$"
 # Epoch milliseconds: from 1970 to the year 9999, which also fits a 64-bit database integer.
 EpochMs = Annotated[int, Field(ge=0, le=253_402_300_799_000)]
 
@@ -71,6 +73,10 @@ class ResetIn(TokenIn):
         return v
 
 
+class DeleteAccountIn(BaseModel):
+    password: str = Field(max_length=200)
+
+
 class Killzone(BaseModel):
     """One market session. Times are New York clock times, so daylight saving needs no manual change."""
 
@@ -99,6 +105,56 @@ class PairLot(BaseModel):
 DEFAULT_PAIRS = [{"pair": "XAUUSD", "lot": 0.02}, {"pair": "EURUSD", "lot": 0.2}]
 
 
+class CustomRule(CamelModel):
+    """A rule the user wrote. It is a yes/no question: "Yes" always means the rule is respected."""
+
+    id: int = Field(ge=1000, le=999_999)  # built-in rules use ids below 1000
+    title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=60)]
+    q: Annotated[str, StringConstraints(strip_whitespace=True, max_length=200)] = ""
+
+
+class RulesConfig(CamelModel):
+    disabled: list[Annotated[int, Field(ge=1, le=999_999)]] = Field(default_factory=list, max_length=200)  # rule ids switched off
+    custom: list[CustomRule] = Field(default_factory=list, max_length=30)
+    # The id the next custom rule gets. Never reused, so old journal entries keep pointing at the rule they were about.
+    next_id: int = Field(1000, ge=1000, le=999_999)
+
+    @field_validator("disabled")
+    @classmethod
+    def _unique_disabled(cls, v: list[int]) -> list[int]:
+        return sorted(set(v))
+
+    @field_validator("custom")
+    @classmethod
+    def _unique_custom(cls, v: list[CustomRule]) -> list[CustomRule]:
+        if len({r.id for r in v}) != len(v):
+            raise ValueError("Each custom rule needs its own id")
+        return v
+
+    @model_validator(mode="after")
+    def _next_id_is_fresh(self):
+        if self.custom:
+            self.next_id = max(self.next_id, max(r.id for r in self.custom) + 1)
+        return self
+
+
+class NewsEvent(CamelModel):
+    """One high-impact news release. `at` is epoch milliseconds, so it means the same moment in every time zone."""
+
+    at: EpochMs
+    title: Annotated[str, StringConstraints(strip_whitespace=True, max_length=60)] = ""
+
+
+class NewsConfig(CamelModel):
+    lead_min: int = Field(120, ge=1, le=1440)  # stop trading this many minutes before each event
+    events: list[NewsEvent] = Field(default_factory=list, max_length=200)
+
+    @field_validator("events")
+    @classmethod
+    def _in_time_order(cls, v: list[NewsEvent]) -> list[NewsEvent]:
+        return sorted(v, key=lambda e: e.at)
+
+
 class SettingsOut(CamelModel):
     lot: FiniteFloat = Field(0.02, gt=0)
     min_rr: FiniteFloat = Field(2, gt=0, alias="minRR")
@@ -109,6 +165,18 @@ class SettingsOut(CamelModel):
     killzones: list[Killzone] = Field(default_factory=lambda: [Killzone(**z) for z in DEFAULT_KILLZONES], max_length=4)
 
     pairs: list[PairLot] = Field(default_factory=lambda: [PairLot(**p) for p in DEFAULT_PAIRS], max_length=50)
+    rules: RulesConfig = Field(default_factory=RulesConfig)
+    news: NewsConfig = Field(default_factory=NewsConfig)
+
+    @field_validator("news", mode="before")
+    @classmethod
+    def _default_news_when_unset(cls, v):
+        return {} if v is None else v  # rows created before news locks existed
+
+    @field_validator("rules", mode="before")
+    @classmethod
+    def _default_rules_when_unset(cls, v):
+        return {} if v is None else v  # rows created before editable rules existed
 
     @field_validator("killzones", mode="before")
     @classmethod
@@ -155,6 +223,8 @@ class EntryIn(CamelModel):
     closed_at: EpochMs | None = None
     notes: str = ""
     lesson: str = ""
+    emotion: str | None = Field(None, pattern=EMOTION)
+    emotion_after: str | None = Field(None, pattern=EMOTION)
 
 
 class EntryOut(EntryIn):

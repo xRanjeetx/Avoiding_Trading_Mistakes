@@ -38,6 +38,7 @@ _assert_is_test_db(TEST_URL)
 os.environ["DATABASE_URL"] = TEST_URL
 os.environ["SECRET_KEY"] = "test-secret-key-that-is-long-enough-for-hs256"
 os.environ["ALLOW_REGISTRATION"] = "true"
+os.environ["LIBRARY_DIR"] = os.path.join(os.path.dirname(__file__), "_no_library")  # tests never load real books
 os.environ["SMTP_HOST"] = ""  # never send real mail from tests (an empty value also beats backend/.env)
 os.environ.pop("REQUIRE_EMAIL_VERIFICATION", None)
 

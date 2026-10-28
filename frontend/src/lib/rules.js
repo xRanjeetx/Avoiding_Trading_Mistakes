@@ -14,6 +14,7 @@ const RULES = [
   { id: 9,  title: "Full TP",                           type: "self", q: "Will I hold this trade until the full TP?" },
   { id: 10, title: "No Scalping",                        type: "self", q: "Is this a planned setup, not a quick scalp?" },
   { id: 11, title: "Trade Only in a Market Session",     type: "auto" },
+  { id: 32, title: "No Trade Before High-Impact News",   type: "auto" },
   { id: 13, title: "No Revenge Trading",                 type: "self", q: "Am I taking this trade on its own merits, not to win back a loss?" },
   { id: 14, title: "Safe TP Always",                     type: "self", q: "Is my TP placed safely before the next key level?" },
   { id: 15, title: "Max Trades per Day",                 type: "auto" },
@@ -31,10 +32,26 @@ const RULES = [
   { id: 28, title: "No Greed",                           type: "self", q: "Am I happy with my planned TP, without adding size or chasing extra?" },
 ];
 
+// Per-user rule choices live in settings.rules: { disabled: [ids switched off], custom: [{ id, title, q }], nextId }.
+// Custom rules are always yes/no questions ("Yes" means respected) and use ids from 1000 up, so they never clash with RULES.
+const NO_RULE_EDITS = { disabled: [], custom: [], nextId: 1000 };
+const CUSTOM_LIMIT = 30;
+
+// High-impact news the user added in Settings: { leadMin: minutes before each event to stop trading, events: [{ at (epoch ms), title }] }.
+const NO_NEWS = { leadMin: 120, events: [] };
+
+const customRules = (settings) =>
+  (settings?.rules?.custom || []).map((r) => ({ id: r.id, title: r.title, type: "self", q: r.q || "", custom: true }));
+// Every rule the user could have: the built-in ones first, then their own.
+const allRules = (settings) => [...RULES, ...customRules(settings)];
+const isRuleOn = (settings, id) => !(settings?.rules?.disabled || []).includes(id);
+// The rules the checklist actually asks about.
+const activeRules = (settings) => allRules(settings).filter((r) => isRuleOn(settings, r.id));
+
 // The two entry setups. The checklist requires one of them to be picked.
 const SETUPS = { fvg: "5m FVG", wick: "5m Wick FVG" };
 
 // After a losing trade on a pair, that pair is locked for this many minutes (other pairs stay open).
 const COOLDOWN_MIN = 10;
 
-export { RULES, SETUPS, COOLDOWN_MIN };
+export { RULES, SETUPS, COOLDOWN_MIN, CUSTOM_LIMIT, NO_NEWS, NO_RULE_EDITS, activeRules, allRules, isRuleOn };
