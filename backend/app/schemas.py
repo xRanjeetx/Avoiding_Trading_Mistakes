@@ -34,6 +34,33 @@ class Token(BaseModel):
     email: str
 
 
+class RegisterOut(BaseModel):
+    """access_token is None when the account must verify its email before logging in."""
+
+    access_token: str | None = None
+    email: str
+    verification_sent: bool = False
+
+
+class EmailOnly(BaseModel):
+    email: str = Field(max_length=254, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+class TokenIn(BaseModel):
+    token: str = Field(max_length=2000)
+
+
+class ResetIn(TokenIn):
+    password: str = Field(min_length=8, max_length=72)
+
+    @field_validator("password")
+    @classmethod
+    def _fits_bcrypt(cls, v: str) -> str:
+        if len(v.encode()) > 72:
+            raise ValueError("Password is too long (72 bytes at most; some characters use more than one)")
+        return v
+
+
 class Killzone(BaseModel):
     """One market session. Times are New York clock times, so daylight saving needs no manual change."""
 

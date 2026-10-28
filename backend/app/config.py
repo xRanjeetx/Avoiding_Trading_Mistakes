@@ -21,3 +21,18 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "dev-only-change-me")
 TOKEN_DAYS = int(os.environ.get("TOKEN_DAYS", "30"))
 ALLOW_REGISTRATION = os.environ.get("ALLOW_REGISTRATION", "true").lower() == "true"
 CORS_ORIGINS = [o.strip() for o in os.environ.get("CORS_ORIGINS", "http://localhost:5173").split(",") if o.strip()]
+
+# ---------- Email (verification + password reset) ----------
+# Any SMTP provider works (Gmail app password, Brevo, Resend SMTP, ...). With SMTP_HOST empty, emails are not
+# sent: the link is printed to the server log instead and verification is not required, so local dev still works.
+APP_URL = os.environ.get("APP_URL", "http://localhost:5173").rstrip("/")
+SMTP_HOST = os.environ.get("SMTP_HOST", "").strip()
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_USER = os.environ.get("SMTP_USER", "")
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+SMTP_FROM = os.environ.get("SMTP_FROM", "") or SMTP_USER or "no-reply@localhost"
+SMTP_SSL = os.environ.get("SMTP_SSL", "false").lower() == "true"  # true = implicit TLS (port 465), else STARTTLS
+EMAIL_ENABLED = bool(SMTP_HOST)
+REQUIRE_EMAIL_VERIFICATION = os.environ.get("REQUIRE_EMAIL_VERIFICATION", str(EMAIL_ENABLED)).lower() == "true"
+VERIFY_HOURS = int(os.environ.get("VERIFY_HOURS", "48"))
+RESET_MINUTES = int(os.environ.get("RESET_MINUTES", "60"))

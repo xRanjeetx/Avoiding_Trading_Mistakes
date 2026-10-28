@@ -1,4 +1,4 @@
-from sqlalchemy import JSON, BigInteger, Boolean, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, BigInteger, Boolean, Float, ForeignKey, Integer, String, Text, true
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .db import Base
@@ -10,6 +10,8 @@ class User(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     email: Mapped[str] = mapped_column(String(254), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(100))
+    # Accounts that existed before email verification was added are marked verified by ensure_columns.
+    email_verified: Mapped[bool] = mapped_column(Boolean, default=False, server_default=true())
 
 
 class UserSettings(Base):

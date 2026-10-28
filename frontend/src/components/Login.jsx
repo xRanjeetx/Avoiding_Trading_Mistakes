@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, ApiError } from "../api.js";
 
 function strength(pw) {
@@ -11,30 +11,132 @@ function strength(pw) {
 }
 const LEVELS = ["", "Weak", "Fair", "Good", "Strong"];
 
+const msg = (err) => (err instanceof ApiError ? err.message : "Something went wrong.");
+
 // Auth form. `mode` ("login" | "register") is controlled by the parent so page buttons can switch it.
-export default function Login({ onAuth, mode, onMode }) {
+// `link` is an emailed link the page was opened with: { kind: "verify" | "reset", token }.
+// `view` is the screen shown: the login/register form, or one step of the email flows.
+export default function Login({ onAuth, mode, onMode, link }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [view, setView] = useState(link?.kind === "verify" ? "verifying" : link?.kind === "reset" ? "reset" : "form");
+  const [unverified, setUnverified] = useState(false);
+  const verifyStarted = useRef(false);
   const isLogin = mode === "login";
   const score = strength(password);
+  const finish = (t) => onAuth({ token: t.access_token, email: t.email });
 
-  async function submit(e) {
-    e.preventDefault();
+  useEffect(() => {
+    if (view !== "verifying" || verifyStarted.current) return;
+    verifyStarted.current = true;
+    api.verifyEmail(link.token).then(finish).catch((err) => { setError(msg(err)); setView("verify-failed"); });
+  }, []);
+
+  async function run(fn) {
     setBusy(true);
     setError("");
-    try {
-      const t = await (isLogin ? api.login : api.register)(email.trim(), password);
-      onAuth({ token: t.access_token, email: t.email });
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Something went wrong.");
-      setBusy(false);
-    }
+    setNotice("");
+    try { await fn(); } catch (err) { setError(msg(err)); } finally { setBusy(false); }
   }
 
-  const pick = (m) => { onMode(m); setError(""); };
+  const go = (v) => { setView(v); setError(""); setNotice(""); setUnverified(false); };
+  const pick = (m) => { onMode(m); go("form"); };
+
+  function submit(e) {
+    e.preventDefault();
+    setUnverified(false);
+    run(async () => {
+      try {
+        const t = await (isLogin ? api.login : api.register)(email.trim(), password);
+        if (t.access_token) finish(t); else go("check-inbox");
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 403 && isLogin) setUnverified(true);
+        throw err;
+      }
+    });
+  }
+
+  const resend = () => run(async () => { await api.resendVerification(email.trim()); setNotice("Verification email sent again. Check your inbox and spam folder."); });
+  const forgot = (e) => { e.preventDefault(); run(async () => { await api.forgotPassword(email.trim()); go("reset-sent"); }); };
+  const reset = (e) => { e.preventDefault(); run(async () => { finish(await api.resetPassword(link.token, password)); }); };
+
+  const top = (title, text) => (
+    <div className="auth-top">
+      <span className="auth-badge">
+        <svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6z" /><path d="M9 12l2 2 4-4" /></svg>
+      </span>
+      <div><h2>{title}</h2><p>{text}</p></div>
+    </div>
+  );
+  const alerts = (
+    <>
+      {error && <div className="af-error" role="alert"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 7.5v5M12 16.2v.1" /></svg>{error}</div>}
+      {notice && <p className="af-note" role="status">{notice}</p>}
+    </>
+  );
+  const back = <p className="af-switch"><button type="button" disabled={busy} onClick={() => pick("login")}>Back to log in</button></p>;
+
+  if (view === "verifying") {
+    return <div className="card auth-card" id="auth">{top("Verifying your email", "One moment…")}<p className="af-note"><span className="af-spin" /></p></div>;
+  }
+  if (view === "verify-failed") {
+    return <div className="card auth-card" id="auth">{top("Link not valid", "It may have expired or already been used.")}{alerts}{back}</div>;
+  }
+  if (view === "check-inbox") {
+    return (
+      <div className="card auth-card" id="auth">
+        {top("Check your inbox", `We sent a verification link to ${email.trim()}. Open it to activate your account.`)}
+        {alerts}
+        <button type="button" className="af-submit" disabled={busy} onClick={resend}><span>{busy ? "Sending…" : "Resend email"}</span></button>
+        {back}
+      </div>
+    );
+  }
+  if (view === "forgot" || view === "reset-sent") {
+    const sent = view === "reset-sent";
+    return (
+      <form className="card auth-card" id="auth" onSubmit={forgot}>
+        {top(sent ? "Check your inbox" : "Forgot your password?", sent ? `If an account exists for ${email.trim()}, a reset link is on its way. It expires in an hour.` : "Enter your email and we will send you a link to choose a new one.")}
+        {!sent && (
+          <label className="af">
+            <span>Email</span>
+            <div className="af-box">
+              <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3" /><path d="M3.5 7.5l8.5 6 8.5-6" /></svg>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" autoCapitalize="none" required maxLength={254} autoFocus />
+            </div>
+          </label>
+        )}
+        {alerts}
+        <button className="af-submit" disabled={busy}><span>{busy ? "Sending…" : sent ? "Send again" : "Send reset link"}</span></button>
+        {back}
+      </form>
+    );
+  }
+  if (view === "reset") {
+    return (
+      <form className="card auth-card" id="auth" onSubmit={reset}>
+        {top("Choose a new password", "You will be logged in once it is saved.")}
+        <label className="af">
+          <span>New password</span>
+          <div className="af-box">
+            <svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2.5" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
+            <input type={show ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters" autoComplete="new-password" required minLength={8} maxLength={72} autoFocus />
+            <button type="button" className="af-eye" aria-label={show ? "Hide password" : "Show password"} onClick={() => setShow(!show)}>
+              <svg viewBox="0 0 24 24"><path d="M2.5 12C3.5 10 7 6 12 6s8.5 4 9.5 6c-1 2-4.5 6-9.5 6s-8.5-4-9.5-6z" /><circle cx="12" cy="12" r="3" /></svg>
+            </button>
+          </div>
+        </label>
+        <div className={`af-meter s${score}`} aria-live="polite"><div><i /><i /><i /><i /></div><small>{score ? `${LEVELS[score]} password` : ""}</small></div>
+        {alerts}
+        <button className="af-submit" disabled={busy}>{busy ? <span className="af-spin" /> : null}<span>{busy ? "Saving…" : "Save password"}</span></button>
+        {error && <p className="af-switch"><button type="button" onClick={() => go("forgot")}>Request a new link</button></p>}
+      </form>
+    );
+  }
 
   return (
     <form className="card auth-card" id="auth" onSubmit={submit}>
@@ -81,7 +183,10 @@ export default function Login({ onAuth, mode, onMode }) {
         </div>
       )}
 
-      {error && <div className="af-error" role="alert"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 7.5v5M12 16.2v.1" /></svg>{error}</div>}
+      {isLogin && <p className="af-switch af-forgot"><button type="button" disabled={busy} onClick={() => go("forgot")}>Forgot password?</button></p>}
+
+      {alerts}
+      {unverified && <p className="af-switch"><button type="button" disabled={busy} onClick={resend}>Resend verification email</button></p>}
 
       <button className="af-submit" disabled={busy}>
         {busy ? <span className="af-spin" /> : null}

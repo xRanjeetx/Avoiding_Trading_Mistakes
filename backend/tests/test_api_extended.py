@@ -177,11 +177,15 @@ def test_existing_database_gets_the_killzones_column():
     with eng.begin() as c:
         c.execute(text("create table user_settings (user_id integer primary key, lot float)"))
         c.execute(text("insert into user_settings values (1, 0.05)"))
+        c.execute(text("create table users (id integer primary key, email text, password_hash text)"))
+        c.execute(text("insert into users values (1, 'old@example.com', 'x')"))
     ensure_columns(eng)
     ensure_columns(eng)  # running it again is harmless
     assert "killzones" in {c["name"] for c in inspect(eng).get_columns("user_settings")}
     with eng.connect() as c:
         assert c.execute(text("select lot, killzones from user_settings")).one() == (0.05, None)
+        # Accounts that predate email verification stay able to log in.
+        assert c.execute(text("select email_verified from users")).scalar() in (1, True)
 
 
 @pytest.mark.parametrize("patch", [

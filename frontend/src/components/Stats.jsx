@@ -108,7 +108,7 @@ export default function Stats({ active, entries, settings }) {
 
       <div className="card">
         <CardHead icon="trend" title="Equity curve">
-          <span className={`chip ${s.hasPnl ? (last >= 0 ? "good" : "bad") : ""}`}>{s.hasPnl ? (start ? money(start + last, false) : money(last)) : "–"}</span>
+          <span className={`chip ${s.hasPnl ? (last >= 0 ? "good" : "bad") : ""}`}>{s.hasPnl ? (start ? `${money(start + last, false)} (${money(last)})` : money(last)) : "–"}</span>
         </CardHead>
         <div><Equity points={s.equity} start={start} /></div>
       </div>

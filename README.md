@@ -90,6 +90,15 @@ Optional: ping `<api-url>/api/health` every 10 minutes with a free monitor such 
 | `CORS_ORIGINS` | `http://localhost:5173` | Comma-separated allowed frontend origins |
 | `ALLOW_REGISTRATION` | `true` | Set `false` to close sign-ups |
 | `TOKEN_DAYS` | `30` | How long a login lasts |
+| `APP_URL` | `http://localhost:5173` | Your frontend URL. Used in the links inside emails |
+| `SMTP_HOST` | empty | Any SMTP server. **Leave empty to turn email off**: links are printed in the API log and sign-ups log in directly |
+| `SMTP_PORT` | `587` | `587` for STARTTLS, `465` with `SMTP_SSL=true` |
+| `SMTP_USER` / `SMTP_PASSWORD` | empty | SMTP login (for Gmail use an app password) |
+| `SMTP_FROM` | `SMTP_USER` | The From address on emails |
+| `REQUIRE_EMAIL_VERIFICATION` | `true` when `SMTP_HOST` is set | New accounts must click the emailed link before logging in. Accounts created earlier count as verified |
+| `VERIFY_HOURS` / `RESET_MINUTES` | `48` / `60` | How long the verification and reset links last |
+
+Forgot password and email verification use signed, expiring links, so they need no extra database tables. A reset link works once.
 
 ## Notes
 - **Market sessions** (Asian 20:00-00:00, London 02:00-05:00, New York 07:00-10:00, London Close 10:00-12:00) are set in **Settings** in New York time, so US daylight saving needs no edit. The checklist rule "Trade Only in a Market Session" passes only while one of the switched-on sessions is live, and the Check tab shows which one that is, in your own clock. Existing databases get the new column automatically at startup.
