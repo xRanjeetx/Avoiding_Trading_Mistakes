@@ -18,29 +18,35 @@ export class ApiError extends Error {
   }
 }
 
-async function request(method, path, body) {
+// fetch with the login token. `init.headers` are added to it.
+async function send(method, path, init = {}) {
   const session = getSession();
-  let res;
   try {
-    res = await fetch(BASE + path, {
+    return await fetch(BASE + path, {
       method,
-      headers: {
-        ...(body !== undefined && { "Content-Type": "application/json" }),
-        ...(session && { Authorization: `Bearer ${session.token}` }),
-      },
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: init.body,
+      headers: { ...init.headers, ...(session && { Authorization: `Bearer ${session.token}` }) },
     });
   } catch {
     throw new ApiError(0, "Cannot reach the server. Check your connection and try again.");
   }
-  if (res.status === 204) return null;
+}
+
+async function failure(res) {
   const data = await res.json().catch(() => null);
-  if (!res.ok) {
-    const d = data && data.detail;
-    // FastAPI validation errors come back as a list of { msg }.
-    throw new ApiError(res.status, typeof d === "string" ? d : Array.isArray(d) ? d.map((x) => x.msg).join(", ") : "Request failed");
-  }
-  return data;
+  const d = data && data.detail;
+  // FastAPI validation errors come back as a list of { msg }.
+  return new ApiError(res.status, typeof d === "string" ? d : Array.isArray(d) ? d.map((x) => x.msg).join(", ") : "Request failed");
+}
+
+async function request(method, path, body) {
+  const res = await send(method, path, {
+    headers: body !== undefined ? { "Content-Type": "application/json" } : {},
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  if (res.status === 204) return null;
+  if (!res.ok) throw await failure(res);
+  return res.json().catch(() => null);
 }
 
 export const api = {
@@ -51,9 +57,12 @@ export const api = {
   forgotPassword: (email) => request("POST", "/auth/forgot-password", { email }),
   resetPassword: (token, password) => request("POST", "/auth/reset-password", { token, password }),
   me: () => request("GET", "/auth/me"),
+  deleteAccount: (password) => request("POST", "/auth/delete-account", { password }),
   adminOverview: () => request("GET", "/admin/overview"),
   adminGrowth: (days) => request("GET", `/admin/growth?days=${days}`),
-  adminUsers: (q = "") => request("GET", `/admin/users?q=${encodeURIComponent(q)}`),
+  adminUsers: (q = "", page = 1, pageSize = 25) =>
+    request("GET", `/admin/users?q=${encodeURIComponent(q)}&page=${page}&pageSize=${pageSize}`),
+  adminCreateUser: (email) => request("POST", "/admin/users", { email }),
   adminSetActive: (id, isActive) => request("PATCH", `/admin/users/${id}`, { isActive }),
   adminDeleteUser: (id) => request("DELETE", `/admin/users/${id}`),
   adminVerify: (id) => request("POST", `/admin/users/${id}/verify`),
@@ -64,5 +73,15 @@ export const api = {
   createEntry: (e) => request("POST", "/entries", e),
   updateEntry: (e) => request("PUT", `/entries/${encodeURIComponent(e.id)}`, e),
   deleteEntry: (id) => request("DELETE", `/entries/${encodeURIComponent(id)}`),
+  importEntries: (list) => request("POST", "/entries/import", list),
   deleteAllEntries: () => request("DELETE", "/entries"),
+  // The shared Learning library: read-only books, plus this user's own place in each.
+  listLibrary: () => request("GET", "/library"),
+  saveProgress: (id, p) => request("PUT", `/library/${id}/progress`, p),
+  // The file bytes, fetched with the login token (an <iframe> or link could not send it).
+  async libraryFile(id) {
+    const res = await send("GET", `/library/${id}/file`);
+    if (!res.ok) throw await failure(res);
+    return res.arrayBuffer();
+  },
 };

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { isAtCost, num } from "../lib/format.js";
+import EmotionPicker from "./EmotionPicker.jsx";
 import { Icon } from "./ui.jsx";
 
 const RESULTS = [["tp", "TP hit"], ["sl", "SL hit"], ["be", "Break-even"], ["manual", "Closed early"], ["ctc", "CTC (cost after 1:1.5)"]];
@@ -12,6 +13,8 @@ export default function CloseSheet({ entry, preset, onSave, onClose }) {
   const [exit, setExit] = useState(entry.exit ?? "");
   const [notes, setNotes] = useState(entry.notes || "");
   const [lesson, setLesson] = useState(entry.lesson || "");
+  const [emotion, setEmotion] = useState(entry.emotion ?? null);
+  const [emotionAfter, setEmotionAfter] = useState(entry.emotionAfter ?? null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -28,7 +31,7 @@ export default function CloseSheet({ entry, preset, onSave, onClose }) {
   const amountLabel = result === "sl" ? "Loss amount" : result === "tp" ? "Profit amount" : "P&L amount";
 
   async function save() {
-    const next = { ...entry, notes: notes.trim(), lesson: lesson.trim() };
+    const next = { ...entry, notes: notes.trim(), lesson: lesson.trim(), emotion, emotionAfter };
     if (result) {
       const amt = num(amount);
       let pnl = null;
@@ -79,6 +82,12 @@ export default function CloseSheet({ entry, preset, onSave, onClose }) {
             <label className="field"><span>Exit price</span>
               <input type="number" step="any" inputMode="decimal" placeholder="optional" value={exit} onChange={(e) => setExit(e.target.value)} /></label>
           </div>
+        )}
+        <div className="field"><span>How I felt before the trade</span>
+          <EmotionPicker stage="before" value={emotion} onChange={setEmotion} /></div>
+        {closing && (
+          <div className="field"><span>How I feel now</span>
+            <EmotionPicker stage="after" value={emotionAfter} onChange={setEmotionAfter} /></div>
         )}
         <label className="field"><span>Why I took it</span>
           <textarea rows="2" placeholder="Setup and confirmation…" value={notes} onChange={(e) => setNotes(e.target.value)} /></label>

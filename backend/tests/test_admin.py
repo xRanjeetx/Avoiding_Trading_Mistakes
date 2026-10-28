@@ -1,6 +1,7 @@
 import pytest
 from sqlalchemy import func, select
 
+from app import admin as admin_mod
 from app import main
 from app.create_admin import create_admin
 from app.db import SessionLocal
@@ -11,6 +12,7 @@ ADMIN_PATHS = [
     ("get", "/api/admin/overview"),
     ("get", "/api/admin/users"),
     ("get", "/api/admin/growth"),
+    ("post", "/api/admin/users"),
     ("patch", "/api/admin/users/1"),
     ("delete", "/api/admin/users/1"),
     ("post", "/api/admin/users/1/verify"),
@@ -57,10 +59,29 @@ def test_users_list_has_stats_but_no_entry_content(client):
     r = client.get("/api/admin/users", headers=admin)
     assert r.status_code == 200
     assert "SECRET" not in r.text
-    row = next(u for u in r.json() if u["email"] == "bob@example.com")
+    row = next(u for u in r.json()["items"] if u["email"] == "bob@example.com")
     assert (row["entries"], row["closedTrades"], row["winRate"], row["lastEntryAt"]) == (2, 2, 50, 1_700_000_100_000)
     assert row["isActive"] and not row["isAdmin"]
-    assert client.get("/api/admin/users?q=nomatch", headers=admin).json() == []
+    empty = client.get("/api/admin/users?q=nomatch", headers=admin).json()
+    assert empty["items"] == [] and empty["total"] == 0 and empty["pages"] == 1
+
+
+def test_users_list_is_paginated_newest_first(client):
+    admin = signup_admin(client)
+    for i in range(11):
+        signup(client, f"user{i:02d}")  # 12 users in all with the admin
+    page = lambda n, **kw: client.get("/api/admin/users", params={"page": n, "pageSize": 5, **kw}, headers=admin).json()  # noqa: E731
+    p1, p2, p3 = page(1), page(2), page(3)
+    assert (p1["total"], p1["pages"], p1["page"], p1["pageSize"]) == (12, 3, 1, 5)
+    assert [u["email"] for u in p1["items"]][0] == "user10@example.com"  # newest first
+    assert len(p1["items"]) == 5 and len(p2["items"]) == 5 and len(p3["items"]) == 2
+    seen = [u["id"] for p in (p1, p2, p3) for u in p["items"]]
+    assert len(set(seen)) == 12  # no user twice, none missing
+    assert page(99)["page"] == 3 and len(page(99)["items"]) == 2  # past the end -> last page
+    search = page(1, q="user0")
+    assert search["total"] == 10 and search["pages"] == 2
+    bad = client.get("/api/admin/users?pageSize=1000", headers=admin)
+    assert bad.status_code == 422 and client.get("/api/admin/users?page=0", headers=admin).status_code == 422
 
 
 def test_overview_counts(client):
@@ -121,6 +142,27 @@ def test_force_verify_and_send_reset(client, monkeypatch):
     assert client.post(f"/api/admin/users/{bid}/send-reset", headers=admin).status_code == 202
     assert sent and sent[0][0] == "bob@example.com" and "?reset=" in sent[0][1]
     assert client.post("/api/admin/users/9999/verify", headers=admin).status_code == 404
+
+
+def test_admin_creates_user_who_can_log_in_with_emailed_password(client, monkeypatch):
+    sent = []
+    monkeypatch.setattr(admin_mod.config, "EMAIL_ENABLED", True)
+    monkeypatch.setattr(admin_mod, "send_link_email", lambda to, subject, intro, button, link, outro: sent.append((to, intro)))
+    admin = signup_admin(client)
+    r = client.post("/api/admin/users", json={"email": "New@Example.com"}, headers=admin)
+    assert r.status_code == 201, r.text
+    assert len(sent) == 1 and sent[0][0] == "new@example.com"
+    password = sent[0][1].split("<b>")[1].split("</b>")[0]
+    login = client.post("/api/auth/login", json={"email": "new@example.com", "password": password})
+    assert login.status_code == 200  # created verified, so no verification step
+    assert client.post("/api/admin/users", json={"email": "new@example.com"}, headers=admin).status_code == 409
+
+
+def test_admin_create_user_needs_email_configured(client, monkeypatch):
+    monkeypatch.setattr(admin_mod.config, "EMAIL_ENABLED", False)
+    admin = signup_admin(client)
+    assert client.post("/api/admin/users", json={"email": "x@example.com"}, headers=admin).status_code == 503
+    assert user_id("x@example.com") is None
 
 
 def test_create_admin_logs_in_as_admin_and_promotes_existing(client):

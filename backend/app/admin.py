@@ -1,15 +1,20 @@
 """Admin-only endpoints. Only aggregate numbers are exposed, never entry contents (notes, lessons, prices)."""
 import logging
+import secrets
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy import case, delete, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from . import config
 from .db import get_db
+from .library import delete_progress_for
+from .mailer import send_link_email
 from .models import Entry, User, UserSettings
-from .schemas import ActiveIn
-from .security import require_admin
+from .schemas import ActiveIn, EmailOnly
+from .security import hash_password, require_admin
 
 log = logging.getLogger("tradeguard.admin")
 
@@ -80,7 +85,14 @@ def growth(days: int = Query(30, ge=7, le=90), _: User = Depends(require_admin),
 
 
 @router.get("/users")
-def list_users(q: str = "", _: User = Depends(require_admin), db: Session = Depends(get_db)):
+def list_users(
+    q: str = "",
+    page: int = Query(1, ge=1),
+    page_size: int = Query(25, ge=5, le=100, alias="pageSize"),
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """One page of users, newest first. A page past the end is clamped to the last page."""
     closed = (Entry.traded.is_(True)) & (Entry.result != "open") & (Entry.pnl.is_not(None))
     stats = (
         select(
@@ -97,10 +109,12 @@ def list_users(q: str = "", _: User = Depends(require_admin), db: Session = Depe
         stats, stats.c.uid == User.id
     )
     term = q.strip().lower()
-    if term:
-        query = query.where(User.email.contains(term, autoescape=True))
-    rows = db.execute(query.order_by(User.id.desc()).limit(500)).all()
-    return [
+    where = [User.email.contains(term, autoescape=True)] if term else []
+    total = db.scalar(select(func.count()).select_from(User).where(*where)) or 0
+    pages = max(1, -(-total // page_size))
+    page = min(page, pages)
+    rows = db.execute(query.where(*where).order_by(User.id.desc()).limit(page_size).offset((page - 1) * page_size)).all()
+    items = [
         {
             "id": u.id,
             "email": u.email,
@@ -115,6 +129,39 @@ def list_users(q: str = "", _: User = Depends(require_admin), db: Session = Depe
         }
         for u, entries, closed_n, wins, last_ts in rows
     ]
+    return {"items": items, "total": total, "page": page, "pageSize": page_size, "pages": pages}
+
+
+def _send_welcome(email: str, password: str) -> None:
+    send_link_email(
+        email, "Your Trade Guard account",
+        f"An administrator created a Trade Guard account for you. Your temporary password is: <b>{password}</b>",
+        "Sign in", config.APP_URL,
+        "After signing in you can choose your own password: log out and use Forgot password on the sign-in page.",
+    )
+
+
+@router.post("/users", status_code=status.HTTP_201_CREATED)
+def create_user(
+    body: EmailOnly, tasks: BackgroundTasks, admin: User = Depends(require_admin), db: Session = Depends(get_db)
+):
+    """Creates a verified account with a random temporary password, which is emailed to the new user."""
+    if not config.EMAIL_ENABLED:
+        # Without email the temporary password would be lost, so refuse instead of creating an unusable account.
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Email is not configured, so the password cannot be sent")
+    password = secrets.token_urlsafe(9)  # 12 characters
+    user = User(email=body.email.strip().lower(), password_hash=hash_password(password), email_verified=True)
+    db.add(user)
+    try:
+        db.flush()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, "An account with that email already exists")
+    db.add(UserSettings(user_id=user.id))
+    db.commit()
+    tasks.add_task(_send_welcome, user.email, password)
+    log.info("admin %s created user %s", admin.email, user.email)
+    return {"ok": True, "id": user.id, "email": user.email}
 
 
 @router.patch("/users/{user_id}")
@@ -132,6 +179,7 @@ def delete_user(user_id: int, admin: User = Depends(require_admin), db: Session 
     # Explicit deletes: SQLite (dev/tests) does not enforce ON DELETE CASCADE by default.
     db.execute(delete(Entry).where(Entry.user_id == user.id))
     db.execute(delete(UserSettings).where(UserSettings.user_id == user.id))
+    delete_progress_for(db, user.id)
     db.delete(user)
     db.commit()
     log.info("admin %s deleted user %s", admin.email, user.email)
