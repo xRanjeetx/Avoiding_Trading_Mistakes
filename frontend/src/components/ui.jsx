@@ -31,6 +31,7 @@ const PATHS = {
   flag: <path d="M5 21V4M5 4h11l-2 4 2 4H5" />,
   note: <><path d="M6 3h9l4 4v14H6z" /><path d="M9 12h7M9 16h5" /></>,
   globe: <><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" /></>,
+  mail: <><rect x="3" y="5" width="18" height="14" rx="3" /><path d="M3 8l9 6 9-6" /></>,
   alert: <><path d="M12 3l10 18H2z" /><path d="M12 10v5M12 18v.1" /></>,
 };
 

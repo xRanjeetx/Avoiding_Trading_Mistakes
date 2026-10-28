@@ -64,4 +64,12 @@ def current_user(token: str = Depends(oauth2), db: Session = Depends(get_db)) ->
     user = db.get(User, user_id)
     if not user:
         raise invalid
+    if not user.is_active:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "This account has been disabled")
+    return user
+
+
+def require_admin(user: User = Depends(current_user)) -> User:
+    if not user.is_admin:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Admin access required")
     return user

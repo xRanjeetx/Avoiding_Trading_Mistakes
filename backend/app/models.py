@@ -1,4 +1,6 @@
-from sqlalchemy import JSON, BigInteger, Boolean, Float, ForeignKey, Integer, String, Text, true
+from datetime import datetime, timezone
+
+from sqlalchemy import JSON, BigInteger, Boolean, DateTime, Float, ForeignKey, Integer, String, Text, false, true
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .db import Base
@@ -12,6 +14,11 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(100))
     # Accounts that existed before email verification was added are marked verified by ensure_columns.
     email_verified: Mapped[bool] = mapped_column(Boolean, default=False, server_default=true())
+    # is_admin mirrors config.ADMIN_EMAILS (see security.sync_admin); is_active=False blocks the account.
+    is_admin: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
+    # NULL for accounts that existed before this column was added.
+    created_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
 
 
 class UserSettings(Base):

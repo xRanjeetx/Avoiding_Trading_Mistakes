@@ -66,7 +66,6 @@ export default function Stats({ active, entries, settings }) {
   const start = settings.balance > 0 ? settings.balance : 0;
   const money = (v, sign) => fmtMoney(v, cur, sign);
 
-  const pf = s.profitFactor == null ? "–" : s.profitFactor === Infinity ? "∞" : s.profitFactor.toFixed(2);
   const bal = settings.balance > 0 && all.hasPnl
     ? `Balance ${money(settings.balance + all.net, false)} (${all.net >= 0 ? "+" : "−"}${Math.abs((all.net / settings.balance) * 100).toFixed(1)}%)` : "";
   const last = s.equity[s.equity.length - 1].v;
@@ -96,7 +95,6 @@ export default function Stats({ active, entries, settings }) {
       <div className="stats-grid two">
         <Tile label="Net P&L" value={s.hasPnl ? money(s.net) : "–"} sub={bal || `${s.n} closed trade${s.n === 1 ? "" : "s"}`} cls={s.hasPnl ? signClass(s.net) : ""} />
         <Tile label="Win rate" value={s.winRate == null ? "–" : Math.round(s.winRate * 100) + "%"} sub={`${s.wins}W · ${s.losses}L · ${s.be}BE`} />
-        <Tile label="Profit factor" value={pf} sub={s.hasPnl ? `${money(s.grossWin, false)} / ${money(s.grossLoss, false)}` : ""} />
         <Tile label="Total R" value={s.totalR == null ? "–" : fmtR(s.totalR)} sub={s.avgR == null ? "" : `Avg ${fmtR(s.avgR)} / trade`} cls={s.totalR == null ? "" : signClass(s.totalR)} />
         <Tile label="Avg win" value={s.avgWin == null ? "–" : money(s.avgWin)} cls={s.avgWin == null ? "" : "pos"} />
         <Tile label="Avg loss" value={s.avgLoss == null ? "–" : money(-s.avgLoss)} cls={s.avgLoss == null ? "" : "neg"} />

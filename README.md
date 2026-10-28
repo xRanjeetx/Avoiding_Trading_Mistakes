@@ -103,3 +103,12 @@ Forgot password and email verification use signed, expiring links, so they need 
 ## Notes
 - **Market sessions** (Asian 20:00-00:00, London 02:00-05:00, New York 07:00-10:00, London Close 10:00-12:00) are set in **Settings** in New York time, so US daylight saving needs no edit. The checklist rule "Trade Only in a Market Session" passes only while one of the switched-on sessions is live, and the Check tab shows which one that is, in your own clock. Existing databases get the new column automatically at startup.
 - The offline/PWA service worker was dropped, because the app now needs the API. Your journal lives in PostgreSQL; Neon keeps its own backups and point-in-time restore.
+
+## Admin account
+Admins are stored in the database (`users.is_admin`); there is no env setting. Create or promote one from the `backend` folder:
+
+```
+python -m app.create_admin admin@example.com "a-strong-password"
+```
+
+The account is created verified and enabled (an existing account with that email is promoted and its password reset). Run it against production with `DATABASE_URL` pointing at that database.
