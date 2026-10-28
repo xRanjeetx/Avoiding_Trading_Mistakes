@@ -36,8 +36,16 @@ function applyTheme(t) {
   document.querySelector('meta[name="theme-color"]').content = t === "light" ? "#f1f7f5" : "#07110f";
 }
 
+// An emailed verify/reset link belongs to whoever is opening it, not to a previous login saved in this browser.
+// Drop the old session so the link is handled by the landing page instead of being ignored.
+function initialSession() {
+  const q = new URLSearchParams(window.location.search);
+  if (q.has("verify") || q.has("reset")) { clearSession(); return null; }
+  return getSession();
+}
+
 export default function App() {
-  const [session, setSessionState] = useState(getSession);
+  const [session, setSessionState] = useState(initialSession);
   useEffect(() => { document.body.classList.toggle("public", !session); }, [session]);
   if (!session) {
     return <Landing onAuth={(s) => { setSession(s); setSessionState(s); }} />;
