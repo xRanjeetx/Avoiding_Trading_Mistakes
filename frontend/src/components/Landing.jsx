@@ -27,13 +27,17 @@ function Check() {
 
 // An emailed link opens the site as /?verify=TOKEN or /?reset=TOKEN. Read it once, then clean the address bar
 // so the token is not left in the URL (history, screenshots, shared links).
+// Cached because React StrictMode (dev) runs this twice and the second run would otherwise find the URL already cleaned.
+let emailLink;
 function readEmailLink() {
+  if (emailLink !== undefined) return emailLink;
   const q = new URLSearchParams(window.location.search);
   const kind = q.has("verify") ? "verify" : q.has("reset") ? "reset" : null;
-  if (!kind) return null;
-  const token = q.get(kind);
+  emailLink = null;
+  if (!kind) return emailLink;
+  emailLink = { kind, token: q.get(kind) };
   window.history.replaceState(null, "", window.location.pathname);
-  return { kind, token };
+  return emailLink;
 }
 
 export default function Landing({ onAuth }) {
