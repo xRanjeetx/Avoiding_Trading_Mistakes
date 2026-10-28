@@ -18,7 +18,7 @@ const FEATURES = [
   { icon: <><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></>,
     title: "Daily lock", text: "Locks you out after max trades or SLs" },
   { icon: <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />,
-    title: "Journal & stats", text: "Equity curve, win rate, profit factor" },
+    title: "Journal & stats", text: "Equity curve, win rate, drawdown" },
 ];
 
 function Check() {

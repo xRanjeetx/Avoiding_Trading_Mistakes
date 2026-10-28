@@ -32,6 +32,16 @@ class Credentials(BaseModel):
 class Token(BaseModel):
     access_token: str
     email: str
+    is_admin: bool = False
+
+
+class MeOut(CamelModel):
+    email: str
+    is_admin: bool
+
+
+class ActiveIn(CamelModel):
+    is_active: bool
 
 
 class RegisterOut(BaseModel):

@@ -28,7 +28,7 @@ export default function Login({ onAuth, mode, onMode, link }) {
   const verifyStarted = useRef(false);
   const isLogin = mode === "login";
   const score = strength(password);
-  const finish = (t) => onAuth({ token: t.access_token, email: t.email });
+  const finish = (t) => onAuth({ token: t.access_token, email: t.email, isAdmin: !!t.is_admin });
 
   useEffect(() => {
     if (view !== "verifying" || verifyStarted.current) return;

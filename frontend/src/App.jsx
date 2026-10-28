@@ -7,6 +7,7 @@ import Today from "./components/Today.jsx";
 import Journal from "./components/Journal.jsx";
 import Stats from "./components/Stats.jsx";
 import Settings from "./components/Settings.jsx";
+import Admin from "./components/Admin.jsx";
 import SessionStrip from "./components/SessionStrip.jsx";
 import CloseSheet from "./components/CloseSheet.jsx";
 import { dueReminders, loadPrefs, markSent, notify, savePrefs, wasSent } from "./lib/reminders.js";
@@ -20,15 +21,18 @@ const ICONS = {
   today: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></>,
   log: <path d="M4 6h16M4 12h16M4 18h10" />,
   stats: <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />,
+  admin: <><path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6z" /><path d="M9 12l2 2 4-4" /></>,
   settings: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></>,
 };
 const TABS = [["checklist", "Check"], ["today", "Today"], ["log", "Journal"], ["stats", "Stats"], ["settings", "Settings"]];
+const ADMIN_TAB = ["admin", "Admin"];
 const PAGE = {
   checklist: ["Pre-trade checklist", "Pass every rule before you enter"],
   today: ["Today", "Your trades and daily limits"],
   log: ["Journal", "Every trade you have logged"],
   stats: ["Statistics", "How your trading is performing"],
   settings: ["Settings", "Limits, sessions and account"],
+  admin: ["Admin", "Users and account management"],
 };
 
 function applyTheme(t) {
@@ -47,6 +51,19 @@ function initialSession() {
 export default function App() {
   const [session, setSessionState] = useState(initialSession);
   useEffect(() => { document.body.classList.toggle("public", !session); }, [session]);
+  // The role can change on the server (ADMIN_EMAILS), so refresh it instead of trusting the saved session.
+  const hasSession = !!session;
+  useEffect(() => {
+    if (!hasSession) return;
+    api.me().then((m) => {
+      setSessionState((s) => {
+        if (!s || !!s.isAdmin === m.isAdmin) return s;
+        const next = { ...s, isAdmin: m.isAdmin };
+        setSession(next);
+        return next;
+      });
+    }).catch(() => {});
+  }, [hasSession]);
   if (!session) {
     return <Landing onAuth={(s) => { setSession(s); setSessionState(s); }} />;
   }
@@ -58,7 +75,10 @@ function Journalled({ session, onLogout }) {
   const [entries, setEntries] = useState([]);
   const [status, setStatus] = useState("loading"); // loading | ready | error
   const [loadError, setLoadError] = useState("");
-  const [tab, setTab] = useState("checklist");
+  const [tabState, setTab] = useState("checklist");
+  // The Admin tab is only offered to admins (the API enforces this too). Fall back if the role is lost.
+  const tab = tabState === "admin" && !session.isAdmin ? "checklist" : tabState;
+  const tabs = session.isAdmin ? [...TABS, ADMIN_TAB] : TABS;
   const [menu, setMenu] = useState(false);
   const [sheet, setSheet] = useState(null); // { id, preset }
   const [toast, setToast] = useState("");
@@ -262,6 +282,7 @@ function Journalled({ session, onLogout }) {
           onDelete={deleteEntry} />
         <Stats active={tab === "stats"} entries={entries} settings={settings} />
         <Settings active={tab === "settings"} settings={settings} reminders={reminders} onReminders={changeReminders} onSave={saveSettings} onClearAll={clearAll} />
+        {session.isAdmin && <Admin active={tab === "admin"} confirm={confirmToast} say={say} onExpired={onLogout} />}
       </main>
 
       <div className={`scrim ${menu ? "show" : ""}`} onClick={() => setMenu(false)} />
@@ -271,7 +292,7 @@ function Journalled({ session, onLogout }) {
           <div><b>Trade Guard</b><small>Trade by the rules</small></div>
         </div>
         <div className="side-label">Menu</div>
-        {TABS.map(([key, label]) => (
+        {tabs.map(([key, label]) => (
           <button key={key} className={tab === key ? "active" : ""} aria-current={tab === key ? "page" : undefined} onClick={() => goto(key)}>
             <span className="nav-ico"><svg viewBox="0 0 24 24">{ICONS[key]}</svg></span>
             <span>{label}</span>

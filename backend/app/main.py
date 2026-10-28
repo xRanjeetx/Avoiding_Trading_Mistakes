@@ -13,8 +13,11 @@ from . import config
 from .db import Base, engine, get_db
 from .mailer import send_link_email
 from .models import Entry, User, UserSettings
-from .schemas import Credentials, EmailOnly, EntryIn, EntryOut, RegisterOut, ResetIn, SettingsOut, Token, TokenIn
-from .security import current_user, hash_password, make_purpose_token, make_token, user_from_purpose_token, verify_password
+from .admin import router as admin_router
+from .schemas import Credentials, EmailOnly, EntryIn, EntryOut, MeOut, RegisterOut, ResetIn, SettingsOut, Token, TokenIn
+from .security import (
+    current_user, hash_password, make_purpose_token, make_token, user_from_purpose_token, verify_password,
+)
 
 
 def ensure_columns(eng) -> None:
@@ -25,9 +28,18 @@ def ensure_columns(eng) -> None:
             with eng.begin() as conn:
                 conn.execute(text(f"ALTER TABLE user_settings ADD COLUMN {col} JSON"))
     # Accounts that already exist are treated as verified (the DEFAULT TRUE backfills them).
-    if "email_verified" not in {c["name"] for c in inspect(eng).get_columns("users")}:
+    user_cols = {c["name"] for c in inspect(eng).get_columns("users")}
+    if "email_verified" not in user_cols:
         with eng.begin() as conn:
             conn.execute(text("ALTER TABLE users ADD COLUMN email_verified BOOLEAN NOT NULL DEFAULT TRUE"))
+    for col, ddl in (
+        ("is_admin", "BOOLEAN NOT NULL DEFAULT FALSE"),
+        ("is_active", "BOOLEAN NOT NULL DEFAULT TRUE"),
+        ("created_at", "TIMESTAMP"),
+    ):
+        if col not in user_cols:
+            with eng.begin() as conn:
+                conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} {ddl}"))
 
 
 @asynccontextmanager
@@ -44,6 +56,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+app.include_router(admin_router)
 
 
 @app.exception_handler(RequestValidationError)
@@ -80,6 +95,10 @@ def _send_reset(user: User) -> None:
     )
 
 
+def _token(db: Session, user: User) -> Token:
+    return Token(access_token=make_token(user), email=user.email, is_admin=user.is_admin)
+
+
 @app.post("/api/auth/register", response_model=RegisterOut, status_code=status.HTTP_201_CREATED)
 def register(body: Credentials, tasks: BackgroundTasks, db: Session = Depends(get_db)):
     if not config.ALLOW_REGISTRATION:
@@ -99,7 +118,7 @@ def register(body: Credentials, tasks: BackgroundTasks, db: Session = Depends(ge
     if config.REQUIRE_EMAIL_VERIFICATION:
         tasks.add_task(_send_verification, user)
         return RegisterOut(email=user.email, verification_sent=True)
-    return RegisterOut(access_token=make_token(user), email=user.email)
+    return RegisterOut(access_token=_token(db, user).access_token, email=user.email)
 
 
 @app.post("/api/auth/login", response_model=Token)
@@ -109,7 +128,14 @@ def login(body: Credentials, db: Session = Depends(get_db)):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Wrong email or password")
     if config.REQUIRE_EMAIL_VERIFICATION and not user.email_verified:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Please verify your email first. Check your inbox for the link.")
-    return Token(access_token=make_token(user), email=user.email)
+    if not user.is_active:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "This account has been disabled")
+    return _token(db, user)
+
+
+@app.get("/api/auth/me", response_model=MeOut)
+def me(user: User = Depends(current_user)):
+    return MeOut(email=user.email, is_admin=user.is_admin).model_dump(by_alias=True)
 
 
 @app.post("/api/auth/verify-email", response_model=Token)
@@ -118,7 +144,9 @@ def verify_email(body: TokenIn, db: Session = Depends(get_db)):
     if not user.email_verified:
         user.email_verified = True
         db.commit()
-    return Token(access_token=make_token(user), email=user.email)
+    if not user.is_active:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "This account has been disabled")
+    return _token(db, user)
 
 
 # The two endpoints below always answer the same way, so they cannot be used to find out which emails have accounts.
@@ -144,7 +172,9 @@ def reset_password(body: ResetIn, db: Session = Depends(get_db)):
     user.password_hash = hash_password(body.password)
     user.email_verified = True  # they received the link at this address, which proves they own it
     db.commit()
-    return Token(access_token=make_token(user), email=user.email)
+    if not user.is_active:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "This account has been disabled")
+    return _token(db, user)
 
 
 # ---------- Settings ----------
