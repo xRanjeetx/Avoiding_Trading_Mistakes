@@ -7,7 +7,7 @@ from fastapi import BackgroundTasks, Body, Depends, FastAPI, HTTPException, Requ
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from sqlalchemy import delete, inspect, select, text
+from sqlalchemy import String, delete, inspect, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -37,6 +37,13 @@ def ensure_columns(eng) -> None:
         if entry_cols is not None and col not in entry_cols:
             with eng.begin() as conn:
                 conn.execute(text(f"ALTER TABLE entries ADD COLUMN {col} VARCHAR(20)"))
+    # An older build created these as INTEGER. The app stores a key such as "calm", which Postgres rejects, so every
+    # new entry failed. Convert them to text (existing numbers just become their text form).
+    if eng.dialect.name == "postgresql" and inspect(eng).has_table("entries"):
+        for c in inspect(eng).get_columns("entries"):
+            if c["name"] in ("emotion", "emotion_after") and not isinstance(c["type"], String):
+                with eng.begin() as conn:
+                    conn.execute(text(f"ALTER TABLE entries ALTER COLUMN {c['name']} TYPE VARCHAR(20) USING {c['name']}::text"))
     # Accounts that already exist are treated as verified (the DEFAULT TRUE backfills them).
     user_cols = {c["name"] for c in inspect(eng).get_columns("users")}
     if "email_verified" not in user_cols:
