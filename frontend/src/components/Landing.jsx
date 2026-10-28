@@ -25,8 +25,20 @@ function Check() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>;
 }
 
+// An emailed link opens the site as /?verify=TOKEN or /?reset=TOKEN. Read it once, then clean the address bar
+// so the token is not left in the URL (history, screenshots, shared links).
+function readEmailLink() {
+  const q = new URLSearchParams(window.location.search);
+  const kind = q.has("verify") ? "verify" : q.has("reset") ? "reset" : null;
+  if (!kind) return null;
+  const token = q.get(kind);
+  window.history.replaceState(null, "", window.location.pathname);
+  return { kind, token };
+}
+
 export default function Landing({ onAuth }) {
-  const [mode, setMode] = useState("register");
+  const [link] = useState(readEmailLink);
+  const [mode, setMode] = useState(link ? "login" : "register");
   const authRef = useRef(null);
 
   // On stacked (phone/tablet) layouts the form sits below the fold, so bring it into view
@@ -76,7 +88,7 @@ export default function Landing({ onAuth }) {
 
         <div className="lp-visual">
           <div className="lp-glow" />
-          <div className="lp-auth" ref={authRef}><Login mode={mode} onMode={setMode} onAuth={onAuth} /></div>
+          <div className="lp-auth" ref={authRef}><Login mode={mode} onMode={setMode} onAuth={onAuth} link={link} /></div>
         </div>
       </main>
     </div>

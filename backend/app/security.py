@@ -1,3 +1,4 @@
+import hashlib
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
@@ -26,10 +27,38 @@ def make_token(user: User) -> str:
     return jwt.encode({"sub": str(user.id), "exp": exp}, SECRET_KEY, algorithm="HS256")
 
 
+def _fingerprint(user: User) -> str:
+    # Ties a reset link to the current password, so it stops working once the password changes (single use).
+    return hashlib.sha256(user.password_hash.encode()).hexdigest()[:16]
+
+
+def make_purpose_token(user: User, purpose: str, minutes: int) -> str:
+    """Short-lived signed token for an emailed link ("verify" or "reset"). Never valid as a login token."""
+    exp = datetime.now(timezone.utc) + timedelta(minutes=minutes)
+    return jwt.encode({"sub": str(user.id), "purpose": purpose, "pw": _fingerprint(user), "exp": exp}, SECRET_KEY, algorithm="HS256")
+
+
+def user_from_purpose_token(db: Session, token: str, purpose: str) -> User:
+    bad = HTTPException(status.HTTP_400_BAD_REQUEST, "This link is invalid or has expired")
+    try:
+        data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        if data.get("purpose") != purpose:
+            raise bad
+        user = db.get(User, int(data["sub"]))
+    except (jwt.PyJWTError, KeyError, ValueError):
+        raise bad
+    if not user or data.get("pw") != _fingerprint(user):
+        raise bad
+    return user
+
+
 def current_user(token: str = Depends(oauth2), db: Session = Depends(get_db)) -> User:
     invalid = HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired login", {"WWW-Authenticate": "Bearer"})
     try:
-        user_id = int(jwt.decode(token, SECRET_KEY, algorithms=["HS256"])["sub"])
+        data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        if "purpose" in data:  # emailed verify/reset tokens must not work as login tokens
+            raise invalid
+        user_id = int(data["sub"])
     except (jwt.PyJWTError, KeyError, ValueError):
         raise invalid
     user = db.get(User, user_id)

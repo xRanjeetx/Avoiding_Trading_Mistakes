@@ -1,7 +1,7 @@
 import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -11,9 +11,10 @@ from sqlalchemy.orm import Session
 
 from . import config
 from .db import Base, engine, get_db
+from .mailer import send_link_email
 from .models import Entry, User, UserSettings
-from .schemas import Credentials, EntryIn, EntryOut, SettingsOut, Token
-from .security import current_user, hash_password, make_token, verify_password
+from .schemas import Credentials, EmailOnly, EntryIn, EntryOut, RegisterOut, ResetIn, SettingsOut, Token, TokenIn
+from .security import current_user, hash_password, make_purpose_token, make_token, user_from_purpose_token, verify_password
 
 
 def ensure_columns(eng) -> None:
@@ -23,6 +24,10 @@ def ensure_columns(eng) -> None:
         if col not in have:
             with eng.begin() as conn:
                 conn.execute(text(f"ALTER TABLE user_settings ADD COLUMN {col} JSON"))
+    # Accounts that already exist are treated as verified (the DEFAULT TRUE backfills them).
+    if "email_verified" not in {c["name"] for c in inspect(eng).get_columns("users")}:
+        with eng.begin() as conn:
+            conn.execute(text("ALTER TABLE users ADD COLUMN email_verified BOOLEAN NOT NULL DEFAULT TRUE"))
 
 
 @asynccontextmanager
@@ -55,11 +60,34 @@ def health():
 
 
 # ---------- Auth ----------
-@app.post("/api/auth/register", response_model=Token, status_code=status.HTTP_201_CREATED)
-def register(body: Credentials, db: Session = Depends(get_db)):
+def _send_verification(user: User) -> None:
+    token = make_purpose_token(user, "verify", config.VERIFY_HOURS * 60)
+    send_link_email(
+        user.email, "Verify your Trade Guard email",
+        "Welcome to Trade Guard. Confirm your email address to activate your account.",
+        "Verify email", f"{config.APP_URL}/?verify={token}",
+        f"This link expires in {config.VERIFY_HOURS} hours. If you did not create an account, ignore this email.",
+    )
+
+
+def _send_reset(user: User) -> None:
+    token = make_purpose_token(user, "reset", config.RESET_MINUTES)
+    send_link_email(
+        user.email, "Reset your Trade Guard password",
+        "We received a request to reset your password.",
+        "Reset password", f"{config.APP_URL}/?reset={token}",
+        f"This link expires in {config.RESET_MINUTES} minutes and works once. If you did not ask for this, ignore this email.",
+    )
+
+
+@app.post("/api/auth/register", response_model=RegisterOut, status_code=status.HTTP_201_CREATED)
+def register(body: Credentials, tasks: BackgroundTasks, db: Session = Depends(get_db)):
     if not config.ALLOW_REGISTRATION:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Registration is closed")
-    user = User(email=body.email.strip().lower(), password_hash=hash_password(body.password))
+    user = User(
+        email=body.email.strip().lower(), password_hash=hash_password(body.password),
+        email_verified=not config.REQUIRE_EMAIL_VERIFICATION,
+    )
     db.add(user)
     try:
         db.flush()
@@ -68,7 +96,10 @@ def register(body: Credentials, db: Session = Depends(get_db)):
         raise HTTPException(status.HTTP_409_CONFLICT, "An account with that email already exists")
     db.add(UserSettings(user_id=user.id))
     db.commit()
-    return Token(access_token=make_token(user), email=user.email)
+    if config.REQUIRE_EMAIL_VERIFICATION:
+        tasks.add_task(_send_verification, user)
+        return RegisterOut(email=user.email, verification_sent=True)
+    return RegisterOut(access_token=make_token(user), email=user.email)
 
 
 @app.post("/api/auth/login", response_model=Token)
@@ -76,6 +107,43 @@ def login(body: Credentials, db: Session = Depends(get_db)):
     user = db.scalar(select(User).where(User.email == body.email.strip().lower()))
     if not user or not verify_password(body.password, user.password_hash):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Wrong email or password")
+    if config.REQUIRE_EMAIL_VERIFICATION and not user.email_verified:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Please verify your email first. Check your inbox for the link.")
+    return Token(access_token=make_token(user), email=user.email)
+
+
+@app.post("/api/auth/verify-email", response_model=Token)
+def verify_email(body: TokenIn, db: Session = Depends(get_db)):
+    user = user_from_purpose_token(db, body.token, "verify")
+    if not user.email_verified:
+        user.email_verified = True
+        db.commit()
+    return Token(access_token=make_token(user), email=user.email)
+
+
+# The two endpoints below always answer the same way, so they cannot be used to find out which emails have accounts.
+@app.post("/api/auth/resend-verification", status_code=status.HTTP_202_ACCEPTED)
+def resend_verification(body: EmailOnly, tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    user = db.scalar(select(User).where(User.email == body.email.strip().lower()))
+    if user and not user.email_verified:
+        tasks.add_task(_send_verification, user)
+    return {"ok": True}
+
+
+@app.post("/api/auth/forgot-password", status_code=status.HTTP_202_ACCEPTED)
+def forgot_password(body: EmailOnly, tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    user = db.scalar(select(User).where(User.email == body.email.strip().lower()))
+    if user:
+        tasks.add_task(_send_reset, user)
+    return {"ok": True}
+
+
+@app.post("/api/auth/reset-password", response_model=Token)
+def reset_password(body: ResetIn, db: Session = Depends(get_db)):
+    user = user_from_purpose_token(db, body.token, "reset")
+    user.password_hash = hash_password(body.password)
+    user.email_verified = True  # they received the link at this address, which proves they own it
+    db.commit()
     return Token(access_token=make_token(user), email=user.email)
 
 

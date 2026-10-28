@@ -46,6 +46,10 @@ async function request(method, path, body) {
 export const api = {
   login: (email, password) => request("POST", "/auth/login", { email, password }),
   register: (email, password) => request("POST", "/auth/register", { email, password }),
+  verifyEmail: (token) => request("POST", "/auth/verify-email", { token }),
+  resendVerification: (email) => request("POST", "/auth/resend-verification", { email }),
+  forgotPassword: (email) => request("POST", "/auth/forgot-password", { email }),
+  resetPassword: (token, password) => request("POST", "/auth/reset-password", { token, password }),
   getSettings: () => request("GET", "/settings"),
   putSettings: (s) => request("PUT", "/settings", s),
   listEntries: () => request("GET", "/entries"),
