@@ -77,12 +77,29 @@ body:not(.public) {
   .app-header { flex-wrap: wrap; row-gap: 10px; }
   .app-header .brand { display: contents; }
   .app-header .menu-btn { order: 1; }
-  .app-header .logo { order: 2; margin-right: auto; }
+  .app-header .logo { order: 2; }
+  .app-header .head-brand { order: 2; margin-right: auto; }
   .app-header .head-right { order: 3; }
   .app-header .head-title { order: 4; flex: 1 0 100%; min-width: 0; }
   .head-quote { max-width: none; }
 }
-.app-header .logo { width: 34px; height: 34px; border-radius: 10px; }
+.app-header .logo { width: 34px; height: 34px; border-radius: 10px; animation: brand-float 4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .app-header .logo { animation: none; } }
+/* The name beside the phone-header logo, with the same motion as the sidebar brand. Desktop shows it in the sidebar instead. */
+.app-header .head-brand { display: none; line-height: 1.2; white-space: nowrap; }
+@media (max-width: 899px) { .app-header .head-brand { display: block; } }
+@media (max-width: 359px) { .app-header .head-brand { display: none; } }
+.head-brand b {
+  display: block; font-size: 15px; font-weight: 800; letter-spacing: -0.2px;
+  background: linear-gradient(100deg, var(--text) 30%, var(--primary) 42%, var(--good) 50%, var(--primary) 58%, var(--text) 70%) 0 0 / 250% 100%;
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;
+  animation: brand-shine 3.5s ease-in-out infinite;
+}
+.head-brand small { display: block; font-size: 11px; color: var(--primary); animation: brand-in 0.9s ease-out both 0.2s; }
+@media (prefers-reduced-motion: reduce) {
+  .head-brand b, .head-brand small { animation: none; }
+  .head-brand b { background: none; -webkit-text-fill-color: currentColor; color: inherit; }
+}
 .clock {
   display: none; align-items: center; gap: 8px;
   padding: 8px 14px; border-radius: 12px;

@@ -73,7 +73,7 @@ export default function Landing({ onAuth }) {
           <span className="lp-pill"><i /> Discipline over impulse</span>
           <h1>Stop repeating the <em>same trading mistakes.</em></h1>
           <p className="lp-lead">
-            A pre-trade checklist and journal in one. Trade Guard gives you the green light only when every one of your own rules passes.
+            A pre-trade checklist and journal in one. Trade Guard gives you the <b className="lp-hl">green light</b> only when every one of <b className="lp-hl alt">your own rules</b> passes.
           </p>
           <ul className="lp-feats">
             {FEATURES.map((f, i) => (
