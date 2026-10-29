@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { toCsv } from "../lib/csv.js";
 import { num } from "../lib/format.js";
 import { NO_NEWS, NO_RULE_EDITS, RULES } from "../lib/rules.js";
+import { usdjpyPrice, valueBox } from "../lib/risk.js";
 import { buildPayload, pairDraftOk, stateFromSettings, withNewsDraft, withPairDraft, withRuleDraft } from "../lib/settingsForm.js";
 import { KILLZONE_NAMES, normalizeKillzones, nyClock, nyToLocal } from "../lib/killzones.js";
 import { enable as enableNotifications, permission } from "../lib/reminders.js";
@@ -70,13 +71,14 @@ export default function Settings({ active, settings, reminders, onReminders, onS
   }, [active, settings]);
 
   const [pairs, setPairs] = useState([]);
-  const [draft, setDraft] = useState({ pair: "", lot: "" });
+  const [draft, setDraft] = useState({ pair: "", lot: "", value: "" });
   const editPair = (i, patch) => setPairs((ps) => ps.map((p, j) => (j === i ? { ...p, ...patch } : p)));
   const draftOk = pairDraftOk(draft, pairs);
+  const jpy = usdjpyPrice(entries);
   function addPair() {
     if (!draftOk) return;
     setPairs(withPairDraft(pairs, draft));
-    setDraft({ pair: "", lot: "" });
+    setDraft({ pair: "", lot: "", value: "" });
   }
 
   // Checklist rules: switch any rule off, or add your own yes/no rules. Saved with the Save button below.
@@ -124,22 +126,39 @@ export default function Settings({ active, settings, reminders, onReminders, onS
         </div>
       </div>
       <div className="card">
+        <CardHead icon="wallet" title="Loss limits" />
+        <div className="grid2">
+          <label className="field"><span>Daily max loss ({settings.currency})</span>
+            <input type="number" min="0" step="any" inputMode="decimal" placeholder="Off" {...bind("dailyLimit")} /></label>
+          <label className="field"><span>Overall max loss ({settings.currency})</span>
+            <input type="number" min="0" step="any" inputMode="decimal" placeholder="Off" {...bind("overallLimit")} /></label>
+        </div>
+        <div className="row-between loss-since">
+          <span className="muted">Overall counting since: <b>{v.lossSince ? new Date(v.lossSince).toLocaleDateString([], { day: "numeric", month: "short", year: "numeric" }) : "your first trade"}</b></span>
+          <span className="row">
+            <button type="button" className="btn small" onClick={() => setV((x) => ({ ...x, lossSince: Date.now() }))}>Start from now</button>
+            {v.lossSince && <button type="button" className="btn small ghost" onClick={() => setV((x) => ({ ...x, lossSince: null }))}>Count all</button>}
+          </span>
+        </div>
+      </div>
+      <div className="card">
         <CardHead icon="sliders" title="Pairs & lot sizes" />
         <div className="kz-list">
           {pairs.map((p, i) => (
-            <div key={p.pair} className="kz-row">
+            <div key={p.pair} className="kz-row pair-row">
               <b className="kz-name">{p.pair}</b>
               <input type="number" step="any" inputMode="decimal" aria-label={`${p.pair} lot size`} value={p.lot} onChange={(e) => editPair(i, { lot: e.target.value })} />
+              <input type="number" step="any" inputMode="decimal" {...valueBox(p.pair, p.value, jpy)} aria-label={`${p.pair} value per 1.00 price move at 1 lot`} onChange={(e) => editPair(i, { value: e.target.value })} />
               <button type="button" className="btn small danger-outline" aria-label={`Remove ${p.pair}`} onClick={() => setPairs((ps) => ps.filter((_, j) => j !== i))}><Icon name="trash" size={16} /></button>
             </div>
           ))}
-          <div className="kz-row">
+          <div className="kz-row pair-row">
             <input className="kz-name" placeholder="Pair e.g. GBPUSD" autoCapitalize="characters" autoComplete="off" value={draft.pair} onChange={(e) => setDraft((d) => ({ ...d, pair: e.target.value }))} />
             <input type="number" step="any" inputMode="decimal" placeholder="Lot" aria-label="New pair lot size" value={draft.lot} onChange={(e) => setDraft((d) => ({ ...d, lot: e.target.value }))} />
+            <input type="number" step="any" inputMode="decimal" {...valueBox(draft.pair, draft.value, jpy)} aria-label="New pair value per 1.00 price move at 1 lot" onChange={(e) => setDraft((d) => ({ ...d, value: e.target.value }))} />
             <button type="button" className="btn small" disabled={!draftOk} onClick={addPair}><Icon name="check" size={16} /> Add</button>
           </div>
         </div>
-        <p className="muted hint">The lot-size rule uses the lot set here for the pair you trade. Pairs not listed use the default lot above. Press Save settings to keep changes.</p>
       </div>
       <div className="card">
         <CardHead icon="check" title="Checklist rules">

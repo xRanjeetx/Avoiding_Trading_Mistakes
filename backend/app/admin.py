@@ -10,11 +10,13 @@ from sqlalchemy.orm import Session
 
 from . import config
 from .db import get_db
+from .images import user_image_keys
 from .library import delete_progress_for
 from .mailer import send_link_email
 from .models import Entry, User, UserSettings
 from .schemas import ActiveIn, EmailOnly
 from .security import hash_password, require_admin
+from .storage import delete_quietly
 
 log = logging.getLogger("tradeguard.admin")
 
@@ -177,11 +179,13 @@ def set_active(user_id: int, body: ActiveIn, admin: User = Depends(require_admin
 def delete_user(user_id: int, admin: User = Depends(require_admin), db: Session = Depends(get_db)):
     user = _target(db, admin, user_id, "delete")
     # Explicit deletes: SQLite (dev/tests) does not enforce ON DELETE CASCADE by default.
+    images = user_image_keys(db, user.id)
     db.execute(delete(Entry).where(Entry.user_id == user.id))
     db.execute(delete(UserSettings).where(UserSettings.user_id == user.id))
     delete_progress_for(db, user.id)
     db.delete(user)
     db.commit()
+    delete_quietly(images)
     log.info("admin %s deleted user %s", admin.email, user.email)
 
 

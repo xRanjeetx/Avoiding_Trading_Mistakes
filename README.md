@@ -100,6 +100,11 @@ Optional: ping `<api-url>/api/health` every 10 minutes with a free monitor such 
 | `REQUIRE_EMAIL_VERIFICATION` | `true` when `SMTP_HOST` is set | New accounts must click the emailed link before logging in. Accounts created earlier count as verified |
 | `LIBRARY_DIR` | `backend/library` | Folder of PDFs loaded into the Learning tab at startup, shown to every user (read-only). See `backend/library/README.md` |
 | `VERIFY_HOURS` / `RESET_MINUTES` | `48` / `60` | How long the verification and reset links last |
+| `MAX_IMAGE_BYTES` / `MAX_IMAGES_PER_USER` | 2 MB / `600` | Limits per screenshot and per account. The app shrinks screenshots to about 150-300 KB first |
+
+Loss limits (Settings > Loss limits): set a **daily** and an **overall** max loss in money. Before each trade the checklist works out the money its stop loss risks (`|entry - SL| x lot x value`) and fails the "Within Loss Limits" rule if that is more than what is left. What is left is `limit + net P&L - risk of trades still open`, so a profit gives room back (daily limit 20 and +30 today leaves 50). "Value" is what 1 lot gains or loses per 1.00 price move: XAUUSD (100), EURUSD (100000) and USDJPY (100000 / price) are built in, and any other pair needs its value typed in Settings > Pairs. The overall count can be restarted with "Start from now" for a new challenge or account.
+
+Trade screenshots: each entry can hold a **Before** and an **After** image, added from the close/edit sheet (pick a file, or paste with Ctrl+V). The API checks the login before returning an image. Deleting a trade, all data or the account deletes its images too. Screenshots are stored in the database (table `stored_images`) and take about 150-300 KB each, so they count towards your database size.
 
 Forgot password and email verification use signed, expiring links, so they need no extra database tables. A reset link works once.
 

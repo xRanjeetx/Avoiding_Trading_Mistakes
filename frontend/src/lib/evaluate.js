@@ -1,5 +1,6 @@
 import { COOLDOWN_MIN, NO_NEWS, SETUPS, activeRules, allRules } from "./rules.js";
-import { isToday } from "./format.js";
+import { fmtMoney, isToday } from "./format.js";
+import { limitsOf, lossStatus, tradeRisk } from "./risk.js";
 import { closeTime } from "./stats.js";
 import { KILLZONE_NAMES, activeZones, fmtDuration, marketStatus, minutesLeft, nextZone, normalizeKillzones } from "./killzones.js";
 
@@ -51,6 +52,26 @@ export function nextNews(settings, now = new Date()) {
 
 const newsName = (e) => (e.title ? e.title : "High-impact news");
 const newsTime = (at) => new Date(at).toLocaleString([], { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+
+function lossLimitResult(f, entries, settings, now) {
+  const lim = limitsOf(settings);
+  if (lim.daily == null && lim.overall == null) return { pass: true, detail: "No loss limits set in Settings" };
+  const money = (v) => fmtMoney(v, settings.currency || "$", false);
+  const st = lossStatus(entries, settings, now);
+  const parts = [["Daily", st.daily], ["Overall", st.overall]].filter(([, p]) => p);
+
+  // A limit that is already used up blocks every trade, whatever its size.
+  const spent = parts.filter(([, p]) => p.remaining <= 0);
+  if (spent.length) return { pass: false, detail: spent.map(([n, p]) => `${n} loss limit reached (${money(p.limit)}). No more trades`).join(". ") };
+
+  if (f.entry == null || f.sl == null || f.lot == null) return { pass: null, detail: "Enter entry, SL and lot to check your loss limits" };
+  const risk = tradeRisk(f, settings);
+  if (risk == null) return { pass: false, detail: `Set the value for ${f.pair || "this pair"} in Settings > Pairs to check your loss limits` };
+
+  const over = parts.filter(([, p]) => risk > p.remaining + 1e-9);
+  if (over.length) return { pass: false, detail: over.map(([n, p]) => `${n}: this trade risks ${money(risk)} but only ${money(p.remaining)} is left`).join(". ") };
+  return { pass: true, detail: `Risk ${money(risk)} · ${parts.map(([n, p]) => `${n.toLowerCase()} left ${money(p.remaining)}`).join(" · ")}` };
+}
 
 export function todayCounts(entries) {
   const today = entries.filter((e) => isToday(e.timestamp));
@@ -145,6 +166,9 @@ export function evaluate({ f, answers, entries, settings, now = new Date() }) {
 
   // 19: SL per day
   res[19] = { pass: c.sl < settings.maxSL, detail: `${c.sl}/${settings.maxSL} SL hit today` };
+
+  // 33: loss limits. The trade's risk (entry to SL in money) must fit in what is left of the daily and overall limits.
+  res[33] = lossLimitResult(f, entries, settings, now);
 
   // Self rules (built-in and the user's own)
   for (const r of allRules(settings).filter((r) => r.type === "self")) {

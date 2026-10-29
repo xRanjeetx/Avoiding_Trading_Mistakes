@@ -100,6 +100,9 @@ class PairLot(BaseModel):
 
     pair: str = Field(min_length=1, max_length=30, pattern=r"^[A-Z0-9._-]+$")
     lot: FiniteFloat = Field(gt=0)
+    # Money gained or lost when price moves 1.00 with 1 lot (gold 100, EURUSD 100000). Used to turn entry and SL into the
+    # risk of a trade. NULL means "use the app's built-in value, if it knows the pair".
+    value: FiniteFloat | None = Field(None, gt=0)
 
 
 DEFAULT_PAIRS = [{"pair": "XAUUSD", "lot": 0.02}, {"pair": "EURUSD", "lot": 0.2}]
@@ -155,6 +158,14 @@ class NewsConfig(CamelModel):
         return sorted(v, key=lambda e: e.at)
 
 
+class LossLimits(CamelModel):
+    """Money limits for the account. Blank (None) means that limit is off."""
+
+    daily: FiniteFloat | None = Field(None, gt=0)  # the most that may be lost in one day (net of the day's profit)
+    overall: FiniteFloat | None = Field(None, gt=0)  # the most that may be lost in total since `since`
+    since: EpochMs | None = None  # the overall count starts here (epoch ms). None counts every trade
+
+
 class SettingsOut(CamelModel):
     lot: FiniteFloat = Field(0.02, gt=0)
     min_rr: FiniteFloat = Field(2, gt=0, alias="minRR")
@@ -167,6 +178,12 @@ class SettingsOut(CamelModel):
     pairs: list[PairLot] = Field(default_factory=lambda: [PairLot(**p) for p in DEFAULT_PAIRS], max_length=50)
     rules: RulesConfig = Field(default_factory=RulesConfig)
     news: NewsConfig = Field(default_factory=NewsConfig)
+    loss_limits: LossLimits = Field(default_factory=LossLimits)
+
+    @field_validator("loss_limits", mode="before")
+    @classmethod
+    def _default_loss_limits_when_unset(cls, v):
+        return {} if v is None else v  # rows created before loss limits existed
 
     @field_validator("news", mode="before")
     @classmethod
@@ -230,3 +247,11 @@ class EntryIn(CamelModel):
 class EntryOut(EntryIn):
     # Output only: ids stored by older versions of the app are returned as they are.
     id: str
+    # Screenshots by slot ("before" / "after"). The value is a token that changes when the image is replaced; the
+    # storage key itself stays on the server. Set through the /images endpoints, never through EntryIn.
+    images: dict[str, str] = {}
+
+    @field_validator("images", mode="before")
+    @classmethod
+    def _tokens(cls, v):
+        return {slot: key.rsplit("/", 1)[-1].split(".", 1)[0] for slot, key in (v or {}).items()}

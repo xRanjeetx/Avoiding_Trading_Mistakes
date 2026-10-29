@@ -12,6 +12,7 @@ import Learning from "./components/Learning.jsx";
 import Admin from "./components/Admin.jsx";
 import SessionStrip from "./components/SessionStrip.jsx";
 import CloseSheet from "./components/CloseSheet.jsx";
+import { compressImage } from "./lib/image.js";
 import { dueReminders, loadPrefs, markSent, notify, savePrefs, wasSent } from "./lib/reminders.js";
 
 const DEFAULT_SETTINGS = { lot: 0.02, minRR: 2, maxTrades: 4, maxSL: 4, balance: 0, currency: "$",
@@ -193,6 +194,26 @@ function Journalled({ session, onLogout }) {
     return true;
   };
 
+  // Screenshots are saved as soon as they are picked, so they are not lost if the sheet is closed without saving.
+  const replaceEntry = (saved) => setEntries((list) => list.map((e) => (e.id === saved.id ? saved : e)));
+  const uploadShot = async (id, slot, file) => {
+    let blob;
+    try {
+      blob = await compressImage(file);
+    } catch (err) {
+      say(err.message);
+      return false;
+    }
+    const saved = await attempt(() => api.putImage(id, slot, blob));
+    if (saved) replaceEntry(saved);
+    return !!saved;
+  };
+  const removeShot = async (id, slot) => {
+    const saved = await attempt(() => api.deleteImage(id, slot));
+    if (saved) replaceEntry(saved);
+    return !!saved;
+  };
+
   const deleteEntry = async (id) => {
     const ok = await confirmToast({ title: "Delete this trade?", text: "It will be removed from your journal.", okLabel: "Delete" });
     if (!ok) return;
@@ -342,7 +363,7 @@ function Journalled({ session, onLogout }) {
 
       {sheetEntry && (
         <CloseSheet key={sheetEntry.id + (sheet.preset || "")} entry={sheetEntry} preset={sheet.preset}
-          onSave={saveEntry} onClose={() => setSheet(null)} />
+          onSave={saveEntry} onClose={() => setSheet(null)} onShotUpload={uploadShot} onShotRemove={removeShot} />
       )}
 
       {ask && (

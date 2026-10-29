@@ -7,9 +7,10 @@ const NOW = new Date("2026-10-28T12:00:00Z").getTime();
 const saved = () => ({
   lot: 0.02, minRR: 2, maxTrades: 4, maxSL: 4, balance: 5000.5, currency: "€",
   killzones: [{ key: "asian", start: "20:00", end: "00:00", on: true, color: "#06b6d4" }],
-  pairs: [{ pair: "XAUUSD", lot: 0.02 }, { pair: "EURUSD", lot: 0.2 }],
+  pairs: [{ pair: "XAUUSD", lot: 0.02, value: 100 }, { pair: "EURUSD", lot: 0.2, value: null }],
   rules: { disabled: [3, 7], custom: [{ id: 1000, title: "News checked", q: "" }], nextId: 1001 },
   news: { leadMin: 120, events: [{ at: NOW + 3600000, title: "NFP" }] },
+  lossLimits: { daily: 20, overall: 1000.5, since: NOW - 86400000 },
 });
 const payload = (st) => buildPayload(st, NOW);
 const fresh = () => stateFromSettings(saved());
@@ -27,7 +28,7 @@ test("it is also clean for settings with nothing set (a brand-new account)", () 
 test("a payload built from saved settings reproduces them", () => {
   const p = payload(fresh());
   const s = saved();
-  for (const k of ["lot", "minRR", "maxTrades", "maxSL", "balance", "currency", "pairs", "rules", "news"]) assert.deepEqual(p[k], s[k], k);
+  for (const k of ["lot", "minRR", "maxTrades", "maxSL", "balance", "currency", "pairs", "rules", "news", "lossLimits"]) assert.deepEqual(p[k], s[k], k);
 });
 
 test("any real edit makes it dirty", () => {
@@ -95,4 +96,34 @@ test("lead time is kept within 1 minute to 24 hours", () => {
   assert.equal(payload({ ...st, v: { ...st.v, newsLead: "0" } }).news.leadMin, 1);
   assert.equal(payload({ ...st, v: { ...st.v, newsLead: "99999" } }).news.leadMin, 1440);
   assert.equal(payload({ ...st, v: { ...st.v, newsLead: "" } }).news.leadMin, 120);
+});
+
+test("loss limits: editing a limit or the start date makes the form dirty", () => {
+  const edit = (patch) => { const st = fresh(); return { ...st, v: { ...st.v, ...patch } }; };
+  assert.equal(dirty(edit({ dailyLimit: "30" })), true);
+  assert.equal(dirty(edit({ overallLimit: "" })), true);
+  assert.equal(dirty(edit({ lossSince: NOW })), true);
+});
+
+test("loss limits: blank, zero or junk switch a limit off (null), never 0", () => {
+  const st = fresh();
+  for (const bad of ["", "0", "-5", "abc"]) {
+    const p = payload({ ...st, v: { ...st.v, dailyLimit: bad, overallLimit: bad } });
+    assert.equal(p.lossLimits.daily, null, bad);
+    assert.equal(p.lossLimits.overall, null, bad);
+  }
+});
+
+test("loss limits: a new account has none, and the start date is kept or cleared", () => {
+  const st = stateFromSettings({ ...saved(), lossLimits: undefined, pairs: [] });
+  assert.deepEqual(payload(st).lossLimits, { daily: null, overall: null, since: null });
+  assert.equal(payload({ ...fresh(), v: { ...fresh().v, lossSince: null } }).lossLimits.since, null);
+});
+
+test("pair value: blank means use the built-in one (null); a new pair carries its value", () => {
+  const st = fresh();
+  assert.equal(payload(st).pairs[1].value, null);
+  const added = withPairDraft(st.pairs, { pair: "us30", lot: "0.1", value: "1" }).at(-1);
+  assert.deepEqual(added, { pair: "US30", lot: "0.1", value: "1" });
+  assert.equal(payload({ ...st, pairs: [{ pair: "US30", lot: "0.1", value: "0" }] }).pairs[0].value, null);
 });

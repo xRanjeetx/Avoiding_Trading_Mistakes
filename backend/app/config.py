@@ -40,3 +40,8 @@ EMAIL_ENABLED = bool(SMTP_HOST)
 REQUIRE_EMAIL_VERIFICATION = os.environ.get("REQUIRE_EMAIL_VERIFICATION", str(EMAIL_ENABLED)).lower() == "true"
 VERIFY_HOURS = int(os.environ.get("VERIFY_HOURS", "48"))
 RESET_MINUTES = int(os.environ.get("RESET_MINUTES", "60"))
+
+# ---------- Trade screenshots ----------
+# Screenshots are kept in the database (table stored_images). The limits keep one account from filling it.
+MAX_IMAGE_BYTES = int(os.environ.get("MAX_IMAGE_BYTES", str(2 * 1024 * 1024)))  # the app shrinks screenshots well below this
+MAX_IMAGES_PER_USER = int(os.environ.get("MAX_IMAGES_PER_USER", "600"))
