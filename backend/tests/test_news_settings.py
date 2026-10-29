@@ -11,7 +11,7 @@ def put(client, h, **news):
 
 def test_new_accounts_have_no_news_and_a_two_hour_lead(client):
     h = signup(client)
-    assert client.get("/api/settings", headers=h).json()["news"] == {"leadMin": 120, "events": []}
+    assert client.get("/api/settings", headers=h).json()["news"] == {"leadMin": 120, "auto": True, "includeMedium": True, "events": []}
 
 
 def test_news_roundtrip_sorted_and_trimmed(client):
@@ -40,4 +40,4 @@ def test_bad_news_is_rejected_and_nothing_is_saved(client):
     assert put(client, h, events=[{"at": "tomorrow"}]).status_code == 422
     assert put(client, h, events=[{"at": NFP, "title": "x" * 61}]).status_code == 422
     assert put(client, h, events=[{"at": NFP + i} for i in range(201)]).status_code == 422
-    assert client.get("/api/settings", headers=h).json()["news"] == {"leadMin": 120, "events": []}
+    assert client.get("/api/settings", headers=h).json()["news"] == {"leadMin": 120, "auto": True, "includeMedium": True, "events": []}

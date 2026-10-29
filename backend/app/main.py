@@ -16,6 +16,7 @@ from .db import Base, SessionLocal, engine, get_db
 from .mailer import send_link_email
 from .models import Entry, User, UserSettings
 from .admin import router as admin_router
+from .news_calendar import router as calendar_router
 from .images import keys_of, router as images_router, user_image_keys
 from .library import delete_progress_for, router as library_router, sync_library
 from .schemas import (
@@ -88,6 +89,7 @@ app.add_middleware(
 app.include_router(admin_router)
 app.include_router(library_router)
 app.include_router(images_router)
+app.include_router(calendar_router)
 
 
 @app.exception_handler(RequestValidationError)

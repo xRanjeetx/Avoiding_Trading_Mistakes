@@ -114,7 +114,7 @@ def test_settings_defaults_and_full_roundtrip(client, auth):
     assert s == {"lot": 0.02, "minRR": 2, "maxTrades": 4, "maxSL": 4, "balance": 0, "currency": "$",
                  "killzones": DEFAULT_KILLZONES, "pairs": [{**p, "value": None} for p in DEFAULT_PAIRS],
                  "rules": {"disabled": [], "custom": [], "nextId": 1000},
-                 "news": {"leadMin": 120, "events": []},
+                 "news": {"leadMin": 120, "auto": True, "includeMedium": True, "events": []},
                  "lossLimits": {"daily": None, "overall": None, "since": None}}
     new = {**s, "lot": 0.1, "minRR": 1.5, "maxTrades": 2, "maxSL": 1, "balance": 5000.5, "currency": "€"}
     assert client.put("/api/settings", json=new, headers=auth).json() == new

@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { toCsv } from "../lib/csv.js";
 import { num } from "../lib/format.js";
-import { NO_NEWS, NO_RULE_EDITS, RULES } from "../lib/rules.js";
+import { NO_RULE_EDITS, RULES } from "../lib/rules.js";
 import { usdjpyPrice, valueBox } from "../lib/risk.js";
-import { buildPayload, pairDraftOk, stateFromSettings, withNewsDraft, withPairDraft, withRuleDraft } from "../lib/settingsForm.js";
+import { buildPayload, pairDraftOk, stateFromSettings, withPairDraft, withRuleDraft } from "../lib/settingsForm.js";
 import { KILLZONE_NAMES, normalizeKillzones, nyClock, nyToLocal } from "../lib/killzones.js";
 import { enable as enableNotifications, permission } from "../lib/reminders.js";
 import { CardHead, Icon } from "./ui.jsx";
@@ -66,7 +66,7 @@ export default function Settings({ active, settings, reminders, onReminders, onS
   useEffect(() => {
     if (active) {
       const st = stateFromSettings(settings);
-      setV(st.v); setPairs(st.pairs); setDraft(st.draft); setRules(st.rules); setRuleDraft(st.ruleDraft); setNews(st.news); setNewsDraft(st.newsDraft);
+      setV(st.v); setPairs(st.pairs); setDraft(st.draft); setRules(st.rules); setRuleDraft(st.ruleDraft);
     }
   }, [active, settings]);
 
@@ -95,24 +95,11 @@ export default function Settings({ active, settings, reminders, onReminders, onS
   const removeRule = (id) => setRules((r) => ({ ...r, custom: r.custom.filter((c) => c.id !== id), disabled: r.disabled.filter((x) => x !== id) }));
   const switchedOff = RULES.filter((r) => !isOn(r.id)).length + rules.custom.filter((r) => !isOn(r.id)).length;
 
-  // High-impact news: add the date and time (your local time). Trading is locked for the lead time before each one.
-  const [news, setNews] = useState(NO_NEWS);
-  const [newsDraft, setNewsDraft] = useState({ when: "", title: "" });
-  const canAddNews = withNewsDraft(news, newsDraft) !== news;
-  function addNews() {
-    if (!canAddNews) return;
-    setNews(withNewsDraft(news, newsDraft));
-    setNewsDraft({ when: "", title: "" });
-  }
-  const removeNews = (i) => setNews((n) => ({ ...n, events: n.events.filter((_, j) => j !== i) }));
-  const newsWhen = (at) => new Date(at).toLocaleString([], { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-  const nowMs = Date.now();
-
   const zones = v.killzones || normalizeKillzones(settings.killzones);
   const editZone = (key, patch) => setV((x) => ({ ...x, killzones: zones.map((z) => (z.key === key ? { ...z, ...patch } : z)) }));
   const now = new Date();
 
-  const save = () => onSave(buildPayload({ v, pairs, draft, rules, ruleDraft, news, newsDraft }, nowMs));
+  const save = () => onSave(buildPayload({ v, pairs, draft, rules, ruleDraft, news: settings.news }));
 
   return (
     <section id="settings" className={`tab ${active ? "active" : ""}`}>
@@ -198,26 +185,6 @@ export default function Settings({ active, settings, reminders, onReminders, onS
           <label className="field"><span>Starting balance</span><input type="number" step="any" inputMode="decimal" placeholder="optional" {...bind("balance")} /></label>
           <label className="field"><span>Currency symbol</span><input maxLength={4} placeholder="$" {...bind("currency")} /></label>
         </div>
-      </div>
-      <div className="card news-card">
-        <CardHead icon="alert" title="High-impact news" />
-        <label className="field"><span>Stop trading before news</span>
-          <input type="number" min="1" max="1440" inputMode="numeric" {...bind("newsLead")} /></label>
-        <ul className="rule-edit">
-          {news.events.map((e, i) => (
-            <li key={`${e.at}-${i}`} className={e.at <= nowMs ? "off" : ""}>
-              <span><b>{e.title || "High-impact news"}</b><small>{newsWhen(e.at)}{e.at <= nowMs ? " · passed" : ""}</small></span>
-              <button type="button" className="btn small danger-outline" aria-label={`Remove news ${e.title || newsWhen(e.at)}`} onClick={() => removeNews(i)}><Icon name="trash" size={16} /></button>
-            </li>
-          ))}
-          {!news.events.length && <li><span><small>No news added yet.</small></span></li>}
-        </ul>
-        <div className="rule-add">
-          <input type="datetime-local" aria-label="News date and time" value={newsDraft.when} onChange={(e) => setNewsDraft((d) => ({ ...d, when: e.target.value }))} />
-          <input placeholder="Name, e.g. NFP or FOMC (optional)" maxLength={60} aria-label="News name" value={newsDraft.title} onChange={(e) => setNewsDraft((d) => ({ ...d, title: e.target.value }))} />
-          <button type="button" className="btn small" disabled={!canAddNews} onClick={addNews}><Icon name="plus" size={16} /> Add news</button>
-        </div>
-        <p className="muted hint">The checklist locks from the set time before each news event until it passes. Press Save settings to keep changes.</p>
       </div>
       <div className="card">
         <CardHead icon="clock" title="Market sessions"><span className="chip">New York time</span></CardHead>

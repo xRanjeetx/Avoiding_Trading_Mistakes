@@ -38,8 +38,9 @@ const RULES = [
 const NO_RULE_EDITS = { disabled: [], custom: [], nextId: 1000 };
 const CUSTOM_LIMIT = 30;
 
-// High-impact news the user added in Settings: { leadMin: minutes before each event to stop trading, events: [{ at (epoch ms), title }] }.
-const NO_NEWS = { leadMin: 120, events: [] };
+// News settings (News tab): { leadMin: minutes before each event to stop trading, events: the user's own [{ at (epoch ms), title }],
+// auto: also use the automatic calendar, includeMedium: warn about its medium-impact events too (they never block) }.
+const NO_NEWS = { leadMin: 120, events: [], auto: true, includeMedium: true };
 
 // Money limits set in Settings: { daily, overall (the most that may be lost; null = off), since (epoch ms the overall count starts; null = all trades) }.
 const NO_LOSS_LIMITS = { daily: null, overall: null, since: null };

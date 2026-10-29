@@ -2,7 +2,7 @@
 
 A pre-trade checklist built from 27 personal trading rules, plus a full trading journal (P&L, R-multiples, equity curve, calendar, profit factor, drawdown, win rate, results by pair, setup and weekday). It shows **OK TO TRADE** only when every rule passes, and locks for the day once the trade or SL limit is reached.
 
-Also: editable rules (switch any off, add your own), a lock before high-impact news you add, an emotion tag on every trade, CSV export and import, and a **Learning** tab with a fixed set of PDF books (strategy, psychology, analysis) that everyone reads in the app, with each user's page remembered on every device.
+Also: editable rules (switch any off, add your own), a **News** tab that locks trading before high-impact news (pulled automatically from a free calendar, plus any you add), an emotion tag on every trade, CSV export and import, and a **Learning** tab with a fixed set of PDF books (strategy, psychology, analysis) that everyone reads in the app, with each user's page remembered on every device.
 
 **Stack:** React (Vite) · FastAPI · PostgreSQL. Each user has a login, and the journal is stored in the database, so it follows you across devices.
 
@@ -99,8 +99,11 @@ Optional: ping `<api-url>/api/health` every 10 minutes with a free monitor such 
 | `SMTP_FROM` | `SMTP_USER` | The From address on emails |
 | `REQUIRE_EMAIL_VERIFICATION` | `true` when `SMTP_HOST` is set | New accounts must click the emailed link before logging in. Accounts created earlier count as verified |
 | `LIBRARY_DIR` | `backend/library` | Folder of PDFs loaded into the Learning tab at startup, shown to every user (read-only). See `backend/library/README.md` |
+| `CALENDAR_ENABLED` | `true` | Set `false` to stop downloading the news calendar (only the news users add by hand then lock trading) |
 | `VERIFY_HOURS` / `RESET_MINUTES` | `48` / `60` | How long the verification and reset links last |
 | `MAX_IMAGE_BYTES` / `MAX_IMAGES_PER_USER` | 2 MB / `600` | Limits per screenshot and per account. The app shrinks screenshots to about 150-300 KB first |
+
+News (News tab): the server downloads the free ForexFactory-style weekly calendar (`nfs.faireconomy.media`) and keeps the high-impact events (medium ones optionally) in the `calendar_events` table. One download serves every user, and it is repeated at most once an hour (the feed is unofficial and allows only a few downloads per IP), on the first request after the data gets old, so it also works on hosts that sleep. Calendar news covers three pairs only and is pair-specific: trading XAUUSD is affected by USD news, EURUSD by EUR and USD news, USDJPY by USD and JPY news. **High-impact** news blocks the pair for the lead time before it, **medium-impact** news only shows a warning (it can be switched off), and the user's own events block every pair. If the calendar cannot be loaded or is over a day old, the rule still passes but says "Auto calendar unavailable: only the news you added is checked", and the last good events are kept. `CALENDAR_ENABLED=false` switches it off, and `CALENDAR_URLS`, `CALENDAR_REFRESH_MIN` and `CALENDAR_RETRY_MIN` tune it.
 
 Loss limits (Settings > Loss limits): set a **daily** and an **overall** max loss in money. Before each trade the checklist works out the money its stop loss risks (`|entry - SL| x lot x value`) and fails the "Within Loss Limits" rule if that is more than what is left. What is left is `limit + net P&L - risk of trades still open`, so a profit gives room back (daily limit 20 and +30 today leaves 50). "Value" is what 1 lot gains or loses per 1.00 price move: XAUUSD (100), EURUSD (100000) and USDJPY (100000 / price) are built in, and any other pair needs its value typed in Settings > Pairs. The overall count can be restarted with "Start from now" for a new challenge or account.
 

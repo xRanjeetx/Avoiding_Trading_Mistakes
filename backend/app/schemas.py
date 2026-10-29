@@ -150,6 +150,8 @@ class NewsEvent(CamelModel):
 
 class NewsConfig(CamelModel):
     lead_min: int = Field(120, ge=1, le=1440)  # stop trading this many minutes before each event
+    auto: bool = True  # also use the automatic news calendar (see calendar.py)
+    include_medium: bool = True  # warn about the calendar's medium-impact events too (they never block)
     events: list[NewsEvent] = Field(default_factory=list, max_length=200)
 
     @field_validator("events")

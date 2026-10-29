@@ -12,6 +12,7 @@ import Learning from "./components/Learning.jsx";
 import Admin from "./components/Admin.jsx";
 import SessionStrip from "./components/SessionStrip.jsx";
 import CloseSheet from "./components/CloseSheet.jsx";
+import News from "./components/News.jsx";
 import { compressImage } from "./lib/image.js";
 import { dueReminders, loadPrefs, markSent, notify, savePrefs, wasSent } from "./lib/reminders.js";
 
@@ -24,17 +25,19 @@ const ICONS = {
   today: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></>,
   log: <path d="M4 6h16M4 12h16M4 18h10" />,
   stats: <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />,
+  news: <><rect x="3" y="5" width="18" height="16" rx="3" /><path d="M3 10h18M8 3v4M16 3v4" /></>,
   learn: <><path d="M5 4h13a1 1 0 0 1 1 1v14H6a1 1 0 0 0-1 1z" /><path d="M5 4v16M9 8h6" /></>,
   admin: <><path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6z" /><path d="M9 12l2 2 4-4" /></>,
   settings: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></>,
 };
-const TABS = [["checklist", "Check"], ["today", "Today"], ["log", "Journal"], ["stats", "Stats"], ["learn", "Learning"], ["settings", "Settings"]];
+const TABS = [["checklist", "Check"], ["today", "Today"], ["log", "Journal"], ["stats", "Stats"], ["news", "News"], ["learn", "Learning"], ["settings", "Settings"]];
 const ADMIN_TAB = ["admin", "Admin"];
 const PAGE = {
   checklist: ["Pre-trade checklist", "Pass every rule before you enter"],
   today: ["Today", "Your trades and daily limits"],
   log: ["Journal", "Every trade you have logged"],
   stats: ["Statistics", "How your trading is performing"],
+  news: ["News", "High-impact events that lock trading"],
   learn: ["Learning", "Your strategy and trading books"],
   settings: ["Settings", "Limits, sessions and account"],
   admin: ["Admin", "Users and account management"],
@@ -78,6 +81,7 @@ export default function App() {
 function Journalled({ session, onLogout }) {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [entries, setEntries] = useState([]);
+  const [calendar, setCalendar] = useState(null); // the automatic news calendar, null until it has loaded
   const [status, setStatus] = useState("loading"); // loading | ready | error
   const [loadError, setLoadError] = useState("");
   const [tabState, setTab] = useState("checklist");
@@ -133,6 +137,21 @@ function Journalled({ session, onLogout }) {
     }
   }, [onLogout]);
   useEffect(() => { load(); }, [load]);
+
+  // The automatic news calendar. A failed request keeps what was loaded before (the server also keeps its last good copy).
+  const loadCalendar = useCallback(async () => {
+    try {
+      setCalendar(await api.getCalendar());
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) onLogout();
+    }
+  }, [onLogout]);
+  useEffect(() => {
+    if (status !== "ready") return undefined;
+    loadCalendar();
+    const id = setInterval(loadCalendar, 30 * 60000);
+    return () => clearInterval(id);
+  }, [status, loadCalendar]);
 
   // Time-based rules (sessions, the loss cooldown) re-check every 10s.
   useEffect(() => {
@@ -219,6 +238,13 @@ function Journalled({ session, onLogout }) {
     if (!ok) return;
     const done = await attempt(async () => { await api.deleteEntry(id); return true; });
     if (done) setEntries((list) => list.filter((e) => e.id !== id));
+  };
+
+  // The News tab saves its settings on every change.
+  const saveNews = async (news) => {
+    const saved = await attempt(() => api.putSettings({ ...settings, news }));
+    if (saved) setSettings({ ...DEFAULT_SETTINGS, ...saved });
+    return !!saved;
   };
 
   const saveSettings = async (next) => {
@@ -324,11 +350,12 @@ function Journalled({ session, onLogout }) {
 
       <main>
         {tab === "checklist" && <SessionStrip settings={settings} now={now} />}
-        <Checklist active={tab === "checklist"} entries={entries} settings={settings} now={now} onLog={logTrade} onProgress={setProgress} />
+        <Checklist active={tab === "checklist"} entries={entries} settings={settings} calendar={calendar} now={now} onLog={logTrade} onProgress={setProgress} />
         <Today active={tab === "today"} entries={entries} settings={settings} onQuick={(id, preset) => setSheet({ id, preset })} />
         <Journal active={tab === "log"} entries={entries} settings={settings} onEdit={(id) => setSheet({ id, preset: null })}
           onDelete={deleteEntry} />
         <Stats active={tab === "stats"} entries={entries} settings={settings} />
+        <News active={tab === "news"} settings={settings} calendar={calendar} now={now} onSave={saveNews} onRefresh={loadCalendar} />
         <Learning active={tab === "learn"} onExpired={onLogout} />
         <Settings active={tab === "settings"} settings={settings} reminders={reminders} onReminders={changeReminders} onSave={saveSettings} onClearAll={clearAll}
           entries={entries} onImport={importCsv} onDeleteAccount={deleteAccount} isAdmin={session.isAdmin} />

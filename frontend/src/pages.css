@@ -130,7 +130,7 @@ input:focus, textarea:focus { box-shadow: 0 0 0 4px var(--ring); }
 @media (min-width: 640px) { .stats-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* ----- Cards share the stat-tile look: accent strip, corner glow, hover highlight ----- */
-.tab .card { --acc: var(--primary); --acc-rgb: var(--p-rgb); position: relative; overflow: hidden; isolation: isolate; transition: box-shadow 0.2s, border-color 0.2s; }
+.tab .card { --acc: var(--primary); --acc-rgb: var(--p-rgb); position: relative; overflow: hidden; overflow: clip; isolation: isolate; transition: box-shadow 0.2s, border-color 0.2s; }
 .tab .card::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: linear-gradient(90deg, var(--acc), transparent 85%); opacity: 0.85; z-index: -1; }
 .tab .card::after { content: ""; position: absolute; top: -50px; right: -50px; width: 150px; height: 150px; border-radius: 50%; background: radial-gradient(closest-side, rgba(var(--acc-rgb), 0.14), transparent); pointer-events: none; z-index: -1; }
 .tab .card:hover { border-color: rgba(var(--acc-rgb), 0.35); box-shadow: 0 16px 32px -20px rgba(var(--acc-rgb), 0.5); }
@@ -573,3 +573,17 @@ form.del-account { margin-top: 14px; padding-top: 14px; border-top: 1px solid va
 .loss-grid.one { grid-template-columns: minmax(0, 1fr); }
 @media (max-width: 520px) { .loss-grid { grid-template-columns: minmax(0, 1fr); } }
 .loss-grid .stat span .of { color: var(--primary); }
+
+/* ----- News tab ----- */
+.news-lead { align-items: flex-end; gap: 10px; }
+.news-lead .field { flex: 1; min-width: 160px; margin: 0; }
+.news-status { margin: 10px 0 0; }
+.news-list li { align-items: flex-start; }
+.news-list li.news-locked { background: rgba(244, 63, 94, 0.07); border-radius: 10px; padding-left: 8px; padding-right: 8px; }
+.news-list .chip .ic { margin-right: 3px; }
+
+.news-list li > span:first-child { flex: 1; min-width: 0; }
+.news-list li > .row { display: flex; flex: none; flex-wrap: nowrap; gap: 6px; align-items: center; }
+.news-list .chip { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+
+.banner.lock.warn { background: linear-gradient(135deg, #d97706, #92400e); }

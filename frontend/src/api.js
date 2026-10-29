@@ -70,6 +70,8 @@ export const api = {
   getSettings: () => request("GET", "/settings"),
   putSettings: (s) => request("PUT", "/settings", s),
   listEntries: () => request("GET", "/entries"),
+  // The automatic news calendar: { enabled, updatedAt, events: [{ at, currency, title, impact }] }
+  getCalendar: () => request("GET", "/calendar"),
   createEntry: (e) => request("POST", "/entries", e),
   updateEntry: (e) => request("PUT", `/entries/${encodeURIComponent(e.id)}`, e),
   deleteEntry: (id) => request("DELETE", `/entries/${encodeURIComponent(id)}`),
