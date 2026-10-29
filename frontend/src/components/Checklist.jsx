@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { activeRules, isRuleOn } from "../lib/rules.js";
-import { cooldownFor, evaluate, lotFor, newsLock, ruleTitle, todayCounts } from "../lib/evaluate.js";
+import { cooldownFor, evaluate, lotFor, newsLock, newsWarning, ruleTitle, todayCounts } from "../lib/evaluate.js";
 import { fmtDuration } from "../lib/killzones.js";
 import { num } from "../lib/format.js";
 import EmotionPicker from "./EmotionPicker.jsx";
@@ -15,7 +15,7 @@ function Status({ pass }) {
     : <span className="st wait"><Icon name="clock" size={16} /></span>;
 }
 
-export default function Checklist({ active, entries, settings, now, onLog, onProgress }) {
+export default function Checklist({ active, entries, settings, calendar, now, onLog, onProgress }) {
   // Only the rules switched on in Settings are checked; the user's own rules come after the built-in ones.
   const rules = activeRules(settings);
   const AUTO = rules.filter((r) => r.type === "auto");
@@ -31,7 +31,7 @@ export default function Checklist({ active, entries, settings, now, onLog, onPro
     pair: form.pair.trim().toUpperCase(), dir: form.dir, setup: form.setup,
     lot: num(form.lot), entry: num(form.entry), sl: num(form.sl), tp: num(form.tp),
   };
-  const ev = evaluate({ f, answers: form.answers, entries, settings, now });
+  const ev = evaluate({ f, answers: form.answers, entries, settings, now, calendar });
 
   const passed = rules.length - ev.failed.length - ev.pending.length;
   const state = ev.failed.length ? "no" : ev.ok ? "ok" : "pending";
@@ -43,7 +43,8 @@ export default function Checklist({ active, entries, settings, now, onLog, onPro
   const selfFail = SELF.some((r) => ev.res[r.id].pass === false);
 
   const cooling = isRuleOn(settings, 30) ? cooldownFor(entries, f.pair, now) : null;
-  const newsHold = isRuleOn(settings, 32) ? newsLock(settings, now) : null;
+  const newsHold = isRuleOn(settings, 32) ? newsLock(settings, now, calendar, f.pair) : null;
+  const newsHeads = isRuleOn(settings, 32) && !newsHold ? newsWarning(settings, now, calendar, f.pair) : null;
   const c = todayCounts(entries);
   const lockMsg = isRuleOn(settings, 19) && c.sl >= settings.maxSL
     ? `${c.sl} SL hit today. Trading is done for today. Close the charts.`
@@ -80,6 +81,7 @@ export default function Checklist({ active, entries, settings, now, onLog, onPro
     <section id="checklist" className={`tab ${active ? "active" : ""}`}>
       {lockMsg && <div className="banner lock"><Icon name="lock" size={20} />{lockMsg}</div>}
       {newsHold && <div className="banner lock"><Icon name="lock" size={20} />{newsHold.event.title || "High-impact news"} in {fmtDuration(newsHold.inMin)}. Trading is locked until it passes.</div>}
+      {newsHeads && <div className="banner lock warn"><Icon name="alert" size={20} />{newsHeads.event.title || "Medium-impact news"} in {fmtDuration(newsHeads.inMin)} (medium impact). Trade with care.</div>}
       {cooling && <div className="banner lock"><Icon name="lock" size={20} />{f.pair} lost a trade. Locked for {cooling.leftMin} more min. Breathe, or look at another pair.</div>}
 
       <div className={`ready ${state}`}>

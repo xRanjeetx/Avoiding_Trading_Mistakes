@@ -46,6 +46,8 @@ class UserSettings(Base):
     # High-impact news the user added: { "lead_min": minutes before the news to stop trading, "events": [{ at, title }] }.
     # NULL means no news added and the default lead time.
     news: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    # Money limits { daily, overall, since }: the most the user may lose in a day / in total (see lib/risk.js). NULL means none set.
+    loss_limits: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
 
 class Entry(Base):
@@ -76,6 +78,33 @@ class Entry(Base):
     # How the trader felt before taking the trade and after closing it (keys such as "calm", "fomo"; the UI owns the list).
     emotion: Mapped[str | None] = mapped_column(String(20), nullable=True)
     emotion_after: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # Trade screenshots: { "before": storage key, "after": storage key } (see images.py). NULL means none.
+    images: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+
+class StoredImage(Base):
+    """A trade screenshot kept in the database (see storage.DatabaseStorage). Entry.images points at it by key."""
+
+    __tablename__ = "stored_images"
+
+    key: Mapped[str] = mapped_column(String(80), primary_key=True)
+    content_type: Mapped[str] = mapped_column(String(30))
+    data: Mapped[bytes] = mapped_column(LargeBinary)
+
+
+class CalendarEvent(Base):
+    """A high or medium impact news release from the public calendar feed (see calendar.py). Shared by all users."""
+
+    __tablename__ = "calendar_events"
+
+    id: Mapped[str] = mapped_column(String(24), primary_key=True)  # hash of time, currency and title
+    at: Mapped[int] = mapped_column(BigInteger, index=True)  # epoch milliseconds
+    currency: Mapped[str] = mapped_column(String(8))
+    title: Mapped[str] = mapped_column(String(200))
+    impact: Mapped[str] = mapped_column(String(10))  # "high" or "medium"
+    forecast: Mapped[str] = mapped_column(String(30), default="")
+    previous: Mapped[str] = mapped_column(String(30), default="")
+    seen_at: Mapped[int] = mapped_column(BigInteger)  # when a download last contained this event
 
 
 class LibraryBook(Base):

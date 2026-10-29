@@ -16,10 +16,13 @@ from .db import Base, SessionLocal, engine, get_db
 from .mailer import send_link_email
 from .models import Entry, User, UserSettings
 from .admin import router as admin_router
+from .news_calendar import router as calendar_router
+from .images import keys_of, router as images_router, user_image_keys
 from .library import delete_progress_for, router as library_router, sync_library
 from .schemas import (
     Credentials, DeleteAccountIn, EmailOnly, EntryIn, EntryOut, MeOut, RegisterOut, ResetIn, SettingsOut, Token, TokenIn,
 )
+from .storage import delete_quietly
 from .security import (
     current_user, hash_password, make_purpose_token, make_token, user_from_purpose_token, verify_password,
 )
@@ -28,7 +31,7 @@ from .security import (
 def ensure_columns(eng) -> None:
     """create_all only creates missing tables, so add columns introduced after a table already exists."""
     have = {c["name"] for c in inspect(eng).get_columns("user_settings")}
-    for col in ("killzones", "pairs", "rules", "news"):
+    for col in ("killzones", "pairs", "rules", "news", "loss_limits"):
         if col not in have:
             with eng.begin() as conn:
                 conn.execute(text(f"ALTER TABLE user_settings ADD COLUMN {col} JSON"))
@@ -37,6 +40,9 @@ def ensure_columns(eng) -> None:
         if entry_cols is not None and col not in entry_cols:
             with eng.begin() as conn:
                 conn.execute(text(f"ALTER TABLE entries ADD COLUMN {col} VARCHAR(20)"))
+    if entry_cols is not None and "images" not in entry_cols:
+        with eng.begin() as conn:
+            conn.execute(text("ALTER TABLE entries ADD COLUMN images JSON"))
     # An older build created these as INTEGER. The app stores a key such as "calm", which Postgres rejects, so every
     # new entry failed. Convert them to text (existing numbers just become their text form).
     if eng.dialect.name == "postgresql" and inspect(eng).has_table("entries"):
@@ -82,6 +88,8 @@ app.add_middleware(
 
 app.include_router(admin_router)
 app.include_router(library_router)
+app.include_router(images_router)
+app.include_router(calendar_router)
 
 
 @app.exception_handler(RequestValidationError)
@@ -170,11 +178,13 @@ def delete_account(body: DeleteAccountIn, user: User = Depends(current_user), db
     if not verify_password(body.password, user.password_hash):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Wrong password")
     # Explicit deletes: SQLite (dev/tests) does not enforce ON DELETE CASCADE by default.
+    images = user_image_keys(db, user.id)
     db.execute(delete(Entry).where(Entry.user_id == user.id))
     db.execute(delete(UserSettings).where(UserSettings.user_id == user.id))
     delete_progress_for(db, user.id)
     db.delete(user)
     db.commit()
+    delete_quietly(images)
 
 
 @app.post("/api/auth/verify-email", response_model=Token)
@@ -294,12 +304,17 @@ def update_entry(entry_id: str, body: EntryIn, user: User = Depends(current_user
 
 @app.delete("/api/entries/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_entry(entry_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    db.delete(_get_entry(db, user, entry_id))
+    row = _get_entry(db, user, entry_id)
+    images = keys_of([row])
+    db.delete(row)
     db.commit()
+    delete_quietly(images)
 
 
 @app.delete("/api/entries", status_code=status.HTTP_204_NO_CONTENT)
 def delete_all_entries(user: User = Depends(current_user), db: Session = Depends(get_db)):
+    images = user_image_keys(db, user.id)
     db.execute(delete(Entry).where(Entry.user_id == user.id))
     db.commit()
+    delete_quietly(images)
 

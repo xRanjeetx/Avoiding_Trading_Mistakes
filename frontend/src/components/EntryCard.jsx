@@ -3,6 +3,7 @@ import { closeTime, outcome, tradeR } from "../lib/stats.js";
 import { dateTimeOf, fmtMoney, fmtR, signClass, timeOf } from "../lib/format.js";
 import { ruleTitle } from "../lib/evaluate.js";
 import { emotionOf } from "../lib/emotions.js";
+import { ShotThumbs } from "./Shots.jsx";
 import { Icon } from "./ui.jsx";
 
 const RESULT_LABEL = { tp: "TP", sl: "SL", be: "BE", ctc: "CTC", manual: "EARLY", open: "OPEN" };
@@ -35,6 +36,7 @@ export default function EntryCard({ e, mode, settings, open, onToggle, onQuick, 
           {e.dir && <span className={`tag ${e.dir}`}>{e.dir.toUpperCase()}</span>}
           <span className={`tag ${TAG_BY_OUTCOME[out]}`}>{out === "skipped" ? "SKIPPED" : RESULT_LABEL[e.result] || e.result.toUpperCase()}</span>
           {e.setup && SETUPS[e.setup] && <span className="tag setup">{SETUPS[e.setup]}</span>}
+          {Object.keys(e.images || {}).length > 0 && <span className="tag emo-tag" title="Has screenshots"><Icon name="image" size={14} /></span>}
           {(before || after) && (
             <span className="tag emo-tag" title={[before && `Before: ${before.label}`, after && `After: ${after.label}`].filter(Boolean).join(" · ")}>
               {before?.emoji}{before && after && " → "}{after?.emoji}
@@ -87,6 +89,7 @@ export default function EntryCard({ e, mode, settings, open, onToggle, onQuick, 
       {head}
       <div className="more">
         <div className="kv">{kv.map(([k, v]) => <div key={k}><small>{k}</small><b>{v}</b></div>)}</div>
+        <ShotThumbs entry={e} />
         {e.notes && <div className="note"><small>Why I took it</small>{e.notes}</div>}
         {e.lesson && <div className="note"><small>Lesson</small>{e.lesson}</div>}
         {e.failedRules?.length > 0 && (

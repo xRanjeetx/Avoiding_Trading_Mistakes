@@ -21,6 +21,7 @@ const RULES = [
   { id: 17, title: "If Rejection, Then Wait",            type: "self", q: "If there was a rejection, did I wait for it to resolve?" },
   { id: 18, title: "5m Healthy Candle, Then Entry",      type: "self", q: "Did a healthy 5m candle close before my entry?" },
   { id: 19, title: "After Max SL, Stop Trading",         type: "auto" },
+  { id: 33, title: "Within Loss Limits",                 type: "auto" },
   { id: 20, title: "Emotions in Control (No Anger)",     type: "self", q: "Am I emotionally neutral right now (no anger, fear or excitement)?" },
   { id: 21, title: "Discipline",                         type: "self", q: "Am I following my plan and rules exactly, with no exceptions?" },
   { id: 22, title: "CTC After 1:1.5 RR",                 type: "self", q: "Will I move my SL to cost once price reaches 1:1.5 RR?" },
@@ -37,8 +38,12 @@ const RULES = [
 const NO_RULE_EDITS = { disabled: [], custom: [], nextId: 1000 };
 const CUSTOM_LIMIT = 30;
 
-// High-impact news the user added in Settings: { leadMin: minutes before each event to stop trading, events: [{ at (epoch ms), title }] }.
-const NO_NEWS = { leadMin: 120, events: [] };
+// News settings (News tab): { leadMin: minutes before each event to stop trading, events: the user's own [{ at (epoch ms), title }],
+// auto: also use the automatic calendar, includeMedium: warn about its medium-impact events too (they never block) }.
+const NO_NEWS = { leadMin: 120, events: [], auto: true, includeMedium: true };
+
+// Money limits set in Settings: { daily, overall (the most that may be lost; null = off), since (epoch ms the overall count starts; null = all trades) }.
+const NO_LOSS_LIMITS = { daily: null, overall: null, since: null };
 
 const customRules = (settings) =>
   (settings?.rules?.custom || []).map((r) => ({ id: r.id, title: r.title, type: "self", q: r.q || "", custom: true }));
@@ -54,4 +59,4 @@ const SETUPS = { fvg: "5m FVG", wick: "5m Wick FVG" };
 // After a losing trade on a pair, that pair is locked for this many minutes (other pairs stay open).
 const COOLDOWN_MIN = 10;
 
-export { RULES, SETUPS, COOLDOWN_MIN, CUSTOM_LIMIT, NO_NEWS, NO_RULE_EDITS, activeRules, allRules, isRuleOn };
+export { RULES, SETUPS, COOLDOWN_MIN, CUSTOM_LIMIT, NO_LOSS_LIMITS, NO_NEWS, NO_RULE_EDITS, activeRules, allRules, isRuleOn };

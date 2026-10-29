@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { isAtCost, num } from "../lib/format.js";
 import EmotionPicker from "./EmotionPicker.jsx";
+import { ShotPicker } from "./Shots.jsx";
 import { Icon } from "./ui.jsx";
 
 const RESULTS = [["tp", "TP hit"], ["sl", "SL hit"], ["be", "Break-even"], ["manual", "Closed early"], ["ctc", "CTC (cost after 1:1.5)"]];
 
 // Mount with a `key` per entry so the form state starts fresh each time it opens.
-export default function CloseSheet({ entry, preset, onSave, onClose }) {
+export default function CloseSheet({ entry, preset, onSave, onClose, onShotUpload, onShotRemove }) {
   const [result, setResult] = useState(preset || (entry.result === "open" ? null : entry.result));
   const [sign, setSign] = useState(entry.pnl != null && entry.pnl < 0 ? "loss" : "win");
   const [amount, setAmount] = useState(entry.pnl != null && !isAtCost(entry.result) ? String(Math.abs(entry.pnl)) : "");
@@ -89,6 +90,7 @@ export default function CloseSheet({ entry, preset, onSave, onClose }) {
           <div className="field"><span>How I feel now</span>
             <EmotionPicker stage="after" value={emotionAfter} onChange={setEmotionAfter} /></div>
         )}
+        <ShotPicker entry={entry} onUpload={onShotUpload} onRemove={onShotRemove} />
         <label className="field"><span>Why I took it</span>
           <textarea rows="2" placeholder="Setup and confirmation…" value={notes} onChange={(e) => setNotes(e.target.value)} /></label>
         <label className="field"><span>Lesson / review</span>

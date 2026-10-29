@@ -1,5 +1,7 @@
-import { COOLDOWN_MIN, NO_NEWS, SETUPS, activeRules, allRules } from "./rules.js";
-import { isToday } from "./format.js";
+import { COOLDOWN_MIN, SETUPS, activeRules, allRules } from "./rules.js";
+import { fmtMoney, isToday } from "./format.js";
+import { NEWS_PAIRS, blocks, calendarState, eventsForPair, newsOf } from "./news.js";
+import { limitsOf, lossStatus, tradeRisk } from "./risk.js";
 import { closeTime } from "./stats.js";
 import { KILLZONE_NAMES, activeZones, fmtDuration, marketStatus, minutesLeft, nextZone, normalizeKillzones } from "./killzones.js";
 
@@ -32,25 +34,53 @@ export function cooldownFor(entries, pair, now = new Date()) {
   return lostAt && until > nowMs ? { lostAt, until, leftMin: Math.ceil((until - nowMs) / 60000) } : null;
 }
 
-// The high-impact news that currently blocks trading, or null. Trading stops `leadMin` minutes before an event and the
-// lock ends when the event time passes. Returns { event, inMin } for the soonest such event (inMin rounds up).
-export function newsLock(settings, now = new Date()) {
-  const { leadMin, events } = { ...NO_NEWS, ...settings?.news };
+// The news that currently blocks trading `pair`, or null. Trading stops `leadMin` minutes before a high-impact event (or one of
+// the user's own) and the lock ends when the event time passes. Returns { event, inMin } for the soonest such event
+// (inMin rounds up). `calendar` is the automatic calendar (see lib/news.js); without it only the user's own events count.
+export function newsLock(settings, now = new Date(), calendar = null, pair = "") {
+  return inLeadWindow(settings, now, calendar, pair, (e) => blocks(e));
+}
+
+// A medium-impact event for `pair` that is inside the lead time: only a warning, it never blocks. Same shape as newsLock.
+export function newsWarning(settings, now = new Date(), calendar = null, pair = "") {
+  return inLeadWindow(settings, now, calendar, pair, (e) => !blocks(e));
+}
+
+function inLeadWindow(settings, now, calendar, pair, want) {
+  const { leadMin } = newsOf(settings);
   const t = now.getTime();
-  const hit = events
-    .filter((e) => e.at > t && e.at - leadMin * 60000 <= t)
-    .sort((a, b) => a.at - b.at)[0];
+  const hit = eventsForPair(settings, calendar, now, pair).find((e) => want(e) && e.at > t && e.at - leadMin * 60000 <= t);
   return hit ? { event: hit, inMin: Math.ceil((hit.at - t) / 60000) } : null;
 }
 
-// The soonest news that has not happened yet, or null.
-export function nextNews(settings, now = new Date()) {
+// The soonest news for `pair` that has not happened yet, or null.
+export function nextNews(settings, now = new Date(), calendar = null, pair = "") {
   const t = now.getTime();
-  return (settings?.news?.events || []).filter((e) => e.at > t).sort((a, b) => a.at - b.at)[0] || null;
+  return eventsForPair(settings, calendar, now, pair).find((e) => e.at > t) || null;
 }
 
 const newsName = (e) => (e.title ? e.title : "High-impact news");
 const newsTime = (at) => new Date(at).toLocaleString([], { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+
+function lossLimitResult(f, entries, settings, now) {
+  const lim = limitsOf(settings);
+  if (lim.daily == null && lim.overall == null) return { pass: true, detail: "No loss limits set in Settings" };
+  const money = (v) => fmtMoney(v, settings.currency || "$", false);
+  const st = lossStatus(entries, settings, now);
+  const parts = [["Daily", st.daily], ["Overall", st.overall]].filter(([, p]) => p);
+
+  // A limit that is already used up blocks every trade, whatever its size.
+  const spent = parts.filter(([, p]) => p.remaining <= 0);
+  if (spent.length) return { pass: false, detail: spent.map(([n, p]) => `${n} loss limit reached (${money(p.limit)}). No more trades`).join(". ") };
+
+  if (f.entry == null || f.sl == null || f.lot == null) return { pass: null, detail: "Enter entry, SL and lot to check your loss limits" };
+  const risk = tradeRisk(f, settings);
+  if (risk == null) return { pass: false, detail: `Set the value for ${f.pair || "this pair"} in Settings > Pairs to check your loss limits` };
+
+  const over = parts.filter(([, p]) => risk > p.remaining + 1e-9);
+  if (over.length) return { pass: false, detail: over.map(([n, p]) => `${n}: this trade risks ${money(risk)} but only ${money(p.remaining)} is left`).join(". ") };
+  return { pass: true, detail: `Risk ${money(risk)} · ${parts.map(([n, p]) => `${n.toLowerCase()} left ${money(p.remaining)}`).join(" · ")}` };
+}
 
 export function todayCounts(entries) {
   const today = entries.filter((e) => isToday(e.timestamp));
@@ -62,7 +92,7 @@ export function todayCounts(entries) {
 
 // f: { pair, dir, setup, lot, entry, sl, tp } (numbers or null). answers: { [ruleId]: boolean }.
 // Each result: { pass: true | false | null (not filled yet), detail }
-export function evaluate({ f, answers, entries, settings, now = new Date() }) {
+export function evaluate({ f, answers, entries, settings, now = new Date(), calendar = null }) {
   const c = todayCounts(entries);
   const res = {};
   let rr = null;
@@ -105,16 +135,24 @@ export function evaluate({ f, answers, entries, settings, now = new Date() }) {
     };
   }
 
-  // 32: no trading in the hours before high-impact news (the events and lead time are set in Settings)
-  const lock = newsLock(settings, now);
-  const upcoming = nextNews(settings, now);
-  const lead = settings?.news?.leadMin ?? NO_NEWS.leadMin;
+  // 32: no trading in the hours before high-impact news (set in the News tab). Only news that affects this pair counts, and
+  // medium-impact news is a warning that never fails the rule.
+  const lock = newsLock(settings, now, calendar, f.pair);
+  const heads = newsWarning(settings, now, calendar, f.pair);
+  const upcoming = nextNews(settings, now, calendar, f.pair);
+  const lead = newsOf(settings).leadMin;
+  // When the automatic calendar cannot be used, or the pair is not one it covers, the rule says that only the user's own news was checked.
+  const state = calendarState(settings, calendar, now);
+  const warn = state === "unavailable" ? ". Auto calendar unavailable: only the news you added is checked"
+    : state === "ok" && f.pair && !NEWS_PAIRS.includes(f.pair) ? `. Calendar news covers ${NEWS_PAIRS.join(", ")} only` : "";
   if (lock) {
     res[32] = { pass: false, detail: `${newsName(lock.event)} at ${newsTime(lock.event.at)}, in ${fmtDuration(lock.inMin)}. No trading in the last ${fmtDuration(lead)} before news` };
+  } else if (heads) {
+    res[32] = { pass: true, detail: `Heads up: ${newsName(heads.event)} at ${newsTime(heads.event.at)}, in ${fmtDuration(heads.inMin)} (medium impact, not blocking)${warn}` };
   } else if (upcoming) {
-    res[32] = { pass: true, detail: `Next news: ${newsName(upcoming)}, ${newsTime(upcoming.at)}` };
+    res[32] = { pass: true, detail: `Next news: ${newsName(upcoming)}, ${newsTime(upcoming.at)}${warn}` };
   } else {
-    res[32] = { pass: true, detail: "No high-impact news added in Settings" };
+    res[32] = { pass: true, detail: `No high-impact news ahead${warn}` };
   }
 
   // 8: same direction already open
@@ -145,6 +183,9 @@ export function evaluate({ f, answers, entries, settings, now = new Date() }) {
 
   // 19: SL per day
   res[19] = { pass: c.sl < settings.maxSL, detail: `${c.sl}/${settings.maxSL} SL hit today` };
+
+  // 33: loss limits. The trade's risk (entry to SL in money) must fit in what is left of the daily and overall limits.
+  res[33] = lossLimitResult(f, entries, settings, now);
 
   // Self rules (built-in and the user's own)
   for (const r of allRules(settings).filter((r) => r.type === "self")) {

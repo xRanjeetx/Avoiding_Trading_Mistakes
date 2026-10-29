@@ -70,11 +70,27 @@ export const api = {
   getSettings: () => request("GET", "/settings"),
   putSettings: (s) => request("PUT", "/settings", s),
   listEntries: () => request("GET", "/entries"),
+  // The automatic news calendar: { enabled, updatedAt, events: [{ at, currency, title, impact }] }
+  getCalendar: () => request("GET", "/calendar"),
   createEntry: (e) => request("POST", "/entries", e),
   updateEntry: (e) => request("PUT", `/entries/${encodeURIComponent(e.id)}`, e),
   deleteEntry: (id) => request("DELETE", `/entries/${encodeURIComponent(id)}`),
   importEntries: (list) => request("POST", "/entries/import", list),
   deleteAllEntries: () => request("DELETE", "/entries"),
+  // Trade screenshots ("before" / "after"). The upload is the raw image, already shrunk by lib/image.js.
+  async putImage(id, slot, blob) {
+    const res = await send("PUT", `/entries/${encodeURIComponent(id)}/images/${slot}`, { body: blob, headers: { "Content-Type": blob.type } });
+    if (!res.ok) throw await failure(res);
+    return res.json();
+  },
+  deleteImage: (id, slot) => request("DELETE", `/entries/${encodeURIComponent(id)}/images/${slot}`),
+  // The picture itself, fetched with the login token (an <img> could not send it). `token` is the server's version of
+  // the image: it goes in the URL so a replaced picture is never answered from the browser's cache of the old one.
+  async imageBlob(id, slot, token) {
+    const res = await send("GET", `/entries/${encodeURIComponent(id)}/images/${slot}?v=${encodeURIComponent(token)}`);
+    if (!res.ok) throw await failure(res);
+    return res.blob();
+  },
   // The shared Learning library: read-only books, plus this user's own place in each.
   listLibrary: () => request("GET", "/library"),
   saveProgress: (id, p) => request("PUT", `/library/${id}/progress`, p),

@@ -130,7 +130,7 @@ input:focus, textarea:focus { box-shadow: 0 0 0 4px var(--ring); }
 @media (min-width: 640px) { .stats-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* ----- Cards share the stat-tile look: accent strip, corner glow, hover highlight ----- */
-.tab .card { --acc: var(--primary); --acc-rgb: var(--p-rgb); position: relative; overflow: hidden; isolation: isolate; transition: box-shadow 0.2s, border-color 0.2s; }
+.tab .card { --acc: var(--primary); --acc-rgb: var(--p-rgb); position: relative; overflow: hidden; overflow: clip; isolation: isolate; transition: box-shadow 0.2s, border-color 0.2s; }
 .tab .card::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: linear-gradient(90deg, var(--acc), transparent 85%); opacity: 0.85; z-index: -1; }
 .tab .card::after { content: ""; position: absolute; top: -50px; right: -50px; width: 150px; height: 150px; border-radius: 50%; background: radial-gradient(closest-side, rgba(var(--acc-rgb), 0.14), transparent); pointer-events: none; z-index: -1; }
 .tab .card:hover { border-color: rgba(var(--acc-rgb), 0.35); box-shadow: 0 16px 32px -20px rgba(var(--acc-rgb), 0.5); }
@@ -536,3 +536,54 @@ form.del-account { margin-top: 14px; padding-top: 14px; border-top: 1px solid va
 .reader-nav { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--border); background: var(--surface); }
 .reader-jump { display: flex; align-items: center; gap: 8px; }
 .reader-jump input { width: 64px; padding: 8px 10px; text-align: center; font-size: 15px; }
+
+/* ----- Trade screenshots ----- */
+.shots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 6px; }
+.shot { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.shot-add {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  aspect-ratio: 16 / 10; width: 100%; padding: 8px;
+  border: 1.5px dashed var(--border); border-radius: 12px; background: var(--bg); color: var(--muted); cursor: pointer;
+}
+.shot-add:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+.shot-add b { font-size: 13px; }
+.shot-add small { font-size: 11px; }
+.shot-frame, .shot-thumb { position: relative; aspect-ratio: 16 / 10; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--bg); padding: 0; }
+.shot-frame img, .shot-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.shot-thumb { cursor: zoom-in; }
+.shot-miss { display: grid; place-items: center; height: 100%; font-size: 12px; }
+.shot-actions { position: absolute; top: 6px; right: 6px; display: flex; gap: 6px; }
+.shot-actions .icon-btn { background: rgba(2, 6, 23, 0.7); color: #fff; border-color: transparent; }
+.shot-label { color: var(--muted); font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; }
+.shot-thumb .shot-label { position: absolute; left: 6px; bottom: 6px; padding: 2px 7px; border-radius: 999px; background: rgba(2, 6, 23, 0.7); color: #fff; }
+.lightbox { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; padding: 16px; background: rgba(2, 6, 23, 0.9); animation: fade 0.2s ease; cursor: zoom-out; }
+.lightbox-img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 10px; }
+.lightbox-close { position: absolute; top: 12px; right: 12px; background: rgba(255, 255, 255, 0.12); color: #fff; border-color: transparent; }
+
+/* ----- Loss limits ----- */
+.pair-row { grid-template-columns: minmax(0, 1fr) 84px 104px auto; }
+.pair-row input { min-width: 0; }
+@media (max-width: 520px) {
+  .pair-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; }
+  .pair-row > .kz-name { grid-column: 1 / -1; }
+}
+.loss-since { margin-top: 12px; gap: 10px; flex-wrap: wrap; font-size: 13.5px; }
+/* Both limit cards are the same size (the shared .stats-grid.two makes its first card a large one). */
+.loss-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.loss-grid.one { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 520px) { .loss-grid { grid-template-columns: minmax(0, 1fr); } }
+.loss-grid .stat span .of { color: var(--primary); }
+
+/* ----- News tab ----- */
+.news-lead { align-items: flex-end; gap: 10px; }
+.news-lead .field { flex: 1; min-width: 160px; margin: 0; }
+.news-status { margin: 10px 0 0; }
+.news-list li { align-items: flex-start; }
+.news-list li.news-locked { background: rgba(244, 63, 94, 0.07); border-radius: 10px; padding-left: 8px; padding-right: 8px; }
+.news-list .chip .ic { margin-right: 3px; }
+
+.news-list li > span:first-child { flex: 1; min-width: 0; }
+.news-list li > .row { display: flex; flex: none; flex-wrap: nowrap; gap: 6px; align-items: center; }
+.news-list .chip { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+
+.banner.lock.warn { background: linear-gradient(135deg, #d97706, #92400e); }
