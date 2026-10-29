@@ -20,6 +20,13 @@ body.public { padding: 0; }
 }
 .lp-brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 800; font-size: 17px; letter-spacing: -0.2px; }
 .lp-brand img { width: 34px; height: 34px; border-radius: 10px; box-shadow: 0 4px 14px rgba(var(--p-rgb), 0.35); }
+/* Same brand motion as the app sidebar (keyframes live in shell.css): floating, glowing logo and a light sweep across the name. */
+.lp-brand img { animation: brand-float 4s ease-in-out infinite; }
+.lp-brand > span {
+  background: linear-gradient(100deg, var(--text) 30%, var(--primary) 42%, var(--good) 50%, var(--primary) 58%, var(--text) 70%) 0 0 / 250% 100%;
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;
+  animation: brand-shine 3.5s ease-in-out infinite;
+}
 .lp-nav-r { display: flex; align-items: center; gap: 10px; }
 .lp-link-btn { background: none; border: 0; color: var(--text); font: inherit; font-weight: 650; font-size: 14px; cursor: pointer; padding: 8px 6px; }
 .lp-link-btn:hover { color: var(--primary); }

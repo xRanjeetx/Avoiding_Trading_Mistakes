@@ -2,7 +2,7 @@ import { SETUPS } from "../lib/rules.js";
 import { closeTime, outcome, tradeR } from "../lib/stats.js";
 import { dateTimeOf, fmtMoney, fmtR, signClass, timeOf } from "../lib/format.js";
 import { ruleTitle } from "../lib/evaluate.js";
-import { emotionOf } from "../lib/emotions.js";
+import { emotionKeys, emotionOf } from "../lib/emotions.js";
 import { ShotThumbs } from "./Shots.jsx";
 import { Icon } from "./ui.jsx";
 
@@ -24,8 +24,10 @@ export default function EntryCard({ e, mode, settings, open, onToggle, onQuick, 
   const out = outcome(e);
   const r = tradeR(e);
   const cur = settings.currency;
-  const before = emotionOf(e.emotion, "before");
-  const after = emotionOf(e.emotionAfter, "after");
+  const before = emotionKeys(e.emotion).map((k) => emotionOf(k, "before"));
+  const after = emotionKeys(e.emotionAfter).map((k) => emotionOf(k, "after"));
+  const emojis = (list) => list.map((x) => x.emoji).join("");
+  const labels = (list) => list.map((x) => x.label).join(", ");
   const when = mode === "today" ? timeOf(e.timestamp) : dateTimeOf(e.timestamp);
 
   const head = (
@@ -37,9 +39,9 @@ export default function EntryCard({ e, mode, settings, open, onToggle, onQuick, 
           <span className={`tag ${TAG_BY_OUTCOME[out]}`}>{out === "skipped" ? "SKIPPED" : RESULT_LABEL[e.result] || e.result.toUpperCase()}</span>
           {e.setup && SETUPS[e.setup] && <span className="tag setup">{SETUPS[e.setup]}</span>}
           {Object.keys(e.images || {}).length > 0 && <span className="tag emo-tag" title="Has screenshots"><Icon name="image" size={14} /></span>}
-          {(before || after) && (
-            <span className="tag emo-tag" title={[before && `Before: ${before.label}`, after && `After: ${after.label}`].filter(Boolean).join(" · ")}>
-              {before?.emoji}{before && after && " → "}{after?.emoji}
+          {(before.length > 0 || after.length > 0) && (
+            <span className="tag emo-tag" title={[before.length && `Before: ${labels(before)}`, after.length && `After: ${labels(after)}`].filter(Boolean).join(" · ")}>
+              {emojis(before)}{before.length > 0 && after.length > 0 && " → "}{emojis(after)}
             </span>
           )}
         </div>
@@ -81,8 +83,8 @@ export default function EntryCard({ e, mode, settings, open, onToggle, onQuick, 
     ["Stop loss", e.sl ?? "–"], ["Take profit", e.tp ?? "–"], ["Exit", e.exit ?? "–"],
     ["Planned RR", e.rr ? `1:${(+e.rr).toFixed(2)}` : "–"], ["Result", r != null ? fmtR(r) : "–"],
     ["Closed", e.result === "open" ? "Still open" : dateTimeOf(closeTime(e))],
-    ...(before ? [["Felt before", `${before.emoji} ${before.label}`]] : []),
-    ...(after ? [["Felt after", `${after.emoji} ${after.label}`]] : []),
+    ...(before.length ? [["Felt before", before.map((x) => `${x.emoji} ${x.label}`).join("  ")]] : []),
+    ...(after.length ? [["Felt after", after.map((x) => `${x.emoji} ${x.label}`).join("  ")]] : []),
   ];
   return (
     <div className={`entry dir-${e.dir || "none"} ${open ? "open" : ""}`}>

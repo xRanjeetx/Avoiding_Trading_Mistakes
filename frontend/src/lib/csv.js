@@ -55,8 +55,11 @@ function parseRows(text) {
   return rows.filter((r) => r.some((c) => c.trim() !== ""));
 }
 
-// An emotion key the API accepts ("calm"), or null.
-const emotionKey = (s) => (/^[a-z][a-z_]{0,19}$/.test(s.trim()) ? s.trim() : null);
+// One or more comma-separated emotion keys the API accepts ("calm" or "calm,focused"), or null.
+const emotionKey = (s) => {
+  const keys = s.split(",").map((k) => k.trim()).filter((k) => /^[a-z][a-z_]{0,19}$/.test(k));
+  return keys.length ? [...new Set(keys)].slice(0, 12).join(",") : null;
+};
 
 const toNum = (s, line, name) => {
   if (s == null || s.trim() === "") return null;

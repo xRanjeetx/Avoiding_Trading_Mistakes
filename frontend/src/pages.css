@@ -330,7 +330,7 @@ input:focus, textarea:focus { box-shadow: 0 0 0 4px var(--ring); }
 .kz-times { display: flex; align-items: center; gap: 6px; }
 .kz-times input[type="time"] { width: auto; min-width: 0; padding: 8px 9px; font-size: 14px; }
 .kz-color { width: 36px; height: 36px; padding: 2px; border-radius: 9px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; }
-.kz-local { grid-column: 1 / -1; font: 500 12px var(--mono); color: var(--muted); }
+.kz-local { grid-column: 1 / -1; font: 500 12px var(--mono); color: var(--warn); }
 @media (max-width: 520px) {
   .kz-row { grid-template-columns: 1fr auto; }
   .kz-times { grid-column: 1 / -1; grid-row: 2; }
@@ -467,8 +467,6 @@ form.del-account { margin-top: 14px; padding-top: 14px; border-top: 1px solid va
 /* Admin users pager */
 .pager { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding: 12px 4px 2px; font-size: 13px; }
 .pager-ctl { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
-.pager-size { display: flex; align-items: center; gap: 8px; }
-.pager-size select { width: auto; min-width: 72px; padding: 6px 30px 6px 10px; font-size: 13px; border-radius: 10px; background-position: calc(100% - 16px) 55%, calc(100% - 10px) 55%; }
 #admin .card-head { flex-wrap: wrap; row-gap: 10px; }
 
 /* Checklist rules editor */
@@ -568,6 +566,7 @@ form.del-account { margin-top: 14px; padding-top: 14px; border-top: 1px solid va
   .pair-row > .kz-name { grid-column: 1 / -1; }
 }
 .loss-since { margin-top: 12px; gap: 10px; flex-wrap: wrap; font-size: 13.5px; }
+.loss-since .muted b { color: var(--primary); font-weight: 650; }
 /* Both limit cards are the same size (the shared .stats-grid.two makes its first card a large one). */
 .loss-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .loss-grid.one { grid-template-columns: minmax(0, 1fr); }
@@ -578,7 +577,14 @@ form.del-account { margin-top: 14px; padding-top: 14px; border-top: 1px solid va
 .news-lead { align-items: flex-end; gap: 10px; }
 .news-lead .field { flex: 1; min-width: 160px; margin: 0; }
 .news-status { margin: 10px 0 0; }
+.news-status svg { color: var(--primary); vertical-align: -3px; margin-right: 4px; }
+.news-updated { color: var(--primary); font-weight: 650; }
 .news-list li { align-items: flex-start; }
+/* The generic .rule-edit span rule makes nested spans grid items, so lay the details out as one row. */
+.news-list small { display: flex; flex-wrap: nowrap; align-items: center; gap: 4px 12px; white-space: nowrap; overflow: hidden; }
+.news-list .nw-when { color: var(--primary); font-weight: 600; }
+.news-list .nw-in { color: var(--warn); font-weight: 600; }
+.news-list .nw-pair { color: var(--good); font-weight: 650; }
 .news-list li.news-locked { background: rgba(244, 63, 94, 0.07); border-radius: 10px; padding-left: 8px; padding-right: 8px; }
 .news-list .chip .ic { margin-right: 3px; }
 

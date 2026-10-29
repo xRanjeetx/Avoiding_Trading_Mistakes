@@ -6,6 +6,8 @@
 //     pnl (money, signed) | null, exit (price) | null, closedAt (ms) | null,
 //     notes (why I took it), lesson (what I learned) }
 
+import { emotionKeys } from "./emotions.js";
+
 const closeTime = (e) => e.closedAt || e.timestamp;
 
 // Local calendar date as YYYY-MM-DD.
@@ -97,13 +99,15 @@ function computeStats(all) {
   const groupByEmotion = (field) => {
     const out = {};
     for (const e of closed) {
-      if (!e[field]) continue;
-      const g = (out[e[field]] ??= { n: 0, wins: 0, losses: 0, pnl: 0 });
-      g.n++;
-      const o = outcome(e);
-      if (o === "win") g.wins++;
-      if (o === "loss") g.losses++;
-      g.pnl += e.pnl ?? 0;
+      // A trade with several emotions counts once under each of them.
+      for (const key of emotionKeys(e[field])) {
+        const g = (out[key] ??= { n: 0, wins: 0, losses: 0, pnl: 0 });
+        g.n++;
+        const o = outcome(e);
+        if (o === "win") g.wins++;
+        if (o === "loss") g.losses++;
+        g.pnl += e.pnl ?? 0;
+      }
     }
     return out;
   };

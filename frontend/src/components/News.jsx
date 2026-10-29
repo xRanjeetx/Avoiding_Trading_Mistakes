@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { fmtDuration } from "../lib/killzones.js";
-import { NEWS_PAIRS, blocks, calendarState, newsEvents, newsOf, paginate, pruneEvents, withNewsDraft } from "../lib/news.js";
+import { blocks, calendarState, newsEvents, newsOf, paginate, pruneEvents, withNewsDraft } from "../lib/news.js";
 import { CardHead, Icon } from "./ui.jsx";
 
 const when = (at) => new Date(at).toLocaleString([], { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -63,7 +63,7 @@ export default function News({ active, settings, calendar, now, onSave, onRefres
           </li>
         </ul>
         <p className="muted hint news-status">
-          {state === "ok" && <>Covers {NEWS_PAIRS.join(", ")}. Updated {ago(t - calendar.updatedAt)}, refreshed about every hour.</>}
+          {state === "ok" && <><Icon name="clock" size={15} /> Updated <b className="news-updated">{ago(t - calendar.updatedAt)}</b>, refreshed about every hour.</>}
           {state === "unavailable" && <>The calendar could not be loaded, so only the news you add below can lock trading.</>}
           {state === "off" && <>Only the news you add below can lock trading.</>}
         </p>
@@ -88,7 +88,9 @@ export default function News({ active, settings, calendar, now, onSave, onRefres
               <li key={`${e.source}-${e.at}-${e.title}`} className={inWindow(e) && blocks(e) ? "news-locked" : ""}>
                 <span>
                   <b>{e.title || "High-impact news"}</b>
-                  <small>{when(e.at)} · in {fmtDuration(Math.ceil((e.at - t) / 60000))} · {e.source === "manual" ? "all pairs" : e.pairs.join(", ")}</small>
+                  <small>
+                    <span className="nw-when">{when(e.at)}</span><span className="nw-in">in {fmtDuration(Math.ceil((e.at - t) / 60000))}</span><span className="nw-pair">{e.source === "manual" ? "all pairs" : e.pairs.join(", ")}</span>
+                  </small>
                 </span>
                 <span className="row">
                   {inWindow(e) && blocks(e) && <span className="chip bad"><Icon name="lock" size={12} /> Locked</span>}
@@ -119,7 +121,7 @@ export default function News({ active, settings, calendar, now, onSave, onRefres
         <CardHead icon="plus" title="Add your own news" />
         <div className="rule-add">
           <input type="datetime-local" aria-label="News date and time" value={draft.when} onChange={(e) => setDraft((d) => ({ ...d, when: e.target.value }))} />
-          <input placeholder="Name, e.g. NFP or FOMC (optional)" maxLength={60} aria-label="News name" value={draft.title} onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))} />
+          <input placeholder="Name, e.g. NFP or FOMC" maxLength={60} aria-label="News name" value={draft.title} onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))} />
           <button type="button" className="btn small" disabled={!canAdd} onClick={add}><Icon name="plus" size={16} /> Add news</button>
         </div>
       </div>

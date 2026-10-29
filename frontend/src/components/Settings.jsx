@@ -4,7 +4,7 @@ import { num } from "../lib/format.js";
 import { NO_RULE_EDITS, RULES } from "../lib/rules.js";
 import { usdjpyPrice, valueBox } from "../lib/risk.js";
 import { buildPayload, pairDraftOk, stateFromSettings, withPairDraft, withRuleDraft } from "../lib/settingsForm.js";
-import { KILLZONE_NAMES, normalizeKillzones, nyClock, nyToLocal } from "../lib/killzones.js";
+import { KILLZONE_NAMES, normalizeKillzones, nyToLocal } from "../lib/killzones.js";
 import { enable as enableNotifications, permission } from "../lib/reminders.js";
 import { CardHead, Icon } from "./ui.jsx";
 
@@ -106,8 +106,8 @@ export default function Settings({ active, settings, reminders, onReminders, onS
       <div className="card">
         <CardHead icon="shield" title="Risk rules" />
         <div className="grid2">
-          <label className="field"><span>Default lot (other pairs)</span><input type="number" step="0.01" inputMode="decimal" {...bind("lot")} /></label>
-          <label className="field"><span>Minimum RR (1:x)</span><input type="number" step="0.1" inputMode="decimal" {...bind("minRR")} /></label>
+          <label className="field"><span>Default lot</span><input type="number" step="0.01" inputMode="decimal" {...bind("lot")} /></label>
+          <label className="field"><span>Minimum RR</span><input type="number" step="0.1" inputMode="decimal" {...bind("minRR")} /></label>
           <label className="field"><span>Max trades / day</span><input type="number" min="1" inputMode="numeric" {...bind("maxTrades")} /></label>
           <label className="field"><span>Max SL / day</span><input type="number" min="1" inputMode="numeric" {...bind("maxSL")} /></label>
         </div>
@@ -157,7 +157,7 @@ export default function Settings({ active, settings, reminders, onReminders, onS
               <label>
                 <input type="checkbox" className="rb-input" checked={isOn(r.id)} onChange={() => flipRule(r.id)} />
                 <i className={`rb ${isOn(r.id) ? "on" : "off"}`} aria-hidden="true"><Icon name={isOn(r.id) ? "check" : "x"} size={16} /></i>
-                <span><b>{r.title}</b><small>{r.type === "auto" ? "Checked automatically" : r.q}</small></span>
+                <span><b>{r.title}</b><small>{r.type === "auto" ? "Checked automatically" : r.q || r.desc}</small></span>
               </label>
             </li>
           ))}
@@ -177,7 +177,6 @@ export default function Settings({ active, settings, reminders, onReminders, onS
           <input placeholder="Question you answer Yes or No (optional)" maxLength={200} aria-label="New rule question" value={ruleDraft.q} onChange={(e) => setRuleDraft((d) => ({ ...d, q: e.target.value }))} />
           <button type="button" className="btn small" disabled={!canAddRule} onClick={addRule}><Icon name="plus" size={16} /> Add rule</button>
         </div>
-        <p className="muted hint">Switch rules on or off, or add your own. Press Save settings to keep changes.</p>
       </div>
       <div className="card">
         <CardHead icon="wallet" title="Balance & currency" />
@@ -206,7 +205,6 @@ export default function Settings({ active, settings, reminders, onReminders, onS
             </div>
           ))}
         </div>
-        <p className="muted hint">Times are New York time (now {nyClock(now).label}), so daylight saving changes there need no edit. The checklist allows a trade only while one of the switched-on sessions is live.</p>
       </div>
       <div className="card">
         <CardHead icon="bolt" title="Reminders"><span className="chip">This device</span></CardHead>
@@ -231,7 +229,6 @@ export default function Settings({ active, settings, reminders, onReminders, onS
 
       <div className="card">
         <CardHead icon="book" title="Your data" />
-        <p className="muted hint">Download every trade as a CSV file (opens in Excel or Google Sheets), or load trades from a file exported here. Importing never changes or duplicates trades you already have.</p>
         <div className="data-actions">
           <button type="button" className="btn ghost" disabled={!entries.length} onClick={exportCsv}><Icon name="download" size={16} /> Export CSV</button>
           <button type="button" className="btn ghost" disabled={importing} onClick={() => fileRef.current.click()}><Icon name="upload" size={16} /> {importing ? "Importing…" : "Import CSV"}</button>

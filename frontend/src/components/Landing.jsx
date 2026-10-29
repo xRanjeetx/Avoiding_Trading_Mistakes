@@ -84,7 +84,6 @@ export default function Landing({ onAuth }) {
             ))}
           </ul>
           <ul className="lp-trust">
-            <li><Check /> No broker connection</li>
             <li><Check /> Your rules, your limits</li>
             <li><Check /> Phone and desktop</li>
           </ul>
