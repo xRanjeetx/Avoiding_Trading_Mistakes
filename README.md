@@ -2,7 +2,7 @@
 
 A pre-trade checklist built from 27 personal trading rules, plus a full trading journal (P&L, R-multiples, equity curve, calendar, profit factor, drawdown, win rate, results by pair, setup and weekday). It shows **OK TO TRADE** only when every rule passes, and locks for the day once the trade or SL limit is reached.
 
-Also: editable rules (switch any off, add your own), a **News** tab that locks trading before high-impact news (pulled automatically from a free calendar, plus any you add), an emotion tag on every trade, CSV export and import, and a **Learning** tab with a fixed set of PDF books (strategy, psychology, analysis) that everyone reads in the app, with each user's page remembered on every device.
+Also: editable rules (switch any off, add your own), a **News** tab that locks trading before high-impact news (pulled automatically from a free calendar, plus any you add), an emotion tag on every trade, CSV export and import, and a **Learning** tab with a fixed set of PDF books (strategy, psychology, analysis) that everyone reads in the app.
 
 **Stack:** React (Vite) · FastAPI · PostgreSQL. Each user has a login, and the journal is stored in the database, so it follows you across devices.
 

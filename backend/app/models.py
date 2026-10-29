@@ -76,8 +76,8 @@ class Entry(Base):
     notes: Mapped[str] = mapped_column(Text, default="")
     lesson: Mapped[str] = mapped_column(Text, default="")
     # How the trader felt before taking the trade and after closing it (keys such as "calm", "fomo"; the UI owns the list).
-    emotion: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    emotion_after: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    emotion: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    emotion_after: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # Trade screenshots: { "before": storage key, "after": storage key } (see images.py). NULL means none.
     images: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 

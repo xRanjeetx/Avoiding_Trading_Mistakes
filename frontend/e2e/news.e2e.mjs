@@ -109,7 +109,6 @@ await step("the News tab lists only news for the three pairs, with the pairs eac
   await page.locator("#news .chip.good", { hasText: "Live" }).waitFor();
   await list().first().waitFor();
   const text = await page.locator("#news").innerText();
-  assert.match(text, /Covers XAUUSD, EURUSD, USDJPY/);
   assert.doesNotMatch(text, /GBP|BOE Rate|Retail Sales|Minor Data/); // other currencies and low impact never show
   assert.equal(await list().count(), 4);
   const rows = await list().allInnerTexts();

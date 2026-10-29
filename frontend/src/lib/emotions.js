@@ -35,6 +35,11 @@ function emotionOf(key, stage = "before") {
     || { key, label: key.replace(/_/g, " "), emoji: "🙂", tone: "neutral" };
 }
 
+// A trade can carry several emotions. They are stored as one comma-separated string ("calm,focused"), so the API
+// field stays a plain string and trades saved with a single emotion keep working.
+const emotionKeys = (value) => (value ? String(value).split(",").map((k) => k.trim()).filter(Boolean) : []);
+const joinEmotions = (keys) => (keys.length ? keys.join(",") : null);
+
 // Best and worst emotion by win rate. Needs `minTrades` decided trades (wins + losses) per emotion to count,
 // and two different emotions to compare. `by` is computeStats().byEmotion / .byEmotionAfter.
 function emotionInsight(by, minTrades = 3) {
@@ -48,4 +53,4 @@ function emotionInsight(by, minTrades = 3) {
   return best.rate === worst.rate ? null : { best, worst };
 }
 
-export { AFTER, BEFORE, STAGES, STAGE_TITLE, emotionInsight, emotionOf };
+export { AFTER, BEFORE, STAGES, STAGE_TITLE, emotionInsight, emotionKeys, emotionOf, joinEmotions };

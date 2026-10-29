@@ -124,7 +124,7 @@ export default function Checklist({ active, entries, settings, calendar, now, on
           <label className="field"><span>Take profit</span><input type="number" step="any" inputMode="decimal" placeholder="0.00" value={form.tp} onChange={(e) => set({ tp: e.target.value })} /></label>
         </div>
         <label className="field">
-          <span>Why this trade? (optional)</span>
+          <span>Why this trade?</span>
           <textarea rows="2" placeholder="Setup, confirmation, what you saw on the chart…" value={form.notes} onChange={(e) => set({ notes: e.target.value })} />
         </label>
       </div>
@@ -159,7 +159,7 @@ export default function Checklist({ active, entries, settings, calendar, now, on
             return (
               <li key={r.id} className={pass === true ? "pass" : pass === false ? "fail" : ""}>
                 <span className="num">{AUTO.length + i + 1}</span>
-                <div className="body"><div className="title">{r.title}</div>{r.q && <div className="sub">{r.q}</div>}</div>
+                <div className="body"><div className="title">{r.title}</div>{r.q && <div className="sub">{r.q}</div>}{r.desc && <div className="sub"><em>{r.desc}</em></div>}</div>
                 <div className="yn">
                   <button className={`yes ${a === true ? "on" : ""}`} onClick={() => answer(true)}>Yes</button>
                   <button className={`no ${a === false ? "on" : ""}`} onClick={() => answer(false)}>No</button>

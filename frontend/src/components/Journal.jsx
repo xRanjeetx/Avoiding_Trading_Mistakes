@@ -6,7 +6,7 @@ import { fmtMoney, signClass } from "../lib/format.js";
 import EntryCard, { Empty } from "./EntryCard.jsx";
 import { Icon } from "./ui.jsx";
 
-const FILTERS = [["all", "All"], ["open", "Open"], ["win", "Wins"], ["loss", "Losses"], ["be", "BE / CTC"]];
+const FILTERS = [["all", "All"], ["open", "Open"], ["win", "Wins"], ["loss", "Losses"], ["ctc", "CTC"]];
 
 export default function Journal({ active, entries, settings, onEdit, onDelete }) {
   const [f, setF] = useState(NO_FILTER);
@@ -63,7 +63,6 @@ export default function Journal({ active, entries, settings, onEdit, onDelete })
           <select value={f.setup} onChange={(e) => set({ setup: e.target.value })}>
             <option value="all">All setups</option>
             {Object.entries(SETUPS).map(([key, name]) => <option key={key} value={key}>{name}</option>)}
-            <option value="none">Not tagged</option>
           </select>
         </label>
       </div>

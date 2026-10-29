@@ -66,7 +66,6 @@ export default function Learning({ active, onExpired }) {
             ))}
           </ul>
         )}
-        <p className="muted hint">The page you stop at is remembered on every device you sign in on.</p>
       </div>
 
       {open && (

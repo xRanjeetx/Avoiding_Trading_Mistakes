@@ -27,7 +27,7 @@ export default function Admin({ active, confirm, say, onExpired }) {
   const [users, setUsers] = useState([]);
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const pageSize = 25;
   const [total, setTotal] = useState(0);
   const [pages, setPages] = useState(1);
   const [busy, setBusy] = useState(null); // `${id}:${action}`
@@ -134,12 +134,6 @@ export default function Admin({ active, confirm, say, onExpired }) {
       <div className="card">
         <CardHead icon="user" title="Users">
           <button type="button" className="btn ghost sm" onClick={() => setAdding(true)}><Icon name="plus" size={16} /> Add user</button>
-          <label className="pager-size">
-            <span className="muted">Rows</span>
-            <select aria-label="Rows per page" value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}>
-              {[10, 25, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}
-            </select>
-          </label>
           <label className="admin-search">
             <Icon name="search" size={16} />
             <input type="search" placeholder="Search email" aria-label="Search users by email" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} />
