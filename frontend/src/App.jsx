@@ -316,6 +316,7 @@ function Journalled({ session, onLogout }) {
             <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
           </button>
           <img src="/icon.svg" alt="" className="logo" />
+          <div className="head-brand"><b>Trade Guard</b><small>Trade by the rules</small></div>
           <div className="head-title">
             <h1>{PAGE[tab][0]}</h1>
             <div className="muted">{PAGE[tab][1]}</div>
