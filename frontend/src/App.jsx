@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import Loader from "./components/Loader.jsx";
 import { api, ApiError, clearSession, getSession, setSession } from "./api/index.js";
 import { NO_NEWS, NO_RULE_EDITS, activeRules } from "./lib/rules.js";
 import { parseCsv } from "./lib/csv.js";
@@ -306,18 +307,14 @@ function Journalled({ session, onLogout }) {
   const sheetEntry = sheet && entries.find((e) => e.id === sheet.id);
   const goto = (t) => { setTab(t); setMenu(false); window.scrollTo({ top: 0 }); };
 
+  if (status === "loading") return <Loader />;
+
   if (status !== "ready") {
     return (
       <main className="auth">
         <div className="card">
-          {status === "loading" ? (
-            <p className="muted">Loading your journal… the free server sleeps when idle, so this can take up to a minute.</p>
-          ) : (
-            <>
-              <div className="banner">{loadError}</div>
-              <div className="actions"><button className="btn primary" onClick={load}>Retry</button><button className="btn ghost" onClick={onLogout}>Log out</button></div>
-            </>
-          )}
+          <div className="banner">{loadError}</div>
+          <div className="actions"><button className="btn primary" onClick={load}>Retry</button><button className="btn ghost" onClick={onLogout}>Log out</button></div>
         </div>
       </main>
     );
