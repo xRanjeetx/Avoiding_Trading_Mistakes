@@ -21,8 +21,8 @@ ADMIN_PATHS = [
 
 
 def signup_admin(client, name="admin"):
-    create_admin(f"{name}@example.com", "password123")
-    r = client.post("/api/auth/login", json={"email": f"{name}@example.com", "password": "password123"})
+    create_admin(f"{name}@example.com", "correct-horse-42")
+    r = client.post("/api/auth/login", json={"email": f"{name}@example.com", "password": "correct-horse-42"})
     assert r.status_code == 200, r.text
     return {"Authorization": f"Bearer {r.json()['access_token']}"}
 
@@ -97,11 +97,14 @@ def test_disable_blocks_login_and_existing_token(client):
     bob = signup(client, "bob")
     bid = user_id("bob@example.com")
     assert client.patch(f"/api/admin/users/{bid}", json={"isActive": False}, headers=admin).status_code == 200
-    assert client.get("/api/entries", headers=bob).status_code == 403
-    login = client.post("/api/auth/login", json={"email": "bob@example.com", "password": "password123"})
+    assert client.get("/api/entries", headers=bob).status_code == 401  # disabling ends their sessions at once
+    login = client.post("/api/auth/login", json={"email": "bob@example.com", "password": "correct-horse-42"})
     assert login.status_code == 403
     assert client.patch(f"/api/admin/users/{bid}", json={"isActive": True}, headers=admin).status_code == 200
-    assert client.get("/api/entries", headers=bob).status_code == 200
+    assert client.get("/api/entries", headers=bob).status_code == 401  # re-enabling does not revive the old login
+    again = client.post("/api/auth/login", json={"email": "bob@example.com", "password": "correct-horse-42"})
+    assert again.status_code == 200
+    assert client.get("/api/entries", headers={"Authorization": f"Bearer {again.json()['access_token']}"}).status_code == 200
 
 
 def test_delete_user_removes_their_data(client):
@@ -144,16 +147,18 @@ def test_force_verify_and_send_reset(client, monkeypatch):
     assert client.post("/api/admin/users/9999/verify", headers=admin).status_code == 404
 
 
-def test_admin_creates_user_who_can_log_in_with_emailed_password(client, monkeypatch):
+def test_admin_creates_user_who_chooses_a_password_from_an_emailed_link(client, monkeypatch):
     sent = []
     monkeypatch.setattr(admin_mod.config, "EMAIL_ENABLED", True)
-    monkeypatch.setattr(admin_mod, "send_link_email", lambda to, subject, intro, button, link, outro: sent.append((to, intro)))
+    monkeypatch.setattr(admin_mod, "send_link_email", lambda to, subject, intro, button, link, outro: sent.append((to, link)))
     admin = signup_admin(client)
     r = client.post("/api/admin/users", json={"email": "New@Example.com"}, headers=admin)
     assert r.status_code == 201, r.text
     assert len(sent) == 1 and sent[0][0] == "new@example.com"
-    password = sent[0][1].split("<b>")[1].split("</b>")[0]
-    login = client.post("/api/auth/login", json={"email": "new@example.com", "password": password})
+    token = sent[0][1].split("?reset=")[1]
+    chosen = client.post("/api/auth/reset-password", json={"token": token, "password": "A-fresh-start-9"})
+    assert chosen.status_code == 200
+    login = client.post("/api/auth/login", json={"email": "new@example.com", "password": "A-fresh-start-9"})
     assert login.status_code == 200  # created verified, so no verification step
     assert client.post("/api/admin/users", json={"email": "new@example.com"}, headers=admin).status_code == 409
 
@@ -167,7 +172,7 @@ def test_admin_create_user_needs_email_configured(client, monkeypatch):
 
 def test_create_admin_logs_in_as_admin_and_promotes_existing(client):
     headers = signup(client, "bob")
-    assert client.get("/api/auth/me", headers=headers).json() == {"email": "bob@example.com", "isAdmin": False}
+    assert client.get("/api/auth/me", headers=headers).json() == {"email": "bob@example.com", "isAdmin": False, "twoFactor": False}
     assert client.get("/api/admin/overview", headers=headers).status_code == 403
     assert create_admin("bob@example.com", "newpassword1") == "promoted"
     login = client.post("/api/auth/login", json={"email": "bob@example.com", "password": "newpassword1"})
@@ -175,7 +180,7 @@ def test_create_admin_logs_in_as_admin_and_promotes_existing(client):
     h = {"Authorization": f"Bearer {login.json()['access_token']}"}
     assert client.get("/api/auth/me", headers=h).json()["isAdmin"] is True
     assert client.get("/api/admin/overview", headers=h).status_code == 200
-    assert create_admin("fresh@example.com", "password123") == "created"
+    assert create_admin("fresh@example.com", "correct-horse-42") == "created"
 
 
 def test_growth_counts_signups_and_active_users_per_day(client):

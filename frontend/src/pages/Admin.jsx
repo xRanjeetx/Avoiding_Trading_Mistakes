@@ -4,7 +4,7 @@ import { api, ApiError } from "../api/index.js";
 import AdminCharts from "../components/AdminCharts.jsx";import { CardHead, Icon } from "../components/ui.jsx";
 
 const TILES = [
-  ["totalUsers", "Users"], ["verifiedUsers", "Verified"], ["activeLast7Days", "Active 7d"],
+  ["totalUsers", "Users"], ["pendingApproval", "Awaiting"], ["activeLast7Days", "Active 7d"],
   ["newLast7Days", "New 7d"], ["disabledUsers", "Disabled"], ["totalEntries", "Entries"],
 ];
 
@@ -16,6 +16,7 @@ function Status({ u, showAdmin }) {
       {showAdmin && u.isAdmin && <span className="chip admin">Admin</span>}
       {!u.isActive ? <span className="chip bad">Disabled</span>
         : !u.emailVerified ? <span className="chip warn">Unverified</span>
+        : !u.approved ? <span className="chip warn">Awaiting approval</span>
         : <span className="chip good">Active</span>}
     </>
   );
@@ -25,6 +26,7 @@ function Status({ u, showAdmin }) {
 export default function Admin({ active, confirm, say, onExpired }) {
   const [overview, setOverview] = useState(null);
   const [users, setUsers] = useState([]);
+  const [pending, setPending] = useState([]); // verified sign-ups waiting for approval
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 25;
@@ -54,8 +56,9 @@ export default function Admin({ active, confirm, say, onExpired }) {
   const load = useCallback(async () => {
     setError("");
     try {
-      const [o, u, g] = await Promise.all([api.adminOverview(), api.adminUsers(q, page, pageSize), api.adminGrowth(days)]);
+      const [o, u, g, p] = await Promise.all([api.adminOverview(), api.adminUsers(q, page, pageSize), api.adminGrowth(days), api.adminPending()]);
       setOverview(o);
+      setPending(p);
       setUsers(u.items);
       setTotal(u.total);
       setPages(u.pages);
@@ -97,7 +100,7 @@ export default function Admin({ active, confirm, say, onExpired }) {
     const ok = await guard(async () => { await api.adminCreateUser(email); return true; });
     setBusy(null);
     if (ok) {
-      say(`Account created. A temporary password was emailed to ${email}.`);
+      say(`Account created. ${email} was emailed a link to choose a password.`);
       setAdding(false);
       setNewEmail("");
       load();
@@ -110,6 +113,10 @@ export default function Admin({ active, confirm, say, onExpired }) {
       if (!ok) return;
     }
     run(u, "active", () => api.adminSetActive(u.id, !u.isActive), u.isActive ? "Account disabled." : "Account enabled.");
+  };
+  const reject = async (u) => {
+    const ok = await confirm({ title: "Reject this sign-up?", text: `${u.email}'s account will be deleted and they will not be able to log in. They can apply again later.`, okLabel: "Reject" });
+    if (ok) { await run(u, "reject", () => api.adminReject(u.id), "Sign-up rejected."); setOpenId(null); }
   };
   const remove = async (u) => {
     const ok = await confirm({ title: "Delete this user?", text: `${u.email} and all of their trades will be erased. This cannot be undone.`, okLabel: "Delete user" });
@@ -128,6 +135,24 @@ export default function Admin({ active, confirm, say, onExpired }) {
           </div>
         ))}
       </div>
+
+      {pending.length > 0 && (
+        <div className="card pending-card">
+          <CardHead icon="user" title={`Sign-up requests (${pending.length})`} />
+          <p className="muted hint">These people confirmed their email and are waiting. They cannot log in until you approve them.</p>
+          <ul className="pending-list">
+            {pending.map((u) => (
+              <li key={u.id}>
+                <span className="em">{u.email}<small className="muted"> · {day(u.createdAt)}</small></span>
+                <span className="pending-acts">
+                  <button type="button" className="btn sm" disabled={!!busy} onClick={() => run(u, "approve", () => api.adminApprove(u.id), "Approved. They were emailed.")}><Icon name="check" size={16} /> {busy === `${u.id}:approve` ? "Approving…" : "Approve"}</button>
+                  <button type="button" className="btn ghost sm" disabled={!!busy} onClick={() => reject(u)}><Icon name="x" size={16} /> Reject</button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {growth && <AdminCharts data={growth} days={days} onDays={setDays} />}
 
@@ -182,7 +207,7 @@ export default function Admin({ active, confirm, say, onExpired }) {
               <input type="email" required autoFocus maxLength={254} placeholder="name@example.com" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
             </label>
             <div className="admin-sheet-actions">
-              <button type="submit" className="btn" disabled={busy === "add"}><Icon name="mail" size={18} /> {busy === "add" ? "Creating…" : "Create and email password"}</button>
+              <button type="submit" className="btn" disabled={busy === "add"}><Icon name="mail" size={18} /> {busy === "add" ? "Creating…" : "Create and send invitation"}</button>
             </div>
           </form>
         </div>,
@@ -203,6 +228,7 @@ export default function Admin({ active, confirm, say, onExpired }) {
             <div className="admin-kv">
               <div><small>Joined</small><b>{day(sel.createdAt)}</b></div>
               <div><small>Email</small><b>{sel.emailVerified ? "Verified" : "Not verified"}</b></div>
+              <div><small>Approval</small><b>{sel.approved ? "Approved" : "Waiting"}</b></div>
               <div><small>Trades</small><b>{sel.entries}</b></div>
               <div><small>Closed</small><b>{sel.closedTrades}</b></div>
               <div><small>Win rate</small><b>{sel.winRate == null ? "—" : `${sel.winRate}%`}</b></div>
@@ -212,6 +238,12 @@ export default function Admin({ active, confirm, say, onExpired }) {
               <p className="muted">Admin accounts can't be changed from here.</p>
             ) : (
               <div className="admin-sheet-actions">
+                {!sel.approved && (
+                  <>
+                    <button type="button" className="btn" disabled={!!busy} onClick={() => run(sel, "approve", () => api.adminApprove(sel.id), "Approved. They were emailed.")}><Icon name="check" size={18} /> Approve sign-up</button>
+                    <button type="button" className="btn ghost" disabled={!!busy} onClick={() => reject(sel)}><Icon name="x" size={18} /> Reject sign-up</button>
+                  </>
+                )}
                 {!sel.emailVerified && (
                   <button type="button" className="btn ghost" disabled={!!busy} onClick={() => run(sel, "verify", () => api.adminVerify(sel.id), "Email marked verified.")}><Icon name="shield" size={18} /> Mark verified</button>
                 )}

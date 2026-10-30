@@ -8,8 +8,8 @@ import sys
 
 from sqlalchemy import select
 
-from ..core.db import Base, SessionLocal, engine
-from ..core.migrations import ensure_columns
+from ..core.db import SessionLocal
+from ..core.migrations import run_migrations
 from ..models import User, UserSettings
 from ..schemas import Credentials
 from ..core.security import hash_password
@@ -17,8 +17,7 @@ from ..core.security import hash_password
 
 def create_admin(email: str, password: str) -> str:
     creds = Credentials(email=email, password=password)  # same validation as sign-up
-    Base.metadata.create_all(engine)
-    ensure_columns(engine)
+    run_migrations()
     email = creds.email.strip().lower()
     with SessionLocal() as db:
         user = db.scalar(select(User).where(User.email == email))

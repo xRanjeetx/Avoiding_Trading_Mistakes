@@ -6,7 +6,7 @@ from app.models import User
 from app.core.db import SessionLocal
 from app.core.security import make_purpose_token, make_token
 
-PW = "password123"
+PW = "correct-horse-42"
 
 
 @pytest.fixture()
@@ -75,7 +75,7 @@ def test_tokens_cannot_be_swapped(client, mails):
     register(client)
     with SessionLocal() as db:
         user = db.query(User).one()
-    verify, reset, login = make_purpose_token(user, "verify", 5), make_purpose_token(user, "reset", 5), make_token(user)
+    verify, reset, login = make_purpose_token(user, "verify", 5), make_purpose_token(user, "reset", 5), make_token(user, "0" * 32)
     # A verify token can't reset a password, a reset token can't verify, a login token is neither.
     assert client.post("/api/auth/reset-password", json={"token": verify, "password": "newpassword9"}).status_code == 400
     assert client.post("/api/auth/verify-email", json={"token": reset}).status_code == 400

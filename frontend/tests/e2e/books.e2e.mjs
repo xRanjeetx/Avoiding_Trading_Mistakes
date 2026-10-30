@@ -12,7 +12,7 @@ import { chromium } from "playwright-core";
 
 const URL = process.env.E2E_URL || "http://localhost:5199";
 const email = `books-${Date.now()}@example.com`;
-const password = "password123";
+const password = "correct-horse-42";
 
 // SHOTS=<folder> saves a picture at the main moments, to look at the screens.
 const SHOTS = process.env.SHOTS;

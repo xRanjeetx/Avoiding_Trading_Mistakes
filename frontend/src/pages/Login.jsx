@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { api, ApiError } from "../api/index.js";
+import Turnstile, { turnstileOn } from "../components/Turnstile.jsx";
 
 function strength(pw) {
   let s = 0;
-  if (pw.length >= 8) s++;
-  if (pw.length >= 12) s++;
+  if (pw.length >= 10) s++;
+  if (pw.length >= 14) s++;
   if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) s++;
   if (/\d/.test(pw) && /[^A-Za-z0-9]/.test(pw)) s++;
   return pw ? Math.max(1, s) : 0;
@@ -25,6 +26,11 @@ export default function Login({ onAuth, mode, onMode, link }) {
   const [notice, setNotice] = useState("");
   const [view, setView] = useState(link?.kind === "verify" ? "verifying" : link?.kind === "reset" ? "reset" : "form");
   const [unverified, setUnverified] = useState(false);
+  const [needsApproval, setNeedsApproval] = useState(false); // new accounts wait for an admin after the email step
+  const [mfaToken, setMfaToken] = useState(""); // set when the password was right but the account needs a 2FA code
+  const [code, setCode] = useState("");
+  const [captcha, setCaptcha] = useState(""); // solved human-check token (only when Turnstile is configured)
+  const [nonce, setNonce] = useState(0); // a token works once, so the widget is remounted after every request
   const verifyStarted = useRef(false);
   const isLogin = mode === "login";
   const score = strength(password);
@@ -33,17 +39,25 @@ export default function Login({ onAuth, mode, onMode, link }) {
   useEffect(() => {
     if (view !== "verifying" || verifyStarted.current) return;
     verifyStarted.current = true;
-    api.verifyEmail(link.token).then(finish).catch((err) => { setError(msg(err)); setView("verify-failed"); });
+    api.verifyEmail(link.token)
+      .then((t) => { if (t.pending_approval) { setEmail(t.email || ""); setView("pending"); } else finish(t); })
+      .catch((err) => { setError(msg(err)); setView("verify-failed"); });
   }, []);
 
   async function run(fn) {
     setBusy(true);
     setError("");
     setNotice("");
-    try { await fn(); } catch (err) { setError(msg(err)); } finally { setBusy(false); }
+    try { await fn(); } catch (err) { setError(msg(err)); } finally {
+      setBusy(false);
+      if (turnstileOn) { setCaptcha(""); setNonce((n) => n + 1); }
+    }
   }
 
-  const go = (v) => { setView(v); setError(""); setNotice(""); setUnverified(false); };
+  const go = (v) => { setView(v); setError(""); setNotice(""); setUnverified(false); setCaptcha(""); };
+  const needsCheck = turnstileOn && !captcha; // sign-up and "forgot password" wait for the human check
+  const check = turnstileOn ? <Turnstile key={nonce} onToken={setCaptcha} /> : null;
+  const askForCode = (token) => { setMfaToken(token); setCode(""); setPassword(""); go("mfa"); };
   const pick = (m) => { onMode(m); go("form"); };
 
   function submit(e) {
@@ -51,8 +65,11 @@ export default function Login({ onAuth, mode, onMode, link }) {
     setUnverified(false);
     run(async () => {
       try {
-        const t = await (isLogin ? api.login : api.register)(email.trim(), password);
-        if (t.access_token) finish(t); else go("check-inbox");
+        const t = await (isLogin ? api.login(email.trim(), password) : api.register(email.trim(), password, captcha));
+        setNeedsApproval(!!t.pending_approval);
+        if (t.mfa_required) askForCode(t.mfa_token);
+        else if (t.access_token) finish(t);
+        else go(t.pending_approval && !t.verification_sent ? "pending" : "check-inbox");
       } catch (err) {
         if (err instanceof ApiError && err.status === 403 && isLogin) setUnverified(true);
         throw err;
@@ -61,8 +78,13 @@ export default function Login({ onAuth, mode, onMode, link }) {
   }
 
   const resend = () => run(async () => { await api.resendVerification(email.trim()); setNotice("Verification email sent again. Check your inbox and spam folder."); });
-  const forgot = (e) => { e.preventDefault(); run(async () => { await api.forgotPassword(email.trim()); go("reset-sent"); }); };
-  const reset = (e) => { e.preventDefault(); run(async () => { finish(await api.resetPassword(link.token, password)); }); };
+  const forgot = (e) => { e.preventDefault(); run(async () => { await api.forgotPassword(email.trim(), captcha); go("reset-sent"); }); };
+  const reset = (e) => { e.preventDefault(); run(async () => {
+    const t = await api.resetPassword(link.token, password);
+    if (t.pending_approval) go("pending");
+    else if (t.mfa_required) askForCode(t.mfa_token);
+    else finish(t);
+  }); };
 
   const top = (title, text) => (
     <div className="auth-top">
@@ -86,14 +108,39 @@ export default function Login({ onAuth, mode, onMode, link }) {
   if (view === "verify-failed") {
     return <div className="card auth-card" id="auth">{top("Link not valid", "It may have expired or already been used.")}{alerts}{back}</div>;
   }
+  if (view === "pending") {
+    return (
+      <div className="card auth-card" id="auth">
+        {top("Waiting for approval", `Your email is confirmed. An administrator has to approve your account before you can log in. ${email.trim() ? `We will email ${email.trim()}` : "We will email you"} as soon as it is done.`)}
+        {back}
+      </div>
+    );
+  }
   if (view === "check-inbox") {
     return (
       <div className="card auth-card" id="auth">
-        {top("Check your inbox", `We sent a verification link to ${email.trim()}. Open it to activate your account.`)}
+        {top("Check your inbox", `We sent a verification link to ${email.trim()}. Open it to confirm your email.${needsApproval ? " An administrator then approves new accounts before you can log in." : ""}`)}
         {alerts}
         <button type="button" className="af-submit" disabled={busy} onClick={resend}><span>{busy ? "Sending…" : "Resend email"}</span></button>
         {back}
       </div>
+    );
+  }
+  if (view === "mfa") {
+    return (
+      <form className="card auth-card" id="auth" onSubmit={(e) => { e.preventDefault(); run(async () => { finish(await api.login2fa(mfaToken, code.trim())); }); }}>
+        {top("Two-factor code", "Open your authenticator app and enter the 6-digit code for Trade Guard. Lost your phone? Use a recovery code instead.")}
+        <label className="af">
+          <span>Code</span>
+          <div className="af-box">
+            <svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2.5" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
+            <input value={code} onChange={(e) => setCode(e.target.value)} inputMode="text" autoComplete="one-time-code" placeholder="123456" required maxLength={40} autoFocus />
+          </div>
+        </label>
+        {alerts}
+        <button className="af-submit" disabled={busy || !code.trim()}>{busy ? <span className="af-spin" /> : null}<span>{busy ? "Checking…" : "Verify"}</span></button>
+        {back}
+      </form>
     );
   }
   if (view === "forgot" || view === "reset-sent") {
@@ -110,8 +157,9 @@ export default function Login({ onAuth, mode, onMode, link }) {
             </div>
           </label>
         )}
+        {check}
         {alerts}
-        <button className="af-submit" disabled={busy}><span>{busy ? "Sending…" : sent ? "Send again" : "Send reset link"}</span></button>
+        <button className="af-submit" disabled={busy || needsCheck}><span>{busy ? "Sending…" : sent ? "Send again" : "Send reset link"}</span></button>
         {back}
       </form>
     );
@@ -124,7 +172,7 @@ export default function Login({ onAuth, mode, onMode, link }) {
           <span>New password</span>
           <div className="af-box">
             <svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2.5" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
-            <input type={show ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters" autoComplete="new-password" required minLength={8} maxLength={72} autoFocus />
+            <input type={show ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 10 characters" autoComplete="new-password" required minLength={10} maxLength={72} autoFocus />
             <button type="button" className="af-eye" aria-label={show ? "Hide password" : "Show password"} onClick={() => setShow(!show)}>
               <svg viewBox="0 0 24 24"><path d="M2.5 12C3.5 10 7 6 12 6s8.5 4 9.5 6c-1 2-4.5 6-9.5 6s-8.5-4-9.5-6z" /><circle cx="12" cy="12" r="3" /></svg>
             </button>
@@ -167,7 +215,7 @@ export default function Login({ onAuth, mode, onMode, link }) {
         <span>Password</span>
         <div className="af-box">
           <svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2.5" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
-          <input type={show ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder={isLogin ? "Your password" : "At least 8 characters"} autoComplete={isLogin ? "current-password" : "new-password"} required minLength={8} maxLength={72} />
+          <input type={show ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder={isLogin ? "Your password" : "At least 10 characters"} autoComplete={isLogin ? "current-password" : "new-password"} required minLength={isLogin ? undefined : 10} maxLength={72} />
           <button type="button" className="af-eye" aria-label={show ? "Hide password" : "Show password"} onClick={() => setShow(!show)}>
             {show
               ? <svg viewBox="0 0 24 24"><path d="M3 3l18 18M10.6 6.2A9.8 9.8 0 0 1 12 6c5 0 8.5 4 9.5 6a14 14 0 0 1-3 3.8M6.5 7.6C4.4 9 3 11 2.5 12c1 2 4.5 6 9.5 6 1.4 0 2.7-.3 3.8-.8" /><path d="M9.9 10a3 3 0 0 0 4.1 4.1" /></svg>
@@ -183,12 +231,13 @@ export default function Login({ onAuth, mode, onMode, link }) {
         </div>
       )}
 
+      {!isLogin && check}
       {isLogin && <p className="af-switch af-forgot"><button type="button" disabled={busy} onClick={() => go("forgot")}>Forgot password?</button></p>}
 
       {alerts}
       {unverified && <p className="af-switch"><button type="button" disabled={busy} onClick={resend}>Resend verification email</button></p>}
 
-      <button className="af-submit" disabled={busy}>
+      <button className="af-submit" disabled={busy || (!isLogin && needsCheck)}>
         {busy ? <span className="af-spin" /> : null}
         <span>{busy ? "Please wait…" : isLogin ? "Log in" : "Create account"}</span>
         {!busy && <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" /></svg>}

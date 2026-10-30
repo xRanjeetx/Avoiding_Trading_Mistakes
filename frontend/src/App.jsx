@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import Loader from "./components/Loader.jsx";
 import { api, ApiError, clearSession, getSession, setSession } from "./api/index.js";
 import { NO_NEWS, NO_RULE_EDITS, activeRules } from "./lib/rules.js";
 import { parseCsv } from "./lib/csv.js";
@@ -296,6 +297,23 @@ function Journalled({ session, onLogout }) {
     say(`Imported ${res.imported} trade${res.imported === 1 ? "" : "s"}${res.skipped ? `, ${res.skipped} already in your journal` : ""}.`);
   };
 
+  const exportData = async () => {
+    const blob = await attempt(() => api.exportData());
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "trade-guard-data.json";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    say("Your data was downloaded.");
+  };
+
+  const logoutEverywhere = async () => {
+    const done = await attempt(async () => { await api.logoutAll(); return true; });
+    if (done) onLogout();
+  };
+
   const deleteAccount = async (password) => {
     const done = await attempt(async () => { await api.deleteAccount(password); return true; });
     if (done) onLogout();
@@ -306,18 +324,14 @@ function Journalled({ session, onLogout }) {
   const sheetEntry = sheet && entries.find((e) => e.id === sheet.id);
   const goto = (t) => { setTab(t); setMenu(false); window.scrollTo({ top: 0 }); };
 
+  if (status === "loading") return <Loader />;
+
   if (status !== "ready") {
     return (
-      <main className="auth">
+      <main className="auth tg-loader">
         <div className="card">
-          {status === "loading" ? (
-            <p className="muted">Loading your journal… the free server sleeps when idle, so this can take up to a minute.</p>
-          ) : (
-            <>
-              <div className="banner">{loadError}</div>
-              <div className="actions"><button className="btn primary" onClick={load}>Retry</button><button className="btn ghost" onClick={onLogout}>Log out</button></div>
-            </>
-          )}
+          <div className="banner">{loadError}</div>
+          <div className="actions"><button className="btn primary" onClick={load}>Retry</button><button className="btn ghost" onClick={onLogout}>Log out</button></div>
         </div>
       </main>
     );
@@ -381,7 +395,7 @@ function Journalled({ session, onLogout }) {
         <News active={tab === "news"} settings={settings} calendar={calendar} now={now} onSave={saveNews} onRefresh={loadCalendar} />
         <Learning active={tab === "learn"} onExpired={onLogout} />
         <Settings active={tab === "settings"} settings={settings} reminders={reminders} onReminders={changeReminders} onSave={saveSettings} onClearAll={clearAll}
-          entries={entries} onImport={importCsv} onDeleteAccount={deleteAccount} isAdmin={session.isAdmin} />
+          entries={entries} onImport={importCsv} onDeleteAccount={deleteAccount} onLogoutAll={logoutEverywhere} onExport={exportData} isAdmin={session.isAdmin} />
         {session.isAdmin && <Admin active={tab === "admin"} confirm={confirmToast} say={say} onExpired={onLogout} />}
       </main>
 

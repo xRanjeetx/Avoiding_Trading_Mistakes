@@ -1,0 +1,12 @@
+title = "Trade Guard secret scan"
+
+# Keep every default rule; only the exceptions below are added.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Test code signs up throwaway users with dummy passwords such as correct-horse-42. They protect nothing: the tests run against empty databases created for the test."
+paths = [
+  '''^backend/tests/''',
+  '''^frontend/tests/''',
+]

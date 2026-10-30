@@ -153,3 +153,17 @@ form.del-account { margin-top: 14px; padding-top: 14px; border-top: 1px solid va
 .reader-jump { display: flex; align-items: center; gap: 8px; }
 .reader-jump input { width: 64px; padding: 8px 10px; text-align: center; font-size: 15px; }
 
+
+/* Two-factor sign-in (Settings > Security) */
+.tf { display: grid; gap: 12px; margin-bottom: 4px; }
+.tf-sep { border: 0; border-top: 1px solid var(--border); margin: 16px 0; width: 100%; }
+.tf-qr { background: #fff; padding: 8px; border-radius: 10px; justify-self: start; }
+.tf-key code { font-family: var(--mono, ui-monospace, monospace); font-size: 13px; word-break: break-all; user-select: all; }
+.tf-codes { margin: 0; padding: 12px 14px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border); font-family: var(--mono, ui-monospace, monospace); font-size: 15px; line-height: 1.7; columns: 2; }
+
+/* Sign-up requests waiting for approval */
+.pending-card { border-color: var(--accent, #14b8a6); }
+.pending-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.pending-list li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); }
+.pending-list .em { overflow-wrap: anywhere; min-width: 0; }
+.pending-acts { display: flex; gap: 8px; flex: none; }

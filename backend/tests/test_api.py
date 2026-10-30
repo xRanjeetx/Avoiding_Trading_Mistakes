@@ -3,10 +3,10 @@ from conftest import signup
 
 def test_auth_flow(client):
     signup(client)
-    assert client.post("/api/auth/register", json={"email": "Alice@Example.com", "password": "password123"}).status_code == 409
-    assert client.post("/api/auth/register", json={"email": "not-an-email", "password": "password123"}).status_code == 422
+    assert client.post("/api/auth/register", json={"email": "Alice@Example.com", "password": "correct-horse-42"}).status_code == 409
+    assert client.post("/api/auth/register", json={"email": "not-an-email", "password": "correct-horse-42"}).status_code == 422
     assert client.post("/api/auth/login", json={"email": "alice@example.com", "password": "wrongpass1"}).status_code == 401
-    assert client.post("/api/auth/login", json={"email": "alice@example.com", "password": "password123"}).status_code == 200
+    assert client.post("/api/auth/login", json={"email": "alice@example.com", "password": "correct-horse-42"}).status_code == 200
     assert client.get("/api/entries").status_code == 401
 
 

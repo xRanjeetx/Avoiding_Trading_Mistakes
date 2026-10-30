@@ -1,5 +1,7 @@
-import pytest
+import io
+
 from conftest import signup
+from PIL import Image
 from sqlalchemy import select
 
 from app.core import config
@@ -7,9 +9,20 @@ from app.core.db import SessionLocal
 from app.models import StoredImage
 
 BODY = {"timestamp": 1_700_000_000_000, "pair": "XAUUSD"}
-WEBP = b"RIFF\x24\x00\x00\x00WEBPVP8 " + b"\x00" * 40
-PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 40
-JPEG = b"\xff\xd8\xff\xe0" + b"\x00" * 40
+
+
+def make(fmt, size=(32, 24), **save):
+    """A real, tiny picture. Uploads are decoded and re-encoded, so test bytes must be valid images."""
+    out = io.BytesIO()
+    Image.new("RGB", size, (200, 30, 30)).save(out, fmt, **save)
+    return out.getvalue()
+
+
+WEBP, PNG, JPEG = make("WEBP"), make("PNG"), make("JPEG")
+
+
+def decoded(data):
+    return Image.open(io.BytesIO(data))
 
 
 def files():
@@ -33,18 +46,20 @@ def test_upload_then_read_back(client):
     r = put(client, h, eid)
     assert r.status_code == 200 and list(r.json()["images"]) == ["before"]
     got = client.get(f"/api/entries/{eid}/images/before", headers=h)
-    assert got.status_code == 200 and got.content == WEBP and got.headers["content-type"] == "image/webp"
+    assert got.status_code == 200 and got.headers["content-type"] == "image/webp"
+    assert decoded(got.content).format == "WEBP" and decoded(got.content).size == (32, 24)
     assert got.headers["x-content-type-options"] == "nosniff"
     assert client.get("/api/entries", headers=h).json()[0]["images"] == r.json()["images"]
 
 
-def test_png_and_jpeg_are_accepted_with_their_own_type(client):
+def test_png_and_jpeg_are_accepted_and_stored_as_webp(client):
     h = signup(client)
     eid = entry(client, h)
     put(client, h, eid, "before", PNG)
     put(client, h, eid, "after", JPEG)
-    assert client.get(f"/api/entries/{eid}/images/before", headers=h).headers["content-type"] == "image/png"
-    assert client.get(f"/api/entries/{eid}/images/after", headers=h).headers["content-type"] == "image/jpeg"
+    for slot in ("before", "after"):
+        got = client.get(f"/api/entries/{eid}/images/{slot}", headers=h)
+        assert got.headers["content-type"] == "image/webp" and decoded(got.content).format == "WEBP"
 
 
 def test_token_is_not_the_storage_key_and_changes_on_replace(client):
@@ -128,5 +143,5 @@ def test_deleting_entries_removes_their_files(client):
 def test_deleting_the_account_removes_their_files(client):
     h = signup(client)
     put(client, h, entry(client, h))
-    assert client.post("/api/auth/delete-account", json={"password": "password123"}, headers=h).status_code == 204
+    assert client.post("/api/auth/delete-account", json={"password": "correct-horse-42"}, headers=h).status_code == 204
     assert files() == []

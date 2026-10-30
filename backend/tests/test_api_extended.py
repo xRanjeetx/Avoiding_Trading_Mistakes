@@ -29,7 +29,7 @@ def test_health(client):
 
 
 def test_register_returns_working_token_and_normalises_email(client):
-    r = client.post("/api/auth/register", json={"email": "Trader@Example.COM", "password": "password123"})
+    r = client.post("/api/auth/register", json={"email": "Trader@Example.COM", "password": "correct-horse-42"})
     assert r.status_code == 201
     assert r.json()["email"] == "trader@example.com"
     h = {"Authorization": f"Bearer {r.json()['access_token']}"}
@@ -38,24 +38,24 @@ def test_register_returns_working_token_and_normalises_email(client):
 
 def test_login_is_case_insensitive_and_wrong_password_rejected(client):
     signup(client, "alice")
-    assert client.post("/api/auth/login", json={"email": "ALICE@example.com", "password": "password123"}).status_code == 200
-    assert client.post("/api/auth/login", json={"email": "alice@example.com", "password": "password124"}).status_code == 401
-    assert client.post("/api/auth/login", json={"email": "nobody@example.com", "password": "password123"}).status_code == 401
+    assert client.post("/api/auth/login", json={"email": "ALICE@example.com", "password": "correct-horse-42"}).status_code == 200
+    assert client.post("/api/auth/login", json={"email": "alice@example.com", "password": "correct-horse-43"}).status_code == 401
+    assert client.post("/api/auth/login", json={"email": "nobody@example.com", "password": "correct-horse-42"}).status_code == 401
 
 
 @pytest.mark.parametrize("email", ["", "plain", "a@b", "a b@c.com", "@c.com", "a@.com", "x" * 250 + "@a.com"])
 def test_register_rejects_bad_emails(client, email):
-    assert client.post("/api/auth/register", json={"email": email, "password": "password123"}).status_code == 422
+    assert client.post("/api/auth/register", json={"email": email, "password": "correct-horse-42"}).status_code == 422
 
 
-@pytest.mark.parametrize("pw", ["", "short", "1234567", "x" * 73])
+@pytest.mark.parametrize("pw", ["", "short", "123456789", "x" * 73])
 def test_register_rejects_bad_passwords(client, pw):
     assert client.post("/api/auth/register", json={"email": "a@b.co", "password": pw}).status_code == 422
 
 
 def test_password_boundaries_accepted(client):
-    assert client.post("/api/auth/register", json={"email": "a8@b.co", "password": "12345678"}).status_code == 201
-    assert client.post("/api/auth/register", json={"email": "a72@b.co", "password": "x" * 72}).status_code == 201
+    assert client.post("/api/auth/register", json={"email": "a10@b.co", "password": "q7!Kd2mZp9"}).status_code == 201
+    assert client.post("/api/auth/register", json={"email": "a72@b.co", "password": "Ab3$" * 18}).status_code == 201
 
 
 def test_unicode_password_over_72_bytes_is_rejected(client):
@@ -66,14 +66,14 @@ def test_unicode_password_over_72_bytes_is_rejected(client):
 
 
 def test_unicode_password_truncation_does_not_allow_wrong_password(client):
-    client.post("/api/auth/register", json={"email": "u2@b.co", "password": "é" * 36})  # exactly 72 bytes
-    bad = client.post("/api/auth/login", json={"email": "u2@b.co", "password": "é" * 36 + "X"})
+    client.post("/api/auth/register", json={"email": "u2@b.co", "password": "é" * 34 + "abcd"})  # exactly 72 bytes
+    bad = client.post("/api/auth/login", json={"email": "u2@b.co", "password": "é" * 34 + "abcdX"})
     assert bad.status_code in (401, 422)
 
 
 def test_registration_can_be_closed(client, monkeypatch):
     monkeypatch.setattr(config, "ALLOW_REGISTRATION", False)
-    r = client.post("/api/auth/register", json={"email": "a@b.co", "password": "password123"})
+    r = client.post("/api/auth/register", json={"email": "a@b.co", "password": "correct-horse-42"})
     assert r.status_code == 403
 
 
@@ -81,7 +81,7 @@ def test_duplicate_email_conflict_and_account_still_usable(client):
     signup(client, "alice")
     assert client.post("/api/auth/register", json={"email": "alice@example.com", "password": "otherpass12"}).status_code == 409
     # the original password still works, the failed duplicate did not overwrite it
-    assert client.post("/api/auth/login", json={"email": "alice@example.com", "password": "password123"}).status_code == 200
+    assert client.post("/api/auth/login", json={"email": "alice@example.com", "password": "correct-horse-42"}).status_code == 200
 
 
 def test_missing_and_garbage_tokens_are_401(client):
@@ -169,32 +169,6 @@ def test_killzones_are_per_user(client):
     zones = [{**z, "on": False} for z in s["killzones"]]
     client.put("/api/settings", json={**s, "killzones": zones}, headers=a)
     assert all(z["on"] for z in client.get("/api/settings", headers=b).json()["killzones"])
-
-
-def test_existing_database_gets_the_killzones_column():
-    """A database created before killzones existed (like the live one) is upgraded in place, keeping its rows."""
-    from sqlalchemy import create_engine, inspect, text
-    from app.core.migrations import ensure_columns
-
-    eng = create_engine("sqlite://")
-    with eng.begin() as c:
-        c.execute(text("create table user_settings (user_id integer primary key, lot float)"))
-        c.execute(text("insert into user_settings values (1, 0.05)"))
-        c.execute(text("create table users (id integer primary key, email text, password_hash text)"))
-        c.execute(text("insert into users values (1, 'old@example.com', 'x')"))
-        c.execute(text("create table entries (user_id integer, id varchar(40), pair varchar(30))"))
-        c.execute(text("insert into entries values (1, 'a', 'XAUUSD')"))
-    ensure_columns(eng)
-    ensure_columns(eng)  # running it again is harmless
-    assert "killzones" in {c["name"] for c in inspect(eng).get_columns("user_settings")}
-    # Trades that predate emotion tags keep their data and simply have no tag.
-    assert {"emotion", "emotion_after"} <= {c["name"] for c in inspect(eng).get_columns("entries")}
-    with eng.connect() as c:
-        assert c.execute(text("select pair, emotion, emotion_after from entries")).one() == ("XAUUSD", None, None)
-    with eng.connect() as c:
-        assert c.execute(text("select lot, killzones from user_settings")).one() == (0.05, None)
-        # Accounts that predate email verification stay able to log in.
-        assert c.execute(text("select email_verified from users")).scalar() in (1, True)
 
 
 @pytest.mark.parametrize("patch", [
@@ -389,7 +363,7 @@ def test_sql_injection_strings_are_stored_literally(client, auth):
     evil = "'); DROP TABLE entries; --"
     e = client.post("/api/entries", json=trade(pair="X'--", notes=evil), headers=auth).json()
     assert client.get("/api/entries", headers=auth).json()[0]["notes"] == evil
-    r = client.post("/api/auth/login", json={"email": "a'OR'1'='1@x.co", "password": "password123"})
+    r = client.post("/api/auth/login", json={"email": "a'OR'1'='1@x.co", "password": "correct-horse-42"})
     assert r.status_code == 401
     assert e["pair"] == "X'--"
 
@@ -398,7 +372,7 @@ def test_concurrent_registration_of_same_email_one_wins(client):
     import concurrent.futures as cf
 
     def reg(_):
-        return client.post("/api/auth/register", json={"email": "race@example.com", "password": "password123"}).status_code
+        return client.post("/api/auth/register", json={"email": "race@example.com", "password": "correct-horse-42"}).status_code
 
     with cf.ThreadPoolExecutor(8) as ex:
         codes = list(ex.map(reg, range(8)))
