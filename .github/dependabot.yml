@@ -11,6 +11,14 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    # Major jumps of these need code and tooling changes (React 19, Vite 8 vs @vitejs/plugin-react 4), so do them by hand.
+    ignore:
+      - dependency-name: react
+        update-types: ["version-update:semver-major"]
+      - dependency-name: react-dom
+        update-types: ["version-update:semver-major"]
+      - dependency-name: vite
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
