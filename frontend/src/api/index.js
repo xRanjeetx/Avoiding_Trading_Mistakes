@@ -163,6 +163,10 @@ export const api = {
   // The shared Learning library: read-only books, plus this user's own place in each.
   listLibrary: () => request("GET", "/library"),
   saveProgress: (id, p) => request("PUT", `/library/${id}/progress`, p),
+  // The shared Learning checklists, with this user's ticks.
+  listChecklists: () => request("GET", "/checklists"),
+  tickChecklist: (id, done) => request("PUT", `/checklists/${id}/tick`, { done }),
+  clearChecklist: (kind) => request("DELETE", `/checklists/${kind}/ticks`),
   // The file bytes, fetched with the login token (an <iframe> or link could not send it).
   async libraryFile(id) {
     const res = await send("GET", `/library/${id}/file`);

@@ -67,6 +67,9 @@ TURNSTILE_SECRET = os.environ.get("TURNSTILE_SECRET", "").strip()
 # PDFs placed in this folder are loaded into the database at startup and shown to every signed-in user (read-only).
 LIBRARY_DIR = os.environ.get("LIBRARY_DIR", "").strip() or os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data", "library")
 
+# The Learning checklists (common mistakes, points to remember, trade management) are loaded from this file at startup.
+CHECKLIST_FILE = os.environ.get("CHECKLIST_FILE", "").strip() or os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data", "checklists.json")
+
 # ---------- Email (verification + password reset) ----------
 # Any SMTP provider works (Gmail app password, Brevo, Resend SMTP, ...). With SMTP_HOST empty, emails are not
 # sent: the link is printed to the server log instead and verification is not required, so local dev still works.

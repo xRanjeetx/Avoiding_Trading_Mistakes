@@ -26,6 +26,7 @@ from ..services.captcha import verify_captcha
 from ..services.mailer import send_link_email
 from ..services.storage import delete_quietly
 from .images import user_image_keys
+from .checklists import delete_ticks_for
 from .library import delete_progress_for
 
 router = APIRouter()
@@ -229,6 +230,7 @@ def delete_account(body: DeleteAccountIn, user: User = Depends(current_user), db
     db.execute(delete(UserSettings).where(UserSettings.user_id == user.id))
     db.execute(delete(AuthSession).where(AuthSession.user_id == user.id))
     delete_progress_for(db, user.id)
+    delete_ticks_for(db, user.id)
     db.delete(user)
     db.commit()
     delete_quietly(images)

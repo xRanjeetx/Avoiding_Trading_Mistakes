@@ -12,6 +12,7 @@ from ..core import config
 from ..core.db import get_db
 from .images import user_image_keys
 from .auth import _send_reset
+from .checklists import delete_ticks_for
 from .library import delete_progress_for
 from ..services.mailer import send_link_email
 from ..models import AuditLog, AuthSession, Entry, User, UserSettings
@@ -205,6 +206,7 @@ def delete_user(user_id: int, request: Request, admin: User = Depends(require_ad
     db.execute(delete(UserSettings).where(UserSettings.user_id == user.id))
     db.execute(delete(AuthSession).where(AuthSession.user_id == user.id))
     delete_progress_for(db, user.id)
+    delete_ticks_for(db, user.id)
     db.delete(user)
     audit.record(db, admin, "delete_user", request, user.email)
     db.commit()

@@ -12,7 +12,8 @@ from .core.limits import BodyLimitMiddleware
 from .core.observability import setup_logging, setup_sentry
 from .core.db import SessionLocal
 from .core.migrations import run_migrations
-from .routers import admin, auth, entries, images, library, news_calendar, settings, twofactor
+from .routers import admin, auth, checklists, entries, images, library, news_calendar, settings, twofactor
+from .routers.checklists import sync_checklists
 from .routers.library import sync_library
 
 setup_logging()
@@ -28,6 +29,11 @@ async def lifespan(_: FastAPI):
             sync_library(db)  # the PDFs in the library folder become the Learning books
     except Exception:
         logging.getLogger("tradeguard.library").exception("Could not load the library folder; the app starts without it")
+    try:
+        with SessionLocal() as db:
+            sync_checklists(db)  # data/checklists.json becomes the Learning checklists
+    except Exception:
+        logging.getLogger("tradeguard.checklists").exception("Could not load the checklists; the app starts without them")
     yield
 
 
@@ -75,6 +81,7 @@ async def security_headers(request: Request, call_next):
 
 app.include_router(admin.router)
 app.include_router(library.router)
+app.include_router(checklists.router)
 app.include_router(images.router)
 app.include_router(news_calendar.router)
 app.include_router(auth.router)
