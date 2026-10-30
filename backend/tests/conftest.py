@@ -46,7 +46,7 @@ os.environ.pop("REQUIRE_EMAIL_VERIFICATION", None)
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
-from app.db import Base, engine  # noqa: E402
+from app.core.db import Base, engine  # noqa: E402
 from app.main import app  # noqa: E402
 
 assert str(engine.url.database).lower().endswith(("_test", "test.db")) or "test" in str(engine.url.database).lower()

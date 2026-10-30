@@ -1,6 +1,6 @@
 from sqlalchemy import func, select
 
-from app.db import SessionLocal
+from app.core.db import SessionLocal
 from app.models import Entry, User, UserSettings
 from conftest import signup
 from test_admin import signup_admin

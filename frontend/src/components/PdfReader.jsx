@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { api } from "../api.js";
+import { api } from "../api/index.js";
 import { clampPage } from "../lib/books.js";
 import { Icon } from "./ui.jsx";
 

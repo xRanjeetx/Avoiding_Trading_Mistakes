@@ -1,0 +1,15 @@
+/* ----- Loss limits ----- */
+.pair-row { grid-template-columns: minmax(0, 1fr) 84px 104px auto; }
+.pair-row input { min-width: 0; }
+@media (max-width: 520px) {
+  .pair-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; }
+  .pair-row > .kz-name { grid-column: 1 / -1; }
+}
+.loss-since { margin-top: 12px; gap: 10px; flex-wrap: wrap; font-size: 13.5px; }
+.loss-since .muted b { color: var(--primary); font-weight: 650; }
+/* Both limit cards are the same size (the shared .stats-grid.two makes its first card a large one). */
+.loss-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.loss-grid.one { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 520px) { .loss-grid { grid-template-columns: minmax(0, 1fr); } }
+.loss-grid .stat span .of { color: var(--primary); }
+

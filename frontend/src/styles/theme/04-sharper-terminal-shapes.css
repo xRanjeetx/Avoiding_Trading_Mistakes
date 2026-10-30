@@ -1,0 +1,30 @@
+/* ----- Sharper "terminal" shapes ----- */
+.card, .verdict, .ready, .stat, .dock, .summary-bar > div, .hero { border-radius: 14px; }
+.card.tight { border-radius: 14px; }
+.btn, .af-submit, .cta { border-radius: 12px; }
+.btn.small { border-radius: 10px; }
+input, textarea, .search-wrap .search { border-radius: 10px; }
+.seg, .auth-tabs { border-radius: 12px; }
+.seg button, .auth-tabs button { border-radius: 9px; }
+.rules li, .entry, .row { border-radius: 10px; }
+.num, .nav-ico, .ch-ico, .pills button, .yn button, .icon-btn, .icon-btn.small, .clock, .logout-btn { border-radius: 9px; }
+.st { border-radius: 8px; }
+.chip, .tag { border-radius: 7px; }
+.kv > div, .note, .cal-day { border-radius: 9px; }
+.pair-row, .sidebar button { border-radius: 10px; }
+.side-foot, .acct, .af-error { border-radius: 12px; }
+.avatar { border-radius: 10px; }
+.empty .e-icon { border-radius: 14px; }
+.sheet-card { border-radius: 18px 18px 0 0; }
+@media (min-width: 700px) { .sheet-card { border-radius: 18px; } }
+.toast { border-radius: 12px; }
+.banner { border-radius: 14px; }
+.auth-badge { border-radius: 12px; }
+.lp-auth .card { border-radius: 16px; }
+.lp-auth::before { border-radius: 18px; }
+.lp-pill { border-radius: 8px; }
+.lp-feats li { border-radius: 12px; }
+.lp-ico { border-radius: 10px; }
+.v-ico { border-radius: 14px; }
+.ring { filter: drop-shadow(0 4px 10px rgba(var(--p-rgb), 0.25)); }
+

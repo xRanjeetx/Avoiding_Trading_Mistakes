@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 import jwt
 import pytest
 
-from app import config
+from app.core import config
 from app.schemas import DEFAULT_KILLZONES, DEFAULT_PAIRS
 from conftest import signup
 
@@ -174,7 +174,7 @@ def test_killzones_are_per_user(client):
 def test_existing_database_gets_the_killzones_column():
     """A database created before killzones existed (like the live one) is upgraded in place, keeping its rows."""
     from sqlalchemy import create_engine, inspect, text
-    from app.main import ensure_columns
+    from app.core.migrations import ensure_columns
 
     eng = create_engine("sqlite://")
     with eng.begin() as c:

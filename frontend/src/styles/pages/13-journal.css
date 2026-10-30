@@ -1,0 +1,14 @@
+/* ----- Journal ----- */
+.summary-bar { gap: 10px; margin: 14px 0; }
+.summary-bar > div { border-radius: 16px; padding: 12px 14px; background: var(--card-bg); box-shadow: var(--shadow); }
+.summary-bar b { font-size: 20px; font-variant-numeric: tabular-nums; }
+.search-wrap { position: relative; margin-bottom: 10px; }
+.search-wrap > .ic { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+.search-wrap .search { margin: 0; padding-left: 42px; border-radius: 14px; }
+.pills { margin: 0 -16px; padding: 2px 16px 12px; }
+.pills button { transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.1s; }
+.pills button:hover:not(.on) { color: var(--text); border-color: rgba(var(--p-rgb), 0.45); }
+.pills button.on { box-shadow: 0 8px 18px -8px rgba(var(--p-rgb), 0.9); }
+.day-head { margin: 22px 4px 8px; font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.day-head > span:first-child { color: var(--text); }
+

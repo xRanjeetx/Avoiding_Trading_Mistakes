@@ -1,0 +1,90 @@
+/* ---------- Theme B: Teal Terminal (loaded last, overrides earlier tokens) ---------- */
+:root {
+  --font: "Space Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --bg: #07110f;
+  --surface: #0d1b18;
+  --surface-2: #132622;
+  --border: rgba(148, 200, 185, 0.16);
+  --text: #e6f4ef;
+  --muted: #94b5aa;
+  --primary: #22d3ee;
+  --primary-2: #2dd4bf;
+  --p-rgb: 34, 211, 238;
+  --p2-rgb: 45, 212, 191;
+  --good: #22c55e;
+  --bad: #fb7185;
+  --warn: #fbbf24;
+  --on-primary: #04222a;
+  --on-good: #04210f;
+  --on-bad: #2b0610;
+
+  --glow-1: rgba(34, 211, 238, 0.16);
+  --glow-2: rgba(34, 197, 94, 0.08);
+  --header-bg: rgba(7, 17, 15, 0.8);
+  --nav-bg: rgba(7, 17, 15, 0.9);
+  --nav-active: #5eead4;
+  --card-bg: linear-gradient(180deg, #0d1b18, rgba(13, 27, 24, 0.9));
+  --shadow: 0 10px 30px -18px rgba(0, 0, 0, 0.8);
+  --inset: rgba(0, 0, 0, 0.25);
+  --placeholder: #5e7f75;
+  --dock-bg: rgba(19, 38, 34, 0.92);
+  --dock-ok: rgba(8, 70, 40, 0.92);
+  --dock-no: rgba(120, 20, 45, 0.92);
+  --dock-btn: rgba(255, 255, 255, 0.12);
+  --toast-bg: #e6f4ef;
+  --toast-text: #07110f;
+  --tag-open: #5eead4;
+  --broken-text: #fda4af;
+  --caught-text: #86efac;
+
+  --sb-bg: linear-gradient(180deg, #0d1b18 0%, #08140f 100%);
+  --sb-glow: rgba(34, 211, 238, 0.16);
+  --ico-bg: rgba(148, 200, 185, 0.09);
+  --ring: rgba(var(--p-rgb), 0.3);
+  --soft: rgba(var(--p-rgb), 0.12);
+}
+
+:root[data-theme="light"] {
+  --bg: #f1f7f5;
+  --surface: #ffffff;
+  --surface-2: #e7f0ed;
+  --border: rgba(11, 60, 50, 0.13);
+  --text: #0b1f1a;
+  --muted: #4b6860;
+  --primary: #0e7490;
+  --primary-2: #0f766e;
+  --p-rgb: 14, 116, 144;
+  --p2-rgb: 15, 118, 110;
+  --good: #15803d;
+  --bad: #be123c;
+  --warn: #b45309;
+  --on-primary: #ffffff;
+  --on-good: #ffffff;
+  --on-bad: #ffffff;
+
+  --glow-1: rgba(20, 184, 166, 0.15);
+  --glow-2: rgba(21, 128, 61, 0.07);
+  --header-bg: rgba(241, 247, 245, 0.85);
+  --nav-bg: rgba(255, 255, 255, 0.92);
+  --nav-active: #0e7490;
+  --card-bg: #ffffff;
+  --shadow: 0 8px 24px -16px rgba(11, 60, 50, 0.3);
+  --inset: rgba(11, 60, 50, 0.06);
+  --placeholder: #8aa39b;
+  --dock-bg: rgba(255, 255, 255, 0.95);
+  --dock-ok: rgba(220, 252, 231, 0.97);
+  --dock-no: rgba(255, 228, 230, 0.97);
+  --dock-btn: rgba(11, 60, 50, 0.08);
+  --toast-bg: #0b1f1a;
+  --toast-text: #f1f7f5;
+  --tag-open: #0e7490;
+  --broken-text: #9f1239;
+  --caught-text: #166534;
+
+  --sb-bg: linear-gradient(180deg, #ffffff 0%, #f4f9f7 100%);
+  --sb-glow: rgba(20, 184, 166, 0.14);
+  --ico-bg: rgba(11, 60, 50, 0.05);
+}
+

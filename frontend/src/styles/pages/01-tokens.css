@@ -1,0 +1,8 @@
+/* ---------- Page-level redesign: cards, forms, rules, entries, stats, settings, sheet ---------- */
+:root { --ring: rgba(var(--p-rgb), 0.28); --soft: rgba(var(--p-rgb), 0.12); }
+
+.ic { flex: none; display: inline-block; vertical-align: middle; }
+:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+input:focus-visible, textarea:focus-visible { outline: none; }
+html { scrollbar-width: thin; scrollbar-color: rgba(148, 163, 184, 0.35) transparent; }
+

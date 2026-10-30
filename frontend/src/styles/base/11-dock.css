@@ -1,0 +1,25 @@
+/* ---------- Dock (sticky status) ---------- */
+.dock {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--safe-b) + 14px);
+  width: min(608px, calc(100% - 24px));
+  height: var(--dock-h);
+  z-index: 15;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 0 8px 0 16px;
+  border-radius: 16px;
+  font-weight: 700; font-size: 14.5px;
+  background: var(--dock-bg);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.7);
+  transition: background 0.25s, border-color 0.25s;
+}
+.dock.ok { background: var(--dock-ok); border-color: rgba(16, 185, 129, 0.6); }
+.dock.no { background: var(--dock-no); border-color: rgba(244, 63, 94, 0.6); }
+.dock .btn { background: var(--dock-btn); border-color: transparent; }
+.dock.ok .btn { background: var(--good); color: var(--on-good); }
+

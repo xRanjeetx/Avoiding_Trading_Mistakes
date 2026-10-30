@@ -1,0 +1,15 @@
+/* ----- Rules ----- */
+.rules { gap: 10px; }
+.rules li { padding: 12px 14px; border-radius: 16px; background: var(--bg); transition: border-color 0.2s, background 0.2s, transform 0.15s; }
+.rules li:hover { transform: translateY(-1px); }
+.num { width: 32px; height: 32px; border-radius: 11px; font-size: 12px; }
+.rules .title { font-size: 14.5px; }
+.st { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; }
+.st.ok { color: #fff; background: var(--good); box-shadow: 0 6px 14px -6px var(--good); }
+.st.bad { color: #fff; background: var(--bad); box-shadow: 0 6px 14px -6px var(--bad); }
+.st.wait { color: var(--muted); background: var(--surface-2); }
+.yn button { border-radius: 11px; background: var(--surface); transition: transform 0.08s, background 0.15s, border-color 0.15s; }
+.yn button:hover:not(.on) { border-color: rgba(var(--p-rgb), 0.5); }
+.yn button.on.yes { box-shadow: 0 6px 14px -6px var(--good); }
+.yn button.on.no { box-shadow: 0 6px 14px -6px var(--bad); }
+

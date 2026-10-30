@@ -1,0 +1,10 @@
+/* ----- Settings ----- */
+.acct { display: flex; align-items: center; gap: 12px; }
+.acct > div { flex: 1; min-width: 0; line-height: 1.3; }
+.acct small { display: block; font-size: 11.5px; color: var(--muted); font-weight: 600; }
+.acct b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+.acct .avatar { font-size: 16px; font-weight: 800; }
+.danger-zone { border-color: rgba(244, 63, 94, 0.3); background: linear-gradient(135deg, rgba(244, 63, 94, 0.07), transparent), var(--surface); }
+.danger-zone .ch-ico { color: var(--bad); background: rgba(244, 63, 94, 0.12); }
+.danger-zone .btn { margin-top: 12px; }
+

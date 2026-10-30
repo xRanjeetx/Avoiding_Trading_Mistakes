@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { api } from "../api.js";
+import { api } from "../api/index.js";
 import { SLOTS } from "../lib/image.js";
 import { Icon } from "./ui.jsx";
 

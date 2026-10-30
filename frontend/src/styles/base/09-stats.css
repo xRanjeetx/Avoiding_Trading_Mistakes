@@ -1,0 +1,21 @@
+/* ---------- Stats ---------- */
+.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 12px 0; }
+.stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 14px 12px;
+}
+.stat small { display: block; color: var(--muted); font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; }
+.stat span { display: block; font-size: 24px; font-weight: 800; margin-top: 4px; letter-spacing: -0.5px; }
+.meter { height: 5px; border-radius: 3px; background: var(--surface-2); margin-top: 8px; overflow: hidden; }
+.meter i { display: block; height: 100%; width: 0; background: var(--primary); border-radius: 3px; transition: width 0.4s; }
+.meter.bad i { background: var(--bad); }
+
+.bar { margin: 12px 0; }
+.bar .lbl { display: flex; justify-content: space-between; gap: 10px; font-size: 13.5px; margin-bottom: 6px; }
+.bar .lbl b { font-weight: 700; }
+.bar .track { height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+.bar .fill { height: 100%; background: linear-gradient(90deg, #fb7185, var(--bad)); border-radius: 4px; }
+.bar.caught .fill { background: linear-gradient(90deg, #34d399, var(--good)); }
+

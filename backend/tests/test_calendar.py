@@ -5,8 +5,9 @@ import pytest
 from conftest import signup
 from sqlalchemy import select
 
-from app import config, news_calendar
-from app.db import SessionLocal
+from app.core import config
+from app.routers import news_calendar
+from app.core.db import SessionLocal
 from app.models import CalendarEvent
 
 

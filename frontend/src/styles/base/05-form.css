@@ -1,0 +1,45 @@
+/* ---------- Form ---------- */
+.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.field span { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+.grid2 .field { margin-bottom: 12px; }
+
+input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 13px 14px;
+  font: inherit;
+  font-size: 16px; /* prevents iOS zoom on focus */
+  font-weight: 500;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  -webkit-appearance: none;
+  appearance: none;
+}
+input::placeholder { color: var(--placeholder); }
+input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(var(--p-rgb), 0.25); }
+input[type="time"] { min-height: 48px; }
+
+.seg {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+  padding: 5px;
+  margin-bottom: 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+.seg button {
+  padding: 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit; font-weight: 700; font-size: 15px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.seg button.on[data-val="buy"] { background: var(--good); color: var(--on-good); box-shadow: 0 6px 18px -6px var(--good); }
+.seg button.on[data-val="sell"] { background: var(--bad); color: #fff; box-shadow: 0 6px 18px -6px var(--bad); }
+

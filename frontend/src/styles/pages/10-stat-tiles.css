@@ -1,0 +1,26 @@
+/* ----- Stat tiles ----- */
+.stat { position: relative; overflow: hidden; border-radius: 18px; padding: 16px 14px; background: var(--card-bg); box-shadow: var(--shadow); }
+.stat { --acc: var(--primary); --acc-rgb: var(--p-rgb); border: 1px solid var(--border); padding: 16px 16px 15px; transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s; }
+.stat::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: linear-gradient(90deg, var(--acc), transparent 85%); opacity: 0.85; }
+.stat::after { content: ""; position: absolute; top: -40px; right: -40px; width: 120px; height: 120px; border-radius: 50%; background: radial-gradient(closest-side, rgba(var(--acc-rgb), 0.16), transparent); pointer-events: none; }
+.stat:hover { transform: translateY(-2px); border-color: rgba(var(--acc-rgb), 0.4); box-shadow: 0 16px 32px -18px rgba(var(--acc-rgb), 0.55); }
+.stats-grid:not(.two) .stat:nth-child(2) { --acc: var(--bad); --acc-rgb: 251, 113, 133; }
+.stats-grid:not(.two) .stat:nth-child(3) { --acc: var(--good); --acc-rgb: 34, 197, 94; }
+:root[data-theme="light"] .stats-grid:not(.two) .stat:nth-child(2) { --acc-rgb: 190, 18, 60; }
+:root[data-theme="light"] .stats-grid:not(.two) .stat:nth-child(3) { --acc-rgb: 21, 128, 61; }
+.stat small { display: flex; align-items: center; gap: 8px; letter-spacing: 0.08em; font-size: 11px; }
+.stat small .ic { box-sizing: border-box; width: 26px; height: 26px; padding: 6px; border-radius: 8px; color: var(--acc); background: rgba(var(--acc-rgb), 0.14); flex: none; }
+.stat span { font-variant-numeric: tabular-nums; margin-top: 10px; position: relative; }
+.stat .meter { margin-top: 12px; position: relative; }
+.stat span .of { display: inline; margin: 0 0 0 2px; font-size: 15px; font-weight: 700; color: var(--muted); }
+.meter { height: 6px; }
+.meter i { background: linear-gradient(90deg, var(--primary), var(--primary-2)); }
+.meter.bad i { background: linear-gradient(90deg, #fb7185, var(--bad)); }
+.stats-grid.two .stat:first-child {
+  grid-column: 1 / -1; padding: 20px;
+  background: linear-gradient(135deg, rgba(var(--p-rgb), 0.2), rgba(var(--p2-rgb), 0.06)), var(--surface);
+  border-color: rgba(var(--p-rgb), 0.35);
+}
+.stats-grid.two .stat:first-child span { font-size: 36px; letter-spacing: -0.04em; }
+@media (min-width: 640px) { .stats-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+

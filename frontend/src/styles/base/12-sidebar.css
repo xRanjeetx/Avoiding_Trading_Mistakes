@@ -1,0 +1,82 @@
+/* ---------- Sidebar (slide-out menu on phones, always open on wide screens) ---------- */
+.scrim {
+  position: fixed; inset: 0; z-index: 44;
+  background: rgba(2, 6, 23, 0.55);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.25s;
+}
+.scrim.show { opacity: 1; pointer-events: auto; }
+
+.sidebar {
+  position: fixed; top: 0; bottom: 0; left: 0; z-index: 45;
+  width: min(280px, 84vw);
+  display: flex; flex-direction: column; gap: 4px;
+  padding: calc(18px + env(safe-area-inset-top, 0px)) 14px calc(18px + var(--safe-b));
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  transform: translateX(-102%);
+  visibility: hidden;
+  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s linear 0.28s;
+}
+.sidebar.open {
+  transform: none;
+  visibility: visible;
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.45);
+  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.side-brand {
+  display: flex; align-items: center; gap: 10px;
+  padding: 2px 6px 16px; margin-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.side-brand img { width: 40px; height: 40px; border-radius: 12px; box-shadow: 0 4px 14px rgba(var(--p-rgb), 0.35); }
+.side-brand b { display: block; font-size: 17px; font-weight: 800; letter-spacing: -0.2px; }
+.side-brand small { display: block; color: var(--muted); font-size: 12px; }
+.sidebar button {
+  position: relative;
+  display: flex; align-items: center; gap: 14px;
+  width: 100%;
+  padding: 13px 14px;
+  border: 0; border-radius: 14px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit; font-size: 15px; font-weight: 650; text-align: left;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.sidebar button:hover { background: var(--surface-2); color: var(--text); }
+.sidebar svg { width: 22px; height: 22px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.sidebar button.active {
+  color: var(--nav-active);
+  background: linear-gradient(90deg, rgba(var(--p-rgb), 0.2), rgba(var(--p-rgb), 0.04));
+}
+.sidebar button.active::before {
+  content: "";
+  position: absolute; left: -14px; top: 20%; bottom: 20%;
+  width: 4px; border-radius: 0 4px 4px 0;
+  background: linear-gradient(180deg, var(--primary), var(--primary-2));
+}
+.side-foot {
+  margin-top: auto;
+  padding: 14px 6px 0;
+  border-top: 1px solid var(--border);
+}
+.user-chip { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
+.side-foot { display: flex; align-items: center; gap: 8px; }
+.logout-btn {
+  flex: none; display: grid; place-items: center; width: 36px; height: 36px;
+  border-radius: 10px; border: 1px solid var(--border); background: transparent;
+  color: var(--muted); cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.logout-btn:hover { background: rgba(244, 63, 94, 0.12); border-color: rgba(244, 63, 94, 0.45); color: var(--bad); }
+.logout-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.avatar {
+  flex: none; display: grid; place-items: center;
+  width: 38px; height: 38px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--primary-2)); color: #fff;
+}
+.avatar svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.user-email { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 600; color: var(--text); }
+

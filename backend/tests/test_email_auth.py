@@ -1,9 +1,10 @@
 import pytest
 
-from app import config, main
+from app.core import config
+from app.routers import auth
 from app.models import User
-from app.db import SessionLocal
-from app.security import make_purpose_token, make_token
+from app.core.db import SessionLocal
+from app.core.security import make_purpose_token, make_token
 
 PW = "password123"
 
@@ -13,7 +14,7 @@ def mails(monkeypatch):
     """Turns verification on and captures outgoing emails as (to, link)."""
     sent = []
     monkeypatch.setattr(config, "REQUIRE_EMAIL_VERIFICATION", True)
-    monkeypatch.setattr(main, "send_link_email", lambda to, subject, intro, button, link, outro: sent.append((to, link)))
+    monkeypatch.setattr(auth, "send_link_email", lambda to, subject, intro, button, link, outro: sent.append((to, link)))
     return sent
 
 

@@ -1,0 +1,43 @@
+/* ----- Landing heading gradient and edge ----- */
+.lp-hero h1 em {
+  background: linear-gradient(100deg, var(--primary), var(--primary-2), var(--good), var(--primary-2), var(--primary));
+  background-size: 200% auto;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+/* Glowing edge: animate the gradient's angle, not the element. Rotating the masked element turned the
+   rounded border into a big tilted diamond that stuck out of the card. */
+@property --ang { syntax: "<angle>"; initial-value: 0deg; inherits: false; }
+@keyframes lp-ang { to { --ang: 360deg; } }
+.lp-auth::before {
+  background: conic-gradient(from var(--ang), transparent 0 55%, var(--primary) 78%, var(--good) 92%, transparent);
+  animation: lp-ang 6s linear infinite;
+}
+.lp-pill { color: var(--nav-active); }
+.lp-hero h1, .top h1, .head-title h1 { letter-spacing: -0.03em; }
+
+/* Sidebar active row */
+.sidebar button.active { background: linear-gradient(90deg, rgba(var(--p-rgb), 0.18), rgba(var(--p-rgb), 0.04)); box-shadow: inset 0 0 0 1px rgba(var(--p-rgb), 0.3); }
+
+/* Brand mark */
+.logo { background: #06201c; }
+
+/* Journal result filters take the colour of what they show: wins green, losses red, BE amber, CTC violet, open teal */
+:root { --ctc: #a78bfa; --on-ctc: #1a0b3d; }
+:root[data-theme="light"] { --ctc: #6d28d9; --on-ctc: #ffffff; }
+.pills button[data-k] { --c: var(--primary); --on: var(--on-primary); }
+.pills button[data-k="open"] { --c: var(--tag-open); --on: var(--on-primary); }
+.pills button[data-k="win"] { --c: var(--good); --on: var(--on-good); }
+.pills button[data-k="loss"] { --c: var(--bad); --on: var(--on-bad); }
+.pills button[data-k="be"] { --c: var(--warn); --on: #1f1300; }
+.pills button[data-k="ctc"] { --c: var(--ctc); --on: var(--on-ctc); }
+:root[data-theme="light"] .pills button[data-k="be"] { --on: #ffffff; }
+.pills button[data-k]:not([data-k="all"]) {
+  color: var(--c);
+  border-color: color-mix(in srgb, var(--c) 40%, transparent);
+  background: color-mix(in srgb, var(--c) 9%, var(--surface));
+}
+.pills button[data-k]:not([data-k="all"]):hover:not(.on) { color: var(--c); border-color: var(--c); }
+.pills button[data-k]:not([data-k="all"]).on {
+  color: var(--on); background: var(--c); border-color: transparent; box-shadow: 0 8px 18px -8px var(--c);
+}
+.result-btns .btn.res-ctc { color: var(--ctc); border-color: color-mix(in srgb, var(--ctc) 40%, transparent); background: color-mix(in srgb, var(--ctc) 9%, transparent); }
