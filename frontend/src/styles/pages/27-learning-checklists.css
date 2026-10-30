@@ -1,0 +1,85 @@
+/* ----- Learning: view switcher and checklists ----- */
+/* Each list has its own colour: --a is the colour, --a-soft a faint wash of it. */
+.k-library { --a: var(--primary); }
+.k-mistakes { --a: var(--bad); }
+.k-remember { --a: var(--warn); }
+.k-management { --a: var(--good); }
+
+/* Switcher */
+.learn-tabs { display: flex; gap: 6px; overflow-x: auto; padding: 5px; margin-bottom: 14px; border: 1px solid var(--border); border-radius: 16px; background: var(--inset); scrollbar-width: none; }
+.learn-tabs::-webkit-scrollbar { display: none; }
+.learn-tabs button { flex: 1 0 auto; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 10px 14px; border: 0; border-radius: 12px; background: transparent; color: var(--muted); font: inherit; font-size: 14px; font-weight: 650; white-space: nowrap; cursor: pointer; transition: background 0.18s, color 0.18s, box-shadow 0.18s, transform 0.1s; }
+.learn-tabs button .ic { color: var(--a); transition: transform 0.2s; }
+.learn-tabs button:hover { color: var(--text); background: color-mix(in srgb, var(--a) 8%, transparent); }
+.learn-tabs button:hover .ic { transform: scale(1.12); }
+.learn-tabs button:active { transform: scale(0.97); }
+.learn-tabs button.on { color: var(--text); background: color-mix(in srgb, var(--a) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--a) 55%, transparent), 0 6px 18px -10px var(--a); }
+.learn-tabs button:focus-visible { outline: 2px solid var(--a); outline-offset: 1px; }
+.learn-tabs em { font-style: normal; font-family: var(--mono); font-size: 11.5px; font-weight: 600; padding: 2px 7px; border-radius: 999px; color: var(--a); background: color-mix(in srgb, var(--a) 14%, transparent); }
+.learn-tabs em.all { color: var(--on-good); background: var(--good); }
+
+/* Card with a coloured top edge */
+.chk { position: relative; overflow: hidden; }
+.chk::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: linear-gradient(90deg, var(--a), color-mix(in srgb, var(--a) 20%, transparent)); }
+
+/* Header: icon tile, title, progress ring */
+.chk-hero { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+.chk-badge { flex: none; display: grid; place-items: center; width: 52px; height: 52px; border-radius: 16px; color: var(--a); background: linear-gradient(145deg, color-mix(in srgb, var(--a) 26%, transparent), color-mix(in srgb, var(--a) 8%, transparent)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--a) 40%, transparent), 0 10px 24px -14px var(--a); }
+.chk-hero-main { flex: 1; min-width: 0; }
+.chk-hero-main h2 { margin: 0; font-size: 18px; font-weight: 750; letter-spacing: -0.01em; }
+.chk-hero-main p { margin: 3px 0 0; color: var(--muted); font-size: 13.5px; line-height: 1.4; }
+.chk-ring { --pct: 0; flex: none; display: grid; place-items: center; width: 58px; height: 58px; border-radius: 50%; background: conic-gradient(var(--a) calc(var(--pct) * 1%), color-mix(in srgb, var(--text) 10%, transparent) 0); transition: background 0.4s; position: relative; }
+.chk-ring::before { content: ""; position: absolute; inset: 6px; border-radius: 50%; background: var(--surface, var(--bg)); }
+.chk-ring b { position: relative; font-family: var(--mono); font-size: 14px; font-weight: 700; }
+.chk-ring small { font-size: 9px; font-weight: 600; color: var(--muted); margin-left: 1px; }
+
+.chk-meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 32px; margin-bottom: 4px; color: var(--muted); font-size: 13px; }
+.chk-meta b { color: var(--a); font-family: var(--mono); font-size: 15px; }
+
+/* Shown once every line is ticked */
+.chk-win { display: flex; align-items: center; gap: 10px; margin: 8px 0 4px; padding: 12px 14px; border-radius: 14px; font-size: 14px; font-weight: 600; color: var(--text); background: linear-gradient(135deg, color-mix(in srgb, var(--good) 22%, transparent), color-mix(in srgb, var(--a) 10%, transparent)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--good) 45%, transparent); animation: chk-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.chk-win .ic { flex: none; color: var(--good); }
+
+/* Sub-headings */
+.chk-group { margin-top: 14px; }
+.chk-group-title { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-size: 12px; font-weight: 750; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text); }
+.chk-gico { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; color: var(--a); background: color-mix(in srgb, var(--a) 16%, transparent); }
+.chk-group-title em { margin-left: auto; font-style: normal; font-family: var(--mono); font-size: 11.5px; letter-spacing: 0; color: var(--muted); }
+
+/* Lines */
+.chk-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.chk-list li { animation: chk-in 0.35s ease-out both; animation-delay: calc(var(--i, 0) * 22ms); }
+.chk-item { position: relative; display: flex; align-items: flex-start; gap: 11px; padding: 11px 12px; border: 1px solid var(--border); border-radius: 14px; background: color-mix(in srgb, var(--text) 3%, transparent); cursor: pointer; transition: border-color 0.18s, background 0.18s, transform 0.12s, box-shadow 0.18s; }
+.chk-item:hover { border-color: color-mix(in srgb, var(--a) 50%, transparent); background: color-mix(in srgb, var(--a) 7%, transparent); transform: translateX(2px); }
+.chk-item:active { transform: scale(0.99); }
+.chk-item input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+.chk-item:has(input:focus-visible) { box-shadow: 0 0 0 3px color-mix(in srgb, var(--a) 40%, transparent); }
+
+.chk-box { flex: none; display: grid; place-items: center; width: 22px; height: 22px; margin-top: 1px; border-radius: 7px; border: 2px solid color-mix(in srgb, var(--a) 55%, var(--muted)); color: transparent; transition: background 0.18s, border-color 0.18s, color 0.18s, transform 0.2s; }
+.chk-box .ic { stroke-width: 3; transform: scale(0.4); transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.chk-item input:checked + .chk-box { background: var(--a); border-color: var(--a); color: var(--bg); }
+.chk-item input:checked + .chk-box .ic { transform: scale(1); }
+
+.chk-no { flex: none; min-width: 26px; padding: 2px 0; border-radius: 8px; text-align: center; font-family: var(--mono); font-size: 11.5px; font-weight: 700; color: var(--a); background: color-mix(in srgb, var(--a) 14%, transparent); }
+.chk-text { flex: 1; min-width: 0; font-size: 15px; line-height: 1.45; overflow-wrap: anywhere; transition: color 0.18s; }
+.chk-item.done { border-color: color-mix(in srgb, var(--a) 30%, transparent); background: color-mix(in srgb, var(--a) 6%, transparent); }
+/* Mistakes you have read are crossed out. The other lists only get the tick, and the text stays easy to read. */
+.chk-item.done .chk-text { color: var(--text); }
+.k-mistakes .chk-item.done .chk-text { color: var(--muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--a) 60%, transparent); }
+.k-mistakes .chk-item.done .chk-no { opacity: 0.6; }
+
+@keyframes chk-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes chk-pop { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: none; } }
+
+@media (max-width: 520px) {
+  .chk-hero { gap: 11px; }
+  .chk-badge { width: 44px; height: 44px; border-radius: 14px; }
+  .chk-hero-main h2 { font-size: 16.5px; }
+  .chk-ring { width: 50px; height: 50px; }
+  .chk-ring::before { inset: 5px; }
+  .chk-item { padding: 10px; gap: 9px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chk-list li, .chk-win { animation: none; }
+  .chk-item, .chk-box, .chk-box .ic, .chk-ring, .learn-tabs button, .learn-tabs button .ic { transition: none; }
+}
