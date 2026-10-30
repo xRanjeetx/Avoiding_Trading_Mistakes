@@ -147,7 +147,10 @@ def test_a_wrong_code_is_refused_and_a_used_code_cannot_be_replayed(client):
     assert again.status_code == 403  # the same code a second time
 
 
-def test_the_code_used_to_enable_cannot_be_used_to_sign_in(client):
+def test_the_code_used_to_enable_cannot_be_used_to_sign_in(client, monkeypatch):
+    # Freeze the clock: if a 30-second step ended between enabling and signing in, the new code would be a different,
+    # valid one and the test would fail at random.
+    monkeypatch.setattr(totp, "current_step", lambda now=None: 50_000_000)
     h = signup(client)
     secret, _ = enroll(client, h)
     r = client.post("/api/auth/login/2fa", json={"mfa_token": login(client).json()["mfa_token"], "code": now_code(secret)})
