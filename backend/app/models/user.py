@@ -17,6 +17,15 @@ class User(Base):
     # is_admin mirrors config.ADMIN_EMAILS (see security.sync_admin); is_active=False blocks the account.
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
+    # False while a new sign-up waits for an admin (see config.REQUIRE_APPROVAL). Existing accounts were approved by the migration.
+    approved: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
+    # Two-factor sign-in. The seed is stored encrypted (core/crypto.py); it exists before totp_enabled is set while the user
+    # is still confirming their first code. totp_last_step blocks re-use of a code; recovery_hashes are SHA-256 of the unused
+    # single-use recovery codes.
+    totp_secret: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    totp_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    totp_last_step: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    recovery_hashes: Mapped[list | None] = mapped_column(JSON, nullable=True)
     # NULL for accounts that existed before this column was added.
     created_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
 

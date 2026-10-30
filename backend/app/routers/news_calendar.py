@@ -7,6 +7,7 @@ Denied" page, the network is down, ...) the last good events stay and the next t
 
 Each feed item looks like {"title", "country" (a currency code), "date" (ISO with a UTC offset), "impact", "forecast", "previous"}."""
 import hashlib
+import json
 import logging
 import threading
 import time
@@ -57,7 +58,7 @@ def parse_feed(data) -> tuple[list[dict], int | None]:
             if not title or not currency:
                 continue
             events.append({
-                "id": hashlib.sha1(f"{at}|{currency}|{title}".encode()).hexdigest()[:24],
+                "id": hashlib.sha1(f"{at}|{currency}|{title}".encode(), usedforsecurity=False).hexdigest()[:24],
                 "at": at, "currency": currency, "title": title, "impact": impact,
                 "forecast": str(item.get("forecast") or "")[:30], "previous": str(item.get("previous") or "")[:30],
             })
@@ -66,11 +67,26 @@ def parse_feed(data) -> tuple[list[dict], int | None]:
     return events, earliest
 
 
+def _secure_enough(scheme: str, host: str | None) -> bool:
+    """https always; plain http only to this machine, and never in production (the browser tests serve a fake feed that way)."""
+    return scheme == "https" or (not config.IS_PRODUCTION and scheme == "http" and host in ("localhost", "127.0.0.1"))
+
+
 def fetch_json(url: str):
-    """Downloads one feed. Raises on any problem, including an HTML answer instead of JSON."""
-    res = httpx.get(url, timeout=15, follow_redirects=True, headers={"User-Agent": "Mozilla/5.0 (TradeGuard calendar)"})
-    res.raise_for_status()
-    return res.json()
+    """Downloads one feed. Raises on any problem: not https (also after a redirect), too large, or HTML instead of JSON."""
+    start = httpx.URL(url)
+    if not _secure_enough(start.scheme, start.host):
+        raise ValueError("calendar feeds must use https")
+    with httpx.stream("GET", url, timeout=15, follow_redirects=True, headers={"User-Agent": "Mozilla/5.0 (TradeGuard calendar)"}) as res:
+        res.raise_for_status()
+        if not _secure_enough(res.url.scheme, res.url.host):
+            raise ValueError("calendar feed redirected away from https")
+        body = bytearray()
+        for chunk in res.iter_bytes():
+            body += chunk
+            if len(body) > config.MAX_FEED_BYTES:
+                raise ValueError("calendar feed is too large")
+    return json.loads(bytes(body))
 
 
 def refresh(db: Session) -> int:
@@ -140,7 +156,9 @@ def get_calendar(background: BackgroundTasks, _: User = Depends(current_user), d
     ensure_fresh(db, background)
     now = _now_ms()
     rows = db.scalars(
-        select(CalendarEvent).where(CalendarEvent.at >= now - 86400000, CalendarEvent.at <= now + KEEP_DAYS * 86400000).order_by(CalendarEvent.at)
+        select(CalendarEvent).where(CalendarEvent.at >= now - 86400000, CalendarEvent.at <= now + KEEP_DAYS * 86400000)
+        # Events at the same minute keep one order (title, then id) instead of whatever the database happens to return.
+        .order_by(CalendarEvent.at, func.lower(CalendarEvent.title), CalendarEvent.id)
     ).all()
     return {
         "enabled": config.CALENDAR_ENABLED,

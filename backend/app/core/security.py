@@ -7,9 +7,11 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
-from .config import SECRET_KEY, TOKEN_DAYS
+from . import config
+from .config import ACCESS_MINUTES, SECRET_KEY
 from .db import get_db
-from ..models import User
+from ..models import AuthSession, User
+from .sessions import is_live
 
 oauth2 = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
@@ -18,13 +20,19 @@ def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 
+# Checked when the email is unknown, so a login for a missing account takes as long as one with a wrong password.
+DUMMY_HASH = bcrypt.hashpw(b"not-a-real-password", bcrypt.gensalt()).decode()
+
+
 def verify_password(password: str, hashed: str) -> bool:
     return bcrypt.checkpw(password.encode(), hashed.encode())
 
 
-def make_token(user: User) -> str:
-    exp = datetime.now(timezone.utc) + timedelta(days=TOKEN_DAYS)
-    return jwt.encode({"sub": str(user.id), "exp": exp}, SECRET_KEY, algorithm="HS256")
+def make_token(user: User, session_id: str) -> str:
+    """Short-lived access token. It names the login session, so ending that session (logout, password reset, disabled
+    account) invalidates the token at once instead of when it expires."""
+    exp = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_MINUTES)
+    return jwt.encode({"sub": str(user.id), "sid": session_id, "exp": exp}, SECRET_KEY, algorithm="HS256")
 
 
 def _fingerprint(user: User) -> str:
@@ -59,17 +67,22 @@ def current_user(token: str = Depends(oauth2), db: Session = Depends(get_db)) ->
         if "purpose" in data:  # emailed verify/reset tokens must not work as login tokens
             raise invalid
         user_id = int(data["sub"])
+        session_id = str(data["sid"])  # tokens from before login sessions existed have none and must log in again
     except (jwt.PyJWTError, KeyError, ValueError):
         raise invalid
     user = db.get(User, user_id)
-    if not user:
+    if not user or not is_live(db.get(AuthSession, session_id), user_id):
         raise invalid
     if not user.is_active:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "This account has been disabled")
+    if not user.approved:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "This account is waiting for admin approval")
     return user
 
 
 def require_admin(user: User = Depends(current_user)) -> User:
     if not user.is_admin:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Admin access required")
+    if config.ADMIN_REQUIRE_2FA and not user.totp_enabled:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Two-factor sign-in is required for admin tools. Turn it on in Settings > Security.")
     return user

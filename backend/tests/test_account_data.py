@@ -22,20 +22,20 @@ def test_delete_account_erases_user_and_all_their_data(client):
     other = signup(client, "bob")
     for h in (auth, other):
         assert client.post("/api/entries", json={"timestamp": 1_700_000_000_000, "pair": "EURUSD"}, headers=h).status_code == 201
-    assert client.post("/api/auth/delete-account", json={"password": "password123"}, headers=auth).status_code == 204
-    assert client.post("/api/auth/login", json={"email": "alice@example.com", "password": "password123"}).status_code == 401
+    assert client.post("/api/auth/delete-account", json={"password": "correct-horse-42"}, headers=auth).status_code == 204
+    assert client.post("/api/auth/login", json={"email": "alice@example.com", "password": "correct-horse-42"}).status_code == 401
     assert count(User) == 1 and count(Entry) == 1 and count(UserSettings) == 1  # bob's data is untouched
     assert client.get("/api/entries", headers=other).json()[0]["pair"] == "EURUSD"
 
 
 def test_admin_cannot_delete_own_account_here(client):
     admin = signup_admin(client)
-    assert client.post("/api/auth/delete-account", json={"password": "password123"}, headers=admin).status_code == 400
+    assert client.post("/api/auth/delete-account", json={"password": "correct-horse-42"}, headers=admin).status_code == 400
     assert client.get("/api/auth/me", headers=admin).status_code == 200
 
 
 def test_delete_account_requires_login(client):
-    assert client.post("/api/auth/delete-account", json={"password": "password123"}).status_code == 401
+    assert client.post("/api/auth/delete-account", json={"password": "correct-horse-42"}).status_code == 401
 
 
 def test_import_adds_entries_and_skips_existing_ids(client):

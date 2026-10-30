@@ -203,7 +203,7 @@ def test_deleting_an_account_removes_only_its_progress(client, lib):
     bid = client.get("/api/library", headers=a).json()[0]["id"]
     for h in (a, b):
         client.put(f"/api/library/{bid}/progress", json={"lastPage": 7}, headers=h)
-    assert client.post("/api/auth/delete-account", json={"password": "password123"}, headers=a).status_code == 204
+    assert client.post("/api/auth/delete-account", json={"password": "correct-horse-42"}, headers=a).status_code == 204
     assert count(ReadingProgress) == 1 and count(LibraryBook) == 1  # the shared book stays
     assert client.get("/api/library", headers=b).json()[0]["lastPage"] == 7
 

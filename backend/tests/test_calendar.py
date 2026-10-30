@@ -157,6 +157,16 @@ def test_first_request_downloads_and_returns_the_events(client, feed):
     assert got["events"][0] | {"at": 0} == {"at": 0, "currency": "USD", "title": "FOMC", "impact": "high", "forecast": "4.00%", "previous": "2%"}
 
 
+def test_events_at_the_same_time_come_back_in_a_fixed_order(client, feed):
+    """Equal times used to come back in whatever order the database chose, so the News tab could reorder between loads."""
+    titles = ["FOMC Statement", "Federal Funds Rate", "ecb speech", "Zebra", "BOJ Rate"]
+    feed.pages = {feed.urls[0]: [item(t, 5) for t in titles], feed.urls[1]: []}
+    h = signup(client)
+    first = [e["title"] for e in client.get("/api/calendar", headers=h).json()["events"]]
+    assert first == ["BOJ Rate", "ecb speech", "Federal Funds Rate", "FOMC Statement", "Zebra"]  # title, ignoring case
+    assert [e["title"] for e in client.get("/api/calendar", headers=h).json()["events"]] == first
+
+
 def test_events_far_in_the_past_or_future_are_not_returned(client, feed):
     feed.pages = {feed.urls[0]: [item("Soon", 5), item("Far", 24 * 20), item("Yesterday long ago", -24 * 3)], feed.urls[1]: []}
     h = signup(client)
