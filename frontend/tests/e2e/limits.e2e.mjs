@@ -41,7 +41,7 @@ const nav = (label) => page.locator(".sidebar button", { hasText: label }).first
 const field = (label) => page.locator("label.field", { hasText: label }).locator("input, textarea").first();
 const toast = () => page.locator(".toast");
 const api = (method, url, body) => page.evaluate(async ([method, url, body]) => {
-  const { token } = JSON.parse(localStorage.getItem("atm_session"));
+  const { access_token: token } = await fetch("/api/auth/refresh", { method: "POST" }).then((r) => r.json());
   const res = await fetch(`/api${url}`, { method, headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: body && JSON.stringify(body) });
   return res.status === 204 ? null : res.json();
 }, [method, url, body]);
@@ -63,10 +63,10 @@ console.log(`\nLoss limits E2E against ${URL} as ${email}\n`);
 await step("sign up and open the app", async () => {
   await page.goto(URL);
   const res = await page.evaluate(async (email) => {
-    const r = await fetch("/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "password123" }) });
+    const r = await fetch("/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "correct-horse-42" }) });
     return r.json();
   }, email);
-  await page.evaluate((s) => localStorage.setItem("atm_session", JSON.stringify({ token: s.access_token, email: s.email, isAdmin: false })), res);
+  await page.evaluate((s) => localStorage.setItem("atm_hint", JSON.stringify({ email: s.email, isAdmin: false })), res);
   await page.reload();
   await page.locator(".sidebar").waitFor();
 });

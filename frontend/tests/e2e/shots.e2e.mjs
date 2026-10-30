@@ -54,7 +54,7 @@ page.on("console", (m) => {
 });
 const nav = (label) => page.locator(".sidebar button", { hasText: label }).first().click();
 const api = async (method, url, body) => page.evaluate(async ([method, url, body]) => {
-  const { token } = JSON.parse(localStorage.getItem("atm_session"));
+  const { access_token: token } = await fetch("/api/auth/refresh", { method: "POST" }).then((r) => r.json());
   const res = await fetch(`/api${url}`, { method, headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: body && JSON.stringify(body) });
   return res.status === 204 ? null : res.json();
 }, [method, url, body]);
@@ -64,13 +64,13 @@ console.log(`\nScreenshots E2E against ${URL} as ${email}\n`);
 await step("sign up through the API and open the app", async () => {
   await page.goto(URL);
   const res = await page.evaluate(async (email) => {
-    const r = await fetch("/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "password123" }) });
+    const r = await fetch("/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "correct-horse-42" }) });
     return r.json();
   }, email);
-  await page.evaluate((s) => localStorage.setItem("atm_session", JSON.stringify({ token: s.access_token, email: s.email, isAdmin: false })), res);
-  await page.evaluate(() => fetch("/api/entries", {
+  await page.evaluate((s) => localStorage.setItem("atm_hint", JSON.stringify({ email: s.email, isAdmin: false })), res);
+  await page.evaluate(async () => fetch("/api/entries", {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${JSON.parse(localStorage.getItem("atm_session")).token}` },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${(await fetch("/api/auth/refresh", { method: "POST" }).then((r) => r.json())).access_token}` },
     body: JSON.stringify({ id: "e2eshot1", timestamp: Date.now(), pair: "XAUUSD", dir: "buy", setup: "fvg", lot: 0.02, entry: 2000, sl: 1990, tp: 2020, rr: 2 }),
   }));
   await page.goto(URL);
@@ -96,7 +96,7 @@ await step("picking a file uploads it, shrinks it to WebP and shows a preview", 
   const stored = await api("GET", "/entries");
   assert.deepEqual(Object.keys(stored[0].images), ["before"]);
   const info = await page.evaluate(async () => {
-    const { token } = JSON.parse(localStorage.getItem("atm_session"));
+    const { access_token: token } = await fetch("/api/auth/refresh", { method: "POST" }).then((r) => r.json());
     const res = await fetch("/api/entries/e2eshot1/images/before", { headers: { Authorization: `Bearer ${token}` } });
     const blob = await res.blob();
     const bmp = await createImageBitmap(blob);
@@ -172,7 +172,7 @@ await step("clicking a thumbnail opens it large, and Escape closes it", async ()
 
 await step("another account cannot see these images", async () => {
   const res = await page.evaluate(async (email) => {
-    const r = await fetch("/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: "x" + email, password: "password123" }) });
+    const r = await fetch("/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: "x" + email, password: "correct-horse-42" }) });
     const { access_token: accessToken } = await r.json();
     const get = await fetch("/api/entries/e2eshot1/images/before", { cache: "no-store", headers: { Authorization: `Bearer ${accessToken}` } });
     const anon = await fetch("/api/entries/e2eshot1/images/before", { cache: "no-store" });
@@ -182,7 +182,7 @@ await step("another account cannot see these images", async () => {
 });
 
 await step("deleting the trade removes its images from the database", async () => {
-  await page.evaluate(() => fetch("/api/entries/e2eshot1", { method: "DELETE", headers: { Authorization: `Bearer ${JSON.parse(localStorage.getItem("atm_session")).token}` } }));
+  await page.evaluate(async () => { const { access_token } = await fetch("/api/auth/refresh", { method: "POST" }).then((r) => r.json()); return fetch("/api/entries/e2eshot1", { method: "DELETE", headers: { Authorization: `Bearer ${access_token}` } }); });
   assert.deepEqual(await api("GET", "/entries"), []);
 });
 

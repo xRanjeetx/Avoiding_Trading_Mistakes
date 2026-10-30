@@ -13,7 +13,7 @@ const SHOTS = process.env.SHOTS || path.resolve("e2e-shots");
 fs.mkdirSync(SHOTS, { recursive: true });
 
 const email = `e2e-${Date.now()}@example.com`;
-const password = "password123";
+const password = "correct-horse-42";
 const results = [];
 const problems = [];
 
@@ -298,7 +298,7 @@ await step("after a full page reload everything is still there", async () => {
 });
 await step("API returns exactly the stored entry and settings", async () => {
   const data = await page.evaluate(async () => {
-    const h = { Authorization: "Bearer " + JSON.parse(localStorage.atm_session).token };
+    const h = { Authorization: "Bearer " + (await fetch("/api/auth/refresh", { method: "POST" }).then((r) => r.json())).access_token };
     const [e, s] = await Promise.all([fetch("/api/entries", { headers: h }).then((r) => r.json()), fetch("/api/settings", { headers: h }).then((r) => r.json())]);
     return { e, s };
   });
@@ -405,7 +405,7 @@ await step("deleting a trade asks for confirmation", async () => {
 await step("logout returns to the landing page and clears the session", async () => {
   await page.getByRole("button", { name: "Log out" }).first().click();
   await page.locator("#auth").waitFor();
-  assert.equal(await page.evaluate(() => localStorage.getItem("atm_session")), null);
+  assert.equal(await page.evaluate(() => localStorage.getItem("atm_hint")), null);
 });
 await step("logging back in with the same account works", async () => {
   await page.locator(".auth-tabs button", { hasText: "Log in" }).click();

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import TwoFactor from "../components/TwoFactor.jsx";
 import { toCsv } from "../lib/csv.js";
 import { num } from "../lib/format.js";
 import { NO_RULE_EDITS, RULES } from "../lib/rules.js";
@@ -8,7 +9,7 @@ import { KILLZONE_NAMES, normalizeKillzones, nyToLocal } from "../lib/killzones.
 import { enable as enableNotifications, permission } from "../lib/reminders.js";
 import { CardHead, Icon } from "../components/ui.jsx";
 
-export default function Settings({ active, settings, reminders, onReminders, onSave, onClearAll, entries, onImport, onDeleteAccount, isAdmin }) {
+export default function Settings({ active, settings, reminders, onReminders, onSave, onClearAll, entries, onImport, onDeleteAccount, onLogoutAll, onExport, isAdmin }) {
   const [perm, setPerm] = useState(permission);
 
   const fileRef = useRef(null);
@@ -234,6 +235,18 @@ export default function Settings({ active, settings, reminders, onReminders, onS
           <button type="button" className="btn ghost" disabled={importing} onClick={() => fileRef.current.click()}><Icon name="upload" size={16} /> {importing ? "Importing…" : "Import CSV"}</button>
           <input ref={fileRef} type="file" accept=".csv,text/csv" hidden onChange={pickFile} />
         </div>
+      </div>
+
+      <div className="card">
+        <CardHead icon="shield" title="Security" />
+        <TwoFactor />
+        <hr className="tf-sep" />
+        <p className="muted hint">Signs you out of Trade Guard on every phone and computer, this one included. Use it if you lost a device or think someone else has your login.</p>
+        <div className="dz-actions">
+          <button type="button" className="btn ghost" onClick={onLogoutAll}><Icon name="logout" size={16} /> Log out of all devices</button>
+          <button type="button" className="btn ghost" onClick={onExport}><Icon name="download" size={16} /> Download my data</button>
+        </div>
+        <p className="muted hint">“Download my data” saves your account details, settings and every trade as one JSON file. Screenshots are not included.</p>
       </div>
 
       <div className="card danger-zone">

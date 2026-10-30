@@ -62,7 +62,7 @@ page.on("console", (m) => {
 });
 const nav = (label) => page.locator(".sidebar button", { hasText: label }).first().click();
 const api = (method, url, body) => page.evaluate(async ([method, url, body]) => {
-  const { token } = JSON.parse(localStorage.getItem("atm_session"));
+  const { access_token: token } = await fetch("/api/auth/refresh", { method: "POST" }).then((r) => r.json());
   const res = await fetch(`/api${url}`, { method, headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: body && JSON.stringify(body) });
   return res.status === 204 ? null : res.json();
 }, [method, url, body]);
@@ -88,8 +88,8 @@ console.log(`\nNews E2E against ${URL} as ${email}\n`);
 
 await step("sign up and open the app", async () => {
   await page.goto(URL);
-  const res = await page.evaluate(async (email) => (await fetch("/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "password123" }) })).json(), email);
-  await page.evaluate((s) => localStorage.setItem("atm_session", JSON.stringify({ token: s.access_token, email: s.email, isAdmin: false })), res);
+  const res = await page.evaluate(async (email) => (await fetch("/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: "correct-horse-42" }) })).json(), email);
+  await page.evaluate((s) => localStorage.setItem("atm_hint", JSON.stringify({ email: s.email, isAdmin: false })), res);
   await page.reload();
   await page.locator(".sidebar").waitFor();
 });
@@ -228,6 +228,9 @@ await step("a long list is paged: 5 at a time, with Prev and Next and no row-cou
   await nav("News");
   await list().first().waitFor();
   const pager = page.locator("#news .pager");
+  // Your own events show at once; the calendar arrives from a separate request. Wait for the final total instead of racing it
+  // (against a database on another network the calendar can take a second or more).
+  await page.locator("#news .pager", { hasText: /1–5 of 29/ }).waitFor();
   assert.equal(await list().count(), 5);
   assert.match(await pager.innerText(), /1–5 of 29/);
   assert.match(await pager.innerText(), /Page 1 of 6/);

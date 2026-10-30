@@ -125,7 +125,7 @@ export default function Checklist({ active, entries, settings, calendar, now, on
         </div>
         <label className="field">
           <span>Why this trade?</span>
-          <textarea rows="2" placeholder="Setup, confirmation, what you saw on the chart…" value={form.notes} onChange={(e) => set({ notes: e.target.value })} />
+          <textarea rows="2" maxLength={5000} placeholder="Setup, confirmation, what you saw on the chart…" value={form.notes} onChange={(e) => set({ notes: e.target.value })} />
         </label>
       </div>
 

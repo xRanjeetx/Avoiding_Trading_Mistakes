@@ -92,9 +92,9 @@ export default function CloseSheet({ entry, preset, onSave, onClose, onShotUploa
         )}
         <ShotPicker entry={entry} onUpload={onShotUpload} onRemove={onShotRemove} />
         <label className="field"><span>Why I took it</span>
-          <textarea rows="2" placeholder="Setup and confirmation…" value={notes} onChange={(e) => setNotes(e.target.value)} /></label>
+          <textarea rows="2" maxLength={5000} placeholder="Setup and confirmation…" value={notes} onChange={(e) => setNotes(e.target.value)} /></label>
         <label className="field"><span>Lesson / review</span>
-          <textarea rows="2" placeholder="What went well? What would you change?" value={lesson} onChange={(e) => setLesson(e.target.value)} /></label>
+          <textarea rows="2" maxLength={5000} placeholder="What went well? What would you change?" value={lesson} onChange={(e) => setLesson(e.target.value)} /></label>
 
         <div className="actions">
           <button className="btn primary" type="button" disabled={busy} onClick={save}><Icon name="check" size={18} /> Save</button>
