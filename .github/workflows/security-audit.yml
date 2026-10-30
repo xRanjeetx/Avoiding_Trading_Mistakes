@@ -1,0 +1,42 @@
+name: Security audit
+
+# Looks for known vulnerabilities in the dependencies and for risky patterns in the code. It runs weekly and on pull
+# requests, but not on pushes to main: Render deploys only after the "CI" checks pass, and a vulnerability that gets
+# published tomorrow must not stop an unrelated fix from shipping. A red run here means "update a package soon".
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+      - name: Known vulnerabilities in Python packages
+        run: pip-audit -r requirements.txt
+      - name: Risky code patterns (medium severity and above)
+        run: bandit -r app -ll
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Known vulnerabilities in npm packages that ship to users
+        run: npm audit --omit=dev --audit-level=high

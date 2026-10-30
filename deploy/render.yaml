@@ -12,11 +12,23 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.8
+      - key: ENVIRONMENT # production turns on HSTS, hides /docs and refuses to start with unsafe settings
+        value: production
       - key: SECRET_KEY
         generateValue: true
       - key: DATABASE_URL # Neon connection string, set in the Render dashboard
         sync: false
       - key: CORS_ORIGINS # your frontend URL, e.g. https://trade-guard.vercel.app
+        sync: false
+      - key: PROXY_HOPS # proxies in front of the API that add to X-Forwarded-For; used to find the real client address for rate limits
+        value: "1"
+      - key: TURNSTILE_SECRET # optional, free Cloudflare Turnstile secret; also set VITE_TURNSTILE_SITE_KEY on the web app
+        sync: false
+      - key: REQUIRE_ADMIN_APPROVAL # new sign-ups wait for an admin to approve them in the Admin tab (default: true in production)
+        value: "true"
+      - key: ADMIN_REQUIRE_2FA # admins need two-factor sign-in for the admin tools (default: true in production)
+        value: "true"
+      - key: SENTRY_DSN # optional: error reporting (free Sentry plan)
         sync: false
       - key: ALLOW_REGISTRATION # set to false after you create your own account
         value: "true"
