@@ -99,7 +99,7 @@ export default function Stats({ active, entries, settings }) {
       <div className="pills">
         {RANGES.map(([d, label]) => <button key={d} className={range === d ? "on" : ""} onClick={() => setRange(d)}>{label}</button>)}
       </div>
-      <Discipline entries={entries} settings={settings} />
+      <Discipline entries={entries} settings={settings} days={range} />
       <div className="stats-grid two">
         <Tile label="Net P&L" value={s.hasPnl ? money(s.net) : "–"} sub={bal || `${s.n} closed trade${s.n === 1 ? "" : "s"}`} cls={s.hasPnl ? signClass(s.net) : ""} />
         <Tile label="Win rate" value={s.winRate == null ? "–" : Math.round(s.winRate * 100) + "%"} sub={`${s.wins}W · ${s.losses}L · ${s.be}BE`} />

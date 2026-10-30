@@ -193,3 +193,12 @@ body:not(.public) {
 @media (prefers-reduced-motion: reduce) {
   .sidebar button, .nav-ico { transition: none; }
 }
+
+/* Narrow phones: keep menu, brand, bell, theme and progress ring on one row (375px and below) */
+@media (max-width: 420px) {
+  .app-header { gap: 8px; }
+  .app-header .head-right { gap: 6px; }
+  .app-header .icon-btn { width: 38px; height: 38px; }
+  .app-header .ring { width: 42px; height: 42px; }
+  .app-header .ring span { font-size: 11px; }
+}

@@ -358,7 +358,8 @@ li.fail .num { background: var(--bad); color: #fff; }
 .entry .meta b { color: var(--text); font-weight: 600; }
 .entry .broken { font-size: 12.5px; color: var(--broken-text); }
 .entry .broken.caught { color: var(--caught-text); }
-.result-btns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.result-btns { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.res-hint { font-size: 11.5px; }
 .result-btns .btn { padding: 10px 6px; font-size: 13px; }
 .result-btns [data-res="tp"] { color: var(--good); border-color: rgba(16, 185, 129, 0.4); }
 .result-btns [data-res="sl"] { color: var(--bad); border-color: rgba(244, 63, 94, 0.4); }
@@ -571,6 +572,10 @@ textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 
 .entry.open .more { display: flex; }
 .kv { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .kv > div { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 8px 10px; min-width: 0; }
+.kv.felt { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+.kv.felt ul { list-style: none; margin: 2px 0 0; padding: 0; display: grid; gap: 4px; }
+.kv.felt li { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.kv.felt li span { flex: none; line-height: 1; }
 .kv small { display: block; color: var(--muted); font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; }
 .kv b { font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
 .note { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; font-size: 13.5px; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -706,3 +711,56 @@ input[type="time"] { padding-inline: 10px; }
 .auth-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
 .auth-brand h1 { font-size: 22px; margin: 0; }
 .auth .actions { grid-template-columns: 1fr; margin-top: 12px; }
+
+/* ---------- Notification bell ---------- */
+.bell-wrap { position: static; }
+.bell { position: relative; }
+.bell.has-new svg { animation: bell-ring 1.4s ease-in-out 2; transform-origin: 50% 3px; }
+@keyframes bell-ring { 0%, 100% { transform: rotate(0); } 15% { transform: rotate(14deg); } 30% { transform: rotate(-12deg); } 45% { transform: rotate(8deg); } 60% { transform: rotate(-5deg); } }
+.bell-badge {
+  position: absolute; top: -5px; right: -5px; min-width: 18px; height: 18px; padding: 0 5px;
+  display: grid; place-items: center; border-radius: 9px;
+  background: var(--bad); color: var(--on-bad); font-size: 11px; font-weight: 800; line-height: 1;
+  border: 2px solid var(--bg);
+}
+.bell-scrim { position: fixed; inset: 0; z-index: 19; }
+@media (min-width: 1100px) { .bell-panel { right: 24px; } }
+.bell-panel {
+  position: fixed; z-index: 20; right: 12px;
+  width: min(340px, calc(100vw - 24px)); max-height: min(60vh, 420px); overflow-y: auto;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow), 0 18px 40px -12px rgba(0, 0, 0, 0.6);
+}
+.bell-head { padding: 12px 14px; border-bottom: 1px solid var(--border); font-size: 13px; }
+.bell-empty { margin: 0; padding: 22px 14px; text-align: center; color: var(--muted); font-size: 13px; }
+.bell-panel ul { list-style: none; margin: 0; padding: 0; }
+.bell-panel li { display: grid; gap: 3px; padding: 12px 14px; border-bottom: 1px solid var(--border); }
+.bell-panel li:last-child { border-bottom: 0; }
+.bell-panel li b { font-size: 13.5px; }
+.bell-panel li span { font-size: 12.5px; color: var(--muted); }
+.bell-panel li small { font-size: 11px; color: var(--muted); opacity: 0.8; }
+@media (prefers-reduced-motion: reduce) { .bell.has-new svg { animation: none; } }
+
+/* Journal result filters: stretch to the full width, and tighten on phones so all six fit without scrolling */
+.pills.fit button { flex: 1 0 auto; }
+@media (max-width: 420px) {
+  .pills.fit { gap: 6px; }
+  .pills.fit button { padding: 8px 9px; font-size: 13px; }
+}
+
+/* Four result buttons on a phone: keep each label on one line (drop the small icons to make room) */
+.result-btns .btn { white-space: nowrap; }
+@media (max-width: 420px) {
+  .result-btns .btn { padding-inline: 4px; }
+  .result-btns .btn svg { display: none; }
+}
+
+/* Entry cards: when the trade was entered and closed */
+.entry .times { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin-top: 6px; font-size: 12.5px; color: var(--muted); }
+.entry .times > span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.entry .times svg { flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.entry .times small { font-size: 10.5px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; }
+.entry .times b { color: var(--text); font-weight: 600; }
+.entry .times .t-in svg { color: var(--primary); }
+.entry .times .t-out svg { color: var(--good); }
+.entry .times .t-out.open svg, .entry .times .t-out.open b { color: var(--warn); }
+.entry .times .t-held { gap: 5px; padding: 2px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 700; color: var(--primary); background: color-mix(in srgb, var(--primary) 13%, transparent); }
