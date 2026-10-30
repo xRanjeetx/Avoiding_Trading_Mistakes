@@ -14,7 +14,7 @@ import SessionStrip from "./components/SessionStrip.jsx";
 import CloseSheet from "./components/CloseSheet.jsx";
 import News from "./components/News.jsx";
 import { compressImage } from "./lib/image.js";
-import { dueReminders, loadPrefs, markSent, notify, savePrefs, wasSent } from "./lib/reminders.js";
+import { dueReminders, loadInbox, loadPrefs, markSent, notify, saveInbox, savePrefs, wasSent } from "./lib/reminders.js";
 
 const DEFAULT_SETTINGS = { lot: 0.02, minRR: 2, maxTrades: 4, maxSL: 4, balance: 0, currency: "$",
   pairs: [{ pair: "XAUUSD", lot: 0.02 }, { pair: "EURUSD", lot: 0.2 }], rules: NO_RULE_EDITS, news: NO_NEWS };
@@ -162,15 +162,30 @@ function Journalled({ session, onLogout }) {
   // Reminders: a session about to open, a trade open for too long. Each one is sent once.
   const [reminders, setReminders] = useState(loadPrefs);
   const changeReminders = (patch) => setReminders((p) => { const next = { ...p, ...patch }; savePrefs(next); return next; });
+  const [inbox, setInbox] = useState(loadInbox);
+  const [bellOpen, setBellOpen] = useState(false);
+  const [bellTop, setBellTop] = useState(64);
+  const openBell = (e) => { setBellTop(e.currentTarget.getBoundingClientRect().bottom + 8); setBellOpen(true); };
+  const updateInbox = useCallback((fn) => setInbox((list) => { const next = fn(list); saveInbox(next); return next; }), []);
   useEffect(() => {
     if (status !== "ready") return;
     for (const r of dueReminders({ entries, settings, prefs: reminders, now })) {
       if (wasSent(r.key)) continue;
       markSent(r.key);
       say(r.title);
+      updateInbox((list) => [{ key: r.key, title: r.title, body: r.body, ts: Date.now() }, ...list]);
       notify(r.title, r.body, r.key);
     }
-  }, [now, status, entries, settings, reminders, say]);
+  }, [now, status, entries, settings, reminders, say, updateInbox]);
+
+  // Opening the bell shows what is waiting; closing it removes what was seen.
+  const closeBell = useCallback(() => { setBellOpen(false); updateInbox(() => []); }, [updateInbox]);
+  useEffect(() => {
+    if (!bellOpen) return undefined;
+    const onKey = (e) => { if (e.key === "Escape") closeBell(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [bellOpen, closeBell]);
 
   // Follow the phone's theme until the user picks one manually.
   useEffect(() => {
@@ -335,6 +350,13 @@ function Journalled({ session, onLogout }) {
             <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
             <span>{now.toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit" })}</span>
           </div>
+          <div className="bell-wrap">
+            <button className={`icon-btn bell ${inbox.length && !bellOpen ? "has-new" : ""}`} type="button" aria-label={`Notifications${inbox.length ? `, ${inbox.length} new` : ""}`}
+              aria-expanded={bellOpen} title="Notifications" onClick={(e) => (bellOpen ? closeBell() : openBell(e))}>
+              <svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0" /></svg>
+              {inbox.length > 0 && !bellOpen && <span className="bell-badge">{inbox.length > 9 ? "9+" : inbox.length}</span>}
+            </button>
+          </div>
           <button className="icon-btn" type="button" aria-label="Switch light/dark theme" title="Switch theme" onClick={toggleTheme}>
             <svg className="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>
             <svg className="icon-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /></svg>
@@ -408,6 +430,28 @@ function Journalled({ session, onLogout }) {
             </div>
           </div>
         </div>
+      )}
+
+      {bellOpen && (
+        <>
+          <div className="bell-scrim" onClick={closeBell} />
+          <div className="bell-panel" style={{ top: bellTop }} role="dialog" aria-label="Notifications">
+            <div className="bell-head"><b>Notifications</b></div>
+            {inbox.length === 0 ? (
+              <p className="bell-empty">You’re all caught up.</p>
+            ) : (
+              <ul>
+                {inbox.map((n) => (
+                  <li key={n.key}>
+                    <b>{n.title}</b>
+                    <span>{n.body}</span>
+                    <small>{new Date(n.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </>
       )}
 
       {toast && <div className="toast">{toast}</div>}

@@ -4,7 +4,7 @@ import EmotionPicker from "./EmotionPicker.jsx";
 import { ShotPicker } from "./Shots.jsx";
 import { Icon } from "./ui.jsx";
 
-const RESULTS = [["tp", "TP hit"], ["sl", "SL hit"], ["be", "Break-even"], ["manual", "Closed early"], ["ctc", "CTC (cost after 1:1.5)"]];
+const RESULTS = [["tp", "TP hit"], ["sl", "SL hit"], ["be", "BE (closed at cost)"], ["manual", "Closed early"], ["ctc", "CTC (cost after 1:1.5)"]];
 
 // Mount with a `key` per entry so the form state starts fresh each time it opens.
 export default function CloseSheet({ entry, preset, onSave, onClose, onShotUpload, onShotRemove }) {

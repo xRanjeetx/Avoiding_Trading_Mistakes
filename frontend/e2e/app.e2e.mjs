@@ -352,10 +352,10 @@ await step("Stats and Today show the discipline score and streaks", async () => 
   await nav("Stats");
   const card = page.locator("#stats .disc");
   assert.match(await card.innerText(), /Discipline/);
-  assert.match(await card.innerText(), /clean trades in a row/);
+  assert.match(await card.innerText(), /trade streak/i);
   await shot("19-discipline-stats-dark");
   await nav("Today");
-  assert.match(await page.locator("#today .disc").innerText(), /clean trading days in a row/);
+  assert.match(await page.locator("#today .disc").innerText(), /day streak/i);
 });
 await step("Settings has a Reminders card with the two limits", async () => {
   await nav("Settings");

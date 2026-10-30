@@ -75,6 +75,21 @@ export function markSent(key) {
   try { localStorage.setItem(KEY_SENT, JSON.stringify([...readSent(), key].slice(-60))); } catch {}
 }
 
+// The in-app inbox (the bell in the header): reminders waiting to be seen. It is cleared once the user has looked,
+// so it also covers a reminder that fired while the app was closed or the system notification was missed.
+const KEY_INBOX = "atm_inbox";
+export function loadInbox() {
+  try {
+    const list = JSON.parse(localStorage.getItem(KEY_INBOX) || "[]");
+    return Array.isArray(list) ? list.filter((n) => n && n.key && n.title) : [];
+  } catch {
+    return [];
+  }
+}
+export function saveInbox(list) {
+  try { localStorage.setItem(KEY_INBOX, JSON.stringify(list.slice(0, 30))); } catch {}
+}
+
 // Shows a system notification. Android Chrome only allows it through a service worker, so use that first.
 export async function notify(title, body, tag) {
   if (permission() !== "granted") return false;

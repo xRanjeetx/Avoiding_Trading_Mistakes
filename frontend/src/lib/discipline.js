@@ -40,7 +40,8 @@ function broken(e, all, settings, zones) {
   return out;
 }
 
-export function computeDiscipline(entries, settings, now = new Date()) {
+// windowDays: how far back the score and slips look (0 = all time). The streaks always cover the whole journal.
+export function computeDiscipline(entries, settings, now = new Date(), windowDays = WINDOW_DAYS) {
   const zones = normalizeKillzones(settings.killzones);
   const traded = entries.filter((e) => e.traded);
   const closed = traded.filter((e) => e.result !== "open").sort((a, b) => closeTime(a) - closeTime(b));
@@ -66,7 +67,7 @@ export function computeDiscipline(entries, settings, now = new Date()) {
     bestDays = Math.max(bestDays, dayRun);
   }
 
-  const from = now.getTime() - WINDOW_DAYS * 86400000;
+  const from = windowDays > 0 ? now.getTime() - windowDays * 86400000 : -Infinity;
   const recent = rows.filter((r) => closeTime(r.e) >= from);
   const slips = Object.fromEntries(Object.keys(HABITS).map((k) => [k, recent.filter((r) => r.slips.includes(k)).length]));
   const cleanRecent = recent.filter(clean);

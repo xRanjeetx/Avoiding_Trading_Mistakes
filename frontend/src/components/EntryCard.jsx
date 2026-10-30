@@ -1,6 +1,7 @@
 import { SETUPS } from "../lib/rules.js";
-import { closeTime, outcome, tradeR } from "../lib/stats.js";
-import { dateTimeOf, fmtMoney, fmtR, signClass, timeOf } from "../lib/format.js";
+import { fmtDuration } from "../lib/killzones.js";
+import { outcome, tradeR } from "../lib/stats.js";
+import { fmtMoney, fmtR, fullDateTimeOf, signClass } from "../lib/format.js";
 import { ruleTitle } from "../lib/evaluate.js";
 import { emotionKeys, emotionOf } from "../lib/emotions.js";
 import { ShotThumbs } from "./Shots.jsx";
@@ -28,7 +29,10 @@ export default function EntryCard({ e, mode, settings, open, onToggle, onQuick, 
   const after = emotionKeys(e.emotionAfter).map((k) => emotionOf(k, "after"));
   const emojis = (list) => list.map((x) => x.emoji).join("");
   const labels = (list) => list.map((x) => x.label).join(", ");
-  const when = mode === "today" ? timeOf(e.timestamp) : dateTimeOf(e.timestamp);
+  // When the form was submitted (timestamp) and when the trade was closed (closedAt, set on closing), with how long it was held.
+  const isOpen = e.result === "open";
+  const held = e.traded ? Math.max(0, Math.round(((isOpen ? Date.now() : e.closedAt) - e.timestamp) / 60000)) : null;
+  const heldText = held == null || (!isOpen && !e.closedAt) ? null : fmtDuration(held);
 
   const head = (
     <div className="entry-head" onClick={mode === "log" ? onToggle : undefined} data-toggle={mode === "log" ? "" : undefined}>
@@ -51,11 +55,20 @@ export default function EntryCard({ e, mode, settings, open, onToggle, onQuick, 
         </div>
       </div>
       <div className="meta">
-        <span>{when}</span>
         <span>Lot <b>{e.lot ?? "–"}</b></span>
         <span>Entry <b>{e.entry ?? "–"}</b>{e.exit != null && <> → <b>{e.exit}</b></>}</span>
         {e.rr ? <span>RR <b>1:{(+e.rr).toFixed(2)}</b></span> : null}
         {r != null && e.pnl != null && <span><b>{fmtR(r)}</b></span>}
+      </div>
+      <div className="times">
+        <span className="t-in"><Icon name="clock" size={13} /><small>Entered</small><b>{fullDateTimeOf(e.timestamp)}</b></span>
+        {e.traded && (
+          <span className={`t-out ${isOpen ? "open" : ""}`}>
+            <Icon name={isOpen ? "alert" : "check"} size={13} /><small>Closed</small>
+            <b>{isOpen ? "Still open" : e.closedAt ? fullDateTimeOf(e.closedAt) : "Not recorded"}</b>
+          </span>
+        )}
+        {heldText && <span className="t-held"><Icon name="timer" size={13} />{isOpen ? "open for" : "held"} {heldText}</span>}
       </div>
       {mode === "today" && e.notes && <div className="note-preview">{e.notes}</div>}
     </div>
@@ -70,9 +83,11 @@ export default function EntryCard({ e, mode, settings, open, onToggle, onQuick, 
             <div className="result-btns">
               <button className="btn small res-tp" onClick={() => onQuick(e.id, "tp")}><Icon name="check" size={15} /> TP hit</button>
               <button className="btn small res-sl" onClick={() => onQuick(e.id, "sl")}><Icon name="x" size={15} /> SL hit</button>
-              <button className="btn small res-be" onClick={() => onQuick(e.id, "be")}>Break-even</button>
+              <button className="btn small res-be" title="Closed at cost by hand, before 1:1.5 RR" onClick={() => onQuick(e.id, "be")}>BE</button>
+              <button className="btn small res-ctc" title="Reached 1:1.5 RR, SL moved to cost, then price reversed" onClick={() => onQuick(e.id, "ctc")}>CTC</button>
             </div>
-            <button className="btn small ghost" onClick={() => onQuick(e.id, null)}><Icon name="edit" size={15} /> CTC / closed early / add notes</button>
+            <div className="muted res-hint">BE: closed at cost by hand · CTC: reversed to cost after 1:1.5 RR</div>
+            <button className="btn small ghost" onClick={() => onQuick(e.id, null)}><Icon name="edit" size={15} /> Closed early / add notes</button>
           </>
         )}
       </div>
@@ -82,15 +97,25 @@ export default function EntryCard({ e, mode, settings, open, onToggle, onQuick, 
   const kv = [
     ["Stop loss", e.sl ?? "–"], ["Take profit", e.tp ?? "–"], ["Exit", e.exit ?? "–"],
     ["Planned RR", e.rr ? `1:${(+e.rr).toFixed(2)}` : "–"], ["Result", r != null ? fmtR(r) : "–"],
-    ["Closed", e.result === "open" ? "Still open" : dateTimeOf(closeTime(e))],
-    ...(before.length ? [["Felt before", before.map((x) => `${x.emoji} ${x.label}`).join("  ")]] : []),
-    ...(after.length ? [["Felt after", after.map((x) => `${x.emoji} ${x.label}`).join("  ")]] : []),
+    ["Held for", heldText ?? "–"],
   ];
+  // Kept in their own row so they share the full width instead of leaving a gap in the 3-column grid.
+  const felt = [["Felt before", before], ["Felt after", after]].filter(([, list]) => list.length);
   return (
     <div className={`entry dir-${e.dir || "none"} ${open ? "open" : ""}`}>
       {head}
       <div className="more">
         <div className="kv">{kv.map(([k, v]) => <div key={k}><small>{k}</small><b>{v}</b></div>)}</div>
+        {felt.length > 0 && (
+          <div className="kv felt">
+            {felt.map(([k, list]) => (
+              <div key={k}>
+                <small>{k}</small>
+                <ul>{list.map((x) => <li key={x.key}><span aria-hidden="true">{x.emoji}</span><b>{x.label}</b></li>)}</ul>
+              </div>
+            ))}
+          </div>
+        )}
         <ShotThumbs entry={e} />
         {e.notes && <div className="note"><small>Why I took it</small>{e.notes}</div>}
         {e.lesson && <div className="note"><small>Lesson</small>{e.lesson}</div>}

@@ -2,7 +2,7 @@
 // type "auto": checked by the app from inputs, time or today's log.
 // type "self": you must answer honestly. "Yes" always means the rule is respected.
 const RULES = [
-  { id: 31, title: "No Confirmation Bias",               type: "self", q: "Did I look at the evidence against my view too?", desc: "Favoring evidence that backs your view and brushing aside evidence that doesn't." },
+  { id: 31, title: "No Confirmation Bias",               type: "self", q: "Did I look at the evidence against my view too?" },
   { id: 1,  title: "No Indicator Trading",               type: "self", q: "Is this entry based on price action only, without indicators?" },
   { id: 2,  title: "TP & SL Fixed 1:2 RR",               type: "auto" },
   { id: 3,  title: "Lot Size Fixed",                     type: "auto" },
