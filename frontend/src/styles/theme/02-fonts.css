@@ -1,0 +1,15 @@
+/* ----- Fonts ----- */
+body, button, input, textarea { font-family: var(--font); }
+.lp { --font: "Space Grotesk", system-ui, sans-serif; }
+
+/* Numbers read best in monospace */
+.pnl, .stat span, .stat em, .chip, .num, .ready-count, .kv b, .meta b, .summary-bar b, .cal-day, .pair-row small,
+.clock span, .meta span, input[type="number"], input[type="time"], .toast, .dock-msg, .lbl-num {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+.stat span { letter-spacing: -0.03em; }
+.meta { font-family: var(--font); }
+.stat small, .stat em { font-family: var(--font); }
+.chip { font-weight: 600; }
+

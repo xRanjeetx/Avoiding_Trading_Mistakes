@@ -7,10 +7,27 @@ Also: editable rules (switch any off, add your own), a **News** tab that locks t
 **Stack:** React (Vite) · FastAPI · PostgreSQL. Each user has a login, and the journal is stored in the database, so it follows you across devices.
 
 ```
-backend/    FastAPI + SQLAlchemy + JWT login      (tests in backend/tests)
-frontend/   React app (Vite)
-render.yaml Render blueprint for the API
+backend/           FastAPI + SQLAlchemy + JWT login
+  app/core/          config, database, security, schema migrations
+  app/routers/       API endpoints, one file per domain
+  app/models/        database tables
+  app/schemas/       request/response shapes
+  app/services/      mail and image storage
+  app/cli/           command-line tools (create_admin)
+  data/library/      the Learning PDFs
+  tests/             API tests
+frontend/          React app (Vite)
+  src/pages/         one file per screen
+  src/components/    shared UI pieces
+  src/lib/           pure logic (rules, stats, formatting)
+  tests/unit/        logic tests    tests/e2e/   browser tests
+deploy/render.yaml Render blueprint for the API
+scripts/           start.cmd / stop.cmd (Windows dev helpers)
+docs/              architecture and deployment notes
+docker-compose.yml whole stack in containers
 ```
+
+See [docs/architecture.md](docs/architecture.md) and [docs/deployment.md](docs/deployment.md).
 
 ## Run locally
 
@@ -20,7 +37,7 @@ You need Python 3.11+, Node.js 18+ and (optionally) PostgreSQL. Without `DATABAS
 # terminal 1: API on http://localhost:8000  (docs at /docs)
 cd backend
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 
 # terminal 2: web app on http://localhost:5173
@@ -47,7 +64,7 @@ cd frontend; npm test
 
 # Browser end-to-end (needs Edge or Chrome). Start the API against the TEST database and the
 # frontend dev server first, e.g. API on :8765 and `API_PROXY=http://localhost:8765 npx vite --port 5199`
-$env:E2E_URL = "http://localhost:5199"; node e2e/app.e2e.mjs
+$env:E2E_URL = "http://localhost:5199"; node tests/e2e/app.e2e.mjs
 ```
 
 ## Deploy for free
@@ -62,7 +79,7 @@ Free-tier limits change, so check each site's current pricing page. Do not use R
 
 1. **Push to GitHub.** Create a repository and push this folder (`.gitignore` already excludes `node_modules`, `.venv` and `.env`).
 2. **Database.** In Neon, create a project and copy the connection string (`postgresql://...?sslmode=require`).
-3. **API on Render.** New → *Blueprint*, pick your repo (it reads `render.yaml`). When asked, set:
+3. **API on Render.** New → *Blueprint*, pick your repo (set the blueprint path to `deploy/render.yaml`). When asked, set:
    - `DATABASE_URL`: the Neon string
    - `CORS_ORIGINS`: your frontend URL (you can fill this in after step 4, then redeploy)
 
@@ -77,7 +94,7 @@ Once steps 1-6 are done, nothing else is needed per release:
 
 1. You push or merge to `main`.
 2. GitHub Actions (`.github/workflows/ci.yml`) runs the API tests on a real PostgreSQL, the frontend tests, and the production build.
-3. If CI is green, Render redeploys the API (`autoDeployTrigger: checksPass` in `render.yaml`) and Vercel rebuilds the web app. Pull requests get a Vercel preview URL but are never deployed to production.
+3. If CI is green, Render redeploys the API (`autoDeployTrigger: checksPass` in `deploy/render.yaml`) and Vercel rebuilds the web app. Pull requests get a Vercel preview URL but are never deployed to production.
 
 Turn on "Require status checks to pass" for `main` in GitHub → Settings → Branches so a red build can't be merged. Database tables are created on API startup, so schema changes in code roll out with the deploy; for destructive schema changes use a migration tool (e.g. Alembic) first.
 
@@ -98,7 +115,7 @@ Optional: ping `<api-url>/api/health` every 10 minutes with a free monitor such 
 | `SMTP_USER` / `SMTP_PASSWORD` | empty | SMTP login (for Gmail use an app password) |
 | `SMTP_FROM` | `SMTP_USER` | The From address on emails |
 | `REQUIRE_EMAIL_VERIFICATION` | `true` when `SMTP_HOST` is set | New accounts must click the emailed link before logging in. Accounts created earlier count as verified |
-| `LIBRARY_DIR` | `backend/library` | Folder of PDFs loaded into the Learning tab at startup, shown to every user (read-only). See `backend/library/README.md` |
+| `LIBRARY_DIR` | `backend/data/library` | Folder of PDFs loaded into the Learning tab at startup, shown to every user (read-only). See `backend/data/library/README.md` |
 | `CALENDAR_ENABLED` | `true` | Set `false` to stop downloading the news calendar (only the news users add by hand then lock trading) |
 | `VERIFY_HOURS` / `RESET_MINUTES` | `48` / `60` | How long the verification and reset links last |
 | `MAX_IMAGE_BYTES` / `MAX_IMAGES_PER_USER` | 2 MB / `600` | Limits per screenshot and per account. The app shrinks screenshots to about 150-300 KB first |
@@ -119,7 +136,7 @@ Forgot password and email verification use signed, expiring links, so they need 
 Admins are stored in the database (`users.is_admin`); there is no env setting. Create or promote one from the `backend` folder:
 
 ```
-python -m app.create_admin admin@example.com "a-strong-password"
+python -m app.cli.create_admin admin@example.com "a-strong-password"
 ```
 
 The account is created verified and enabled (an existing account with that email is promoted and its password reset). Run it against production with `DATABASE_URL` pointing at that database.

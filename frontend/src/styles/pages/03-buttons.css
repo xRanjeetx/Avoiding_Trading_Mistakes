@@ -1,0 +1,8 @@
+/* ----- Buttons ----- */
+.btn { transition: transform 0.1s, filter 0.2s, box-shadow 0.2s, background 0.2s, border-color 0.2s; }
+.btn:hover:not(:disabled) { filter: brightness(1.06); border-color: rgba(var(--p-rgb), 0.4); }
+.btn.primary:hover:not(:disabled) { box-shadow: 0 14px 30px -10px rgba(var(--p-rgb), 0.95); border-color: transparent; }
+.btn.danger-outline:hover:not(:disabled) { background: rgba(244, 63, 94, 0.14); border-color: rgba(244, 63, 94, 0.7); }
+.btn.ghost:hover:not(:disabled) { background: var(--soft); }
+.btn .ic { margin-right: -1px; }
+

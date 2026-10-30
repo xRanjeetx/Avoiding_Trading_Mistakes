@@ -1,0 +1,12 @@
+/* ----- Cards ----- */
+.card { border-radius: 22px; padding: 18px; margin: 16px 0; }
+.card-head { margin-bottom: 14px; }
+.card-head h2 { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 750; letter-spacing: -0.01em; }
+.ch-ico {
+  display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px;
+  color: var(--primary); background: var(--soft);
+}
+.chip { font-size: 12px; padding: 5px 11px; }
+.chip.good { background: rgba(16, 185, 129, 0.15); }
+.hint { margin-top: 4px; line-height: 1.5; }
+

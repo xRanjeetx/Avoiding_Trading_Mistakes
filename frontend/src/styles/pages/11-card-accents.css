@@ -1,0 +1,17 @@
+/* ----- Cards share the stat-tile look: accent strip, corner glow, hover highlight ----- */
+.tab .card { --acc: var(--primary); --acc-rgb: var(--p-rgb); position: relative; overflow: hidden; overflow: clip; isolation: isolate; transition: box-shadow 0.2s, border-color 0.2s; }
+.tab .card::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: linear-gradient(90deg, var(--acc), transparent 85%); opacity: 0.85; z-index: -1; }
+.tab .card::after { content: ""; position: absolute; top: -50px; right: -50px; width: 150px; height: 150px; border-radius: 50%; background: radial-gradient(closest-side, rgba(var(--acc-rgb), 0.14), transparent); pointer-events: none; z-index: -1; }
+.tab .card:hover { border-color: rgba(var(--acc-rgb), 0.35); box-shadow: 0 16px 32px -20px rgba(var(--acc-rgb), 0.5); }
+.tab .card.danger-zone { --acc: var(--bad); --acc-rgb: 251, 113, 133; }
+:root[data-theme="light"] .tab .card.danger-zone { --acc-rgb: 190, 18, 60; }
+.card-head .ch-ico { color: var(--acc); background: rgba(var(--acc-rgb), 0.14); }
+.summary-bar > div { --acc: var(--primary); --acc-rgb: var(--p-rgb); position: relative; overflow: hidden; border: 1px solid var(--border); padding: 14px 16px; transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s; }
+.summary-bar > div:nth-child(n+2) { --acc: var(--good); --acc-rgb: 34, 197, 94; }
+:root[data-theme="light"] .summary-bar > div:nth-child(n+2) { --acc-rgb: 21, 128, 61; }
+.summary-bar > div::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: linear-gradient(90deg, var(--acc), transparent 85%); opacity: 0.85; }
+.summary-bar > div::after { content: ""; position: absolute; top: -40px; right: -40px; width: 120px; height: 120px; border-radius: 50%; background: radial-gradient(closest-side, rgba(var(--acc-rgb), 0.16), transparent); pointer-events: none; }
+.summary-bar > div:hover { transform: translateY(-2px); border-color: rgba(var(--acc-rgb), 0.4); box-shadow: 0 16px 32px -18px rgba(var(--acc-rgb), 0.55); }
+.summary-bar small { letter-spacing: 0.08em; font-size: 11px; position: relative; }
+.summary-bar b { position: relative; display: block; margin-top: 6px; }
+

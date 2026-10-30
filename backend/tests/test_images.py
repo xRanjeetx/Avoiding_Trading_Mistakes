@@ -2,8 +2,8 @@ import pytest
 from conftest import signup
 from sqlalchemy import select
 
-from app import config
-from app.db import SessionLocal
+from app.core import config
+from app.core.db import SessionLocal
 from app.models import StoredImage
 
 BODY = {"timestamp": 1_700_000_000_000, "pair": "XAUUSD"}

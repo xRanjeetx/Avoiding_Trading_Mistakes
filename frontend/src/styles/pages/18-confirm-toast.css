@@ -1,0 +1,24 @@
+/* ----- Confirm toast (replaces window.confirm) ----- */
+.confirm-backdrop {
+  position: fixed; inset: 0; z-index: 60;
+  display: grid; place-items: center; padding: 16px;
+  background: rgba(2, 8, 7, 0.55); backdrop-filter: blur(4px);
+  animation: fade 0.15s ease;
+}
+.confirm-toast {
+  width: min(380px, 100%); padding: 22px 20px 18px; text-align: center;
+  background: var(--toast-bg); color: var(--toast-text);
+  border: 1px solid rgba(148, 163, 184, 0.25); border-radius: 18px;
+  box-shadow: 0 28px 60px -16px rgba(0, 0, 0, 0.7);
+}
+.confirm-ico {
+  width: 46px; height: 46px; margin: 0 auto 12px; display: grid; place-items: center;
+  border-radius: 50%; background: rgba(244, 63, 94, 0.14); color: var(--bad);
+}
+.confirm-ico svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.confirm-toast h3 { margin: 0 0 6px; font-size: 17px; }
+.confirm-toast p { margin: 0 0 18px; font-size: 14px; line-height: 1.45; opacity: 0.75; }
+.confirm-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.confirm-btns .btn.ghost { color: var(--toast-text); background: transparent; border-color: color-mix(in srgb, var(--toast-text) 35%, transparent); }
+.confirm-btns .btn.ghost:hover:not(:disabled) { background: color-mix(in srgb, var(--toast-text) 10%, transparent); }
+

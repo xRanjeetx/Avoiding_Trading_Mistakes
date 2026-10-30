@@ -1,0 +1,25 @@
+/* ---------- Verdict ---------- */
+.verdict { border-radius: var(--radius); padding: 20px 18px; margin: 14px 0; text-align: center; }
+.verdict .icon { font-size: 34px; line-height: 1; }
+.verdict h3 { margin: 8px 0 4px; font-size: 22px; font-weight: 800; letter-spacing: 0.3px; }
+.verdict p { margin: 0; color: var(--muted); font-size: 14px; }
+.verdict.ok { background: linear-gradient(135deg, rgba(16, 185, 129, 0.22), rgba(16, 185, 129, 0.06)); border: 1px solid rgba(16, 185, 129, 0.5); }
+.verdict.ok h3 { color: var(--good); }
+.verdict.no { background: linear-gradient(135deg, rgba(244, 63, 94, 0.22), rgba(244, 63, 94, 0.06)); border: 1px solid rgba(244, 63, 94, 0.5); }
+.verdict.no h3 { color: var(--bad); }
+.verdict.pending { background: linear-gradient(135deg, rgba(245, 158, 11, 0.16), rgba(245, 158, 11, 0.04)); border: 1px solid rgba(245, 158, 11, 0.4); }
+.verdict.pending h3 { color: var(--warn); }
+.verdict ul { text-align: left; margin: 12px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.verdict li { background: var(--inset); padding: 8px 12px; border-radius: 10px; font-size: 13.5px; }
+
+.banner {
+  border-radius: var(--radius);
+  padding: 16px;
+  margin: 14px 0;
+  font-weight: 700;
+  text-align: center;
+  color: #fff;
+  background: linear-gradient(135deg, #e11d48, #9f1239);
+  box-shadow: 0 10px 30px -12px rgba(225, 29, 72, 0.6);
+}
+

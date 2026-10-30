@@ -1,0 +1,7 @@
+/* ----- Dock ----- */
+.dock { border-radius: 20px; box-shadow: 0 20px 44px -16px rgba(0, 0, 0, 0.55); }
+.dock-msg { display: flex; align-items: center; gap: 10px; }
+.dock.ok .dock-msg { color: var(--good); }
+.dock.no .dock-msg { color: var(--broken-text); }
+:root[data-theme="light"] .dock.ok .dock-msg { color: #047857; }
+

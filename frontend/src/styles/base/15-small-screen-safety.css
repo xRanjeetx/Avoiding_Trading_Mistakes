@@ -1,0 +1,25 @@
+/* ---------- Small-screen safety ---------- */
+/* Grid cells may shrink below their content, and long values wrap instead of overflowing. */
+.grid2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.stats-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.stats-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.stat, .field, .summary-bar > div, .kv > div { min-width: 0; }
+.stat span, .summary-bar b, .pnl { overflow-wrap: anywhere; }
+input[type="time"] { padding-inline: 10px; }
+@media (max-width: 360px) {
+  .app-header { padding-left: 12px; padding-right: 12px; }
+  .brand { gap: 8px; }
+  .logo { display: none; }
+  .stats-grid:not(.two) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stats-grid:not(.two) .stat:last-child { grid-column: 1 / -1; }
+  .kv { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cal-day { padding: 3px 3px; }
+  .cal-day .v { font-size: 9.5px; }
+  .summary-bar { gap: 6px; }
+  .summary-bar > div { padding: 8px 9px; }
+  .summary-bar b { font-size: 15px; }
+  .result-btns { gap: 5px; }
+  .result-btns .btn { padding: 10px 2px; font-size: 12.5px; white-space: nowrap; }
+  input[type="time"]::-webkit-calendar-picker-indicator { display: none; }
+}
+

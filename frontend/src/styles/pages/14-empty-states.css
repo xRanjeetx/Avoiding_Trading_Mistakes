@@ -1,0 +1,8 @@
+/* ----- Empty states ----- */
+.empty { padding: 34px 12px; }
+.empty .e-icon {
+  display: grid; place-items: center; width: 60px; height: 60px; margin: 0 auto 12px; border-radius: 20px;
+  color: var(--primary); background: var(--soft);
+}
+.empty p { line-height: 1.55; }
+

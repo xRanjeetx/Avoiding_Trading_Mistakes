@@ -1,0 +1,27 @@
+/* ----- Trade entries ----- */
+.entry {
+  position: relative; padding: 14px 14px 14px 16px;
+  border: 1px solid var(--border); border-radius: 16px; background: var(--bg);
+  transition: border-color 0.2s, transform 0.15s;
+}
+.entry + .entry { margin-top: 10px; }
+.entry:first-child { padding-top: 14px; border-top: 1px solid var(--border); }
+.entry::before { content: ""; position: absolute; left: 0; top: 14px; bottom: 14px; width: 4px; border-radius: 0 4px 4px 0; background: var(--border); }
+.entry.dir-buy::before { background: var(--good); }
+.entry.dir-sell::before { background: var(--bad); }
+.entry:hover { border-color: rgba(var(--p-rgb), 0.4); }
+.entry .pair { font-size: 16px; letter-spacing: -0.01em; }
+.entry-head[data-toggle] { cursor: pointer; }
+.head-end { display: flex; align-items: center; gap: 8px; }
+.chev { display: grid; place-items: center; color: var(--muted); transition: transform 0.25s; }
+.entry.open .chev { transform: rotate(180deg); }
+.tag { display: inline-flex; align-items: center; }
+.pnl { font-variant-numeric: tabular-nums; }
+.card.tight { padding: 14px; }
+.card.tight .entry { padding: 14px 14px 14px 16px; }
+.result-btns .btn.res-tp { color: var(--good); border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.08); }
+.result-btns .btn.res-sl { color: var(--bad); border-color: rgba(244, 63, 94, 0.4); background: rgba(244, 63, 94, 0.08); }
+.result-btns .btn.res-ctc { color: var(--primary); border-color: rgba(var(--p-rgb), 0.4); background: rgba(var(--p-rgb), 0.08); }
+.result-btns .btn.res-be { color: var(--warn); border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.08); }
+.entry > .btn.ghost { align-self: stretch; }
+

@@ -1,0 +1,22 @@
+/* ----- Readiness hero (Check tab) ----- */
+.ready {
+  position: relative; overflow: hidden;
+  margin: 14px 0; padding: 18px 20px; border-radius: 22px; color: #fff;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  box-shadow: 0 20px 40px -22px rgba(245, 158, 11, 0.8);
+  transition: background 0.4s, box-shadow 0.4s;
+}
+.ready::after {
+  content: ""; position: absolute; right: -40px; top: -60px; width: 180px; height: 180px; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.28), transparent);
+}
+.ready.ok { background: linear-gradient(135deg, #10b981, #047857); box-shadow: 0 20px 40px -22px rgba(16, 185, 129, 0.85); }
+.ready.no { background: linear-gradient(135deg, #f43f5e, #be123c); box-shadow: 0 20px 40px -22px rgba(244, 63, 94, 0.85); }
+.ready-top { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ready small { display: block; font-size: 11.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.85; }
+.ready strong { display: block; margin-top: 2px; font-size: 18px; font-weight: 800; letter-spacing: -0.02em; }
+.ready-count { font-size: 15px; font-weight: 700; opacity: 0.9; white-space: nowrap; }
+.ready-count b { font-size: 30px; font-weight: 800; letter-spacing: -0.03em; }
+.ready-track { position: relative; height: 8px; margin-top: 14px; border-radius: 8px; background: rgba(255, 255, 255, 0.28); overflow: hidden; }
+.ready-track i { display: block; height: 100%; border-radius: 8px; background: #fff; transition: width 0.45s cubic-bezier(0.2, 0.8, 0.2, 1); }
+

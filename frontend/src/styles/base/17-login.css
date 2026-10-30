@@ -1,0 +1,7 @@
+/* ---------- Login / loading screen ---------- */
+.auth { min-height: 100vh; display: grid; place-items: center; align-content: center; padding: 24px 16px; }
+.auth .card { width: min(420px, 100%); }
+.auth-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+.auth-brand h1 { font-size: 22px; margin: 0; }
+.auth .actions { grid-template-columns: 1fr; margin-top: 12px; }
+

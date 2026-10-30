@@ -1,18 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, ApiError, clearSession, getSession, setSession } from "./api.js";
+import { api, ApiError, clearSession, getSession, setSession } from "./api/index.js";
 import { NO_NEWS, NO_RULE_EDITS, activeRules } from "./lib/rules.js";
 import { parseCsv } from "./lib/csv.js";
-import Landing from "./components/Landing.jsx";
-import Checklist from "./components/Checklist.jsx";
-import Today from "./components/Today.jsx";
-import Journal from "./components/Journal.jsx";
-import Stats from "./components/Stats.jsx";
-import Settings from "./components/Settings.jsx";
-import Learning from "./components/Learning.jsx";
-import Admin from "./components/Admin.jsx";
+import Landing from "./pages/Landing.jsx";
+import Checklist from "./pages/Checklist.jsx";
+import Today from "./pages/Today.jsx";
+import Journal from "./pages/Journal.jsx";
+import Stats from "./pages/Stats.jsx";
+import Settings from "./pages/Settings.jsx";
+import Learning from "./pages/Learning.jsx";
+import Admin from "./pages/Admin.jsx";
 import SessionStrip from "./components/SessionStrip.jsx";
 import CloseSheet from "./components/CloseSheet.jsx";
-import News from "./components/News.jsx";
+import News from "./pages/News.jsx";
 import { compressImage } from "./lib/image.js";
 import { dueReminders, loadInbox, loadPrefs, markSent, notify, saveInbox, savePrefs, wasSent } from "./lib/reminders.js";
 

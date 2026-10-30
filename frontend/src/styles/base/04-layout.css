@@ -1,0 +1,31 @@
+/* ---------- Layout ---------- */
+main { max-width: 640px; margin: 0 auto; padding: 4px 16px 0; }
+.tab { display: none; animation: fade 0.25s ease; }
+.tab.active { display: block; }
+@keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+.page-title { font-size: 24px; font-weight: 800; letter-spacing: -0.4px; margin: 18px 2px 6px; }
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin: 14px 0;
+  box-shadow: var(--shadow);
+}
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.card-head h2 { font-size: 15px; font-weight: 700; margin: 0; }
+
+.chip {
+  font-size: 12px; font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.chip.good { background: rgba(16, 185, 129, 0.15); color: var(--good); }
+.chip.bad { background: rgba(244, 63, 94, 0.15); color: var(--bad); }
+.chip.warn { background: rgba(245, 158, 11, 0.15); color: var(--warn); }
+

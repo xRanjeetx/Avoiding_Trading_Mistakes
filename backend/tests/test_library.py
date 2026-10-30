@@ -2,9 +2,9 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 
-from app import config
-from app.db import SessionLocal
-from app.library import sync_library, title_from_filename
+from app.core import config
+from app.core.db import SessionLocal
+from app.routers.library import sync_library, title_from_filename
 from app.main import app
 from app.models import LibraryBook, ReadingProgress
 from conftest import signup
@@ -120,7 +120,7 @@ def test_prune_with_an_empty_folder_removes_everything_on_request(lib):
 def test_the_app_loads_the_folder_at_startup(tmp_path, monkeypatch):
     put(tmp_path, "Startup Book.pdf")
     monkeypatch.setattr(config, "LIBRARY_DIR", str(tmp_path))
-    from app.db import Base, engine
+    from app.core.db import Base, engine
 
     Base.metadata.drop_all(engine)
     with TestClient(app):  # entering the client runs the startup, which fills the library

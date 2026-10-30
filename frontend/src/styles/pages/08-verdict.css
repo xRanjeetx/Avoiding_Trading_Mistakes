@@ -1,0 +1,12 @@
+/* ----- Verdict ----- */
+.verdict { border-radius: 22px; padding: 26px 20px; }
+.v-ico {
+  display: grid; place-items: center; width: 64px; height: 64px; margin: 0 auto 4px; border-radius: 50%;
+  color: #fff; background: var(--warn); box-shadow: 0 14px 30px -12px currentColor;
+}
+.verdict.ok .v-ico { background: var(--good); color: var(--good); }
+.verdict.no .v-ico { background: var(--bad); color: var(--bad); }
+.verdict.pending .v-ico { color: var(--warn); }
+.v-ico .ic { color: #fff; width: 30px; height: 30px; }
+.verdict li { border-radius: 12px; }
+

@@ -1,10 +1,10 @@
 import pytest
 from sqlalchemy import func, select
 
-from app import admin as admin_mod
-from app import main
-from app.create_admin import create_admin
-from app.db import SessionLocal
+from app.routers import admin as admin_mod
+from app.routers import auth
+from app.cli.create_admin import create_admin
+from app.core.db import SessionLocal
 from app.models import Entry, User, UserSettings
 from conftest import signup
 
@@ -129,7 +129,7 @@ def test_admin_cannot_act_on_self_or_admins(client):
 
 def test_force_verify_and_send_reset(client, monkeypatch):
     sent = []
-    monkeypatch.setattr(main, "send_link_email", lambda to, subject, intro, button, link, outro: sent.append((to, link)))
+    monkeypatch.setattr(auth, "send_link_email", lambda to, subject, intro, button, link, outro: sent.append((to, link)))
     admin = signup_admin(client)
     signup(client, "bob")
     bid = user_id("bob@example.com")

@@ -1,0 +1,17 @@
+/* ---------- Responsive ---------- */
+@media (max-width: 400px) {
+  main { padding: 4px 12px 0; }
+  .card { padding: 14px; }
+  .rules li { flex-wrap: wrap; }
+  .rules li .yn { width: 100%; padding-left: 42px; }
+  .stat span { font-size: 20px; }
+}
+@media (min-width: 900px) {
+  /* Sidebar stays open; content sits to its right. */
+  .sidebar { transform: none; visibility: visible; z-index: 20; box-shadow: none; transition: none; width: 280px; }
+  .scrim { display: none; }
+  .menu-btn { display: none; }
+  body { padding-left: 280px; }
+  .dock { left: calc(50% + 140px); bottom: 20px; }
+}
+

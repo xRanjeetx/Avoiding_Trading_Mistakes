@@ -1,0 +1,31 @@
+/* ----- Text on accent fills (dark mode accent is bright) ----- */
+.btn.primary, .avatar, .pills button.on, #setup button.on, #shResult button.on[data-val="manual"],
+.lp-ico, .auth-badge, .auth-tabs button.on, .af-submit, .sidebar button.active .nav-ico, .lp-link-btn.solid {
+  color: var(--on-primary);
+}
+.af-spin { border-color: rgba(128, 128, 128, 0.35); border-top-color: var(--on-primary); }
+.seg button.on[data-val="sell"], li.fail .num, .yn button.on.no, #shResult button.on[data-val="sl"],
+#shSign button.on[data-val="loss"], .st.bad { color: var(--on-bad); }
+.st.ok { color: var(--on-good); }
+.btn.primary, .af-submit, .auth-tabs button.on, .pills button.on, #setup button.on, .lp-ico, .auth-badge, .avatar {
+  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+}
+.btn.primary { box-shadow: 0 10px 24px -10px rgba(var(--p-rgb), 0.8); }
+.logo, .side-brand img, .lp-brand img, .brand img { box-shadow: 0 4px 14px rgba(var(--p-rgb), 0.3); }
+
+/* Readiness hero: accent when pending, deep green / red for the verdicts */
+.ready { color: var(--on-primary); background: linear-gradient(135deg, var(--primary), var(--primary-2)); box-shadow: 0 20px 40px -22px rgba(var(--p-rgb), 0.8); }
+.ready.ok { color: #fff; background: linear-gradient(135deg, #15803d, #14532d); box-shadow: 0 20px 40px -22px rgba(21, 128, 61, 0.9); }
+.ready.no { color: #fff; background: linear-gradient(135deg, #be123c, #881337); box-shadow: 0 20px 40px -22px rgba(190, 18, 60, 0.9); }
+.ready-track { background: rgba(255, 255, 255, 0.28); }
+.ready:not(.ok):not(.no) .ready-track { background: rgba(0, 0, 0, 0.18); }
+.ready-track i { background: currentColor; }
+.ready-count b { font-family: var(--mono); }
+
+/* Verdict icon */
+.v-ico { color: var(--on-primary); background: var(--warn); box-shadow: 0 14px 30px -12px var(--warn); }
+.v-ico .ic { color: inherit; }
+.verdict.ok .v-ico { background: var(--good); color: var(--on-good); box-shadow: 0 14px 30px -12px var(--good); }
+.verdict.no .v-ico { background: var(--bad); color: var(--on-bad); box-shadow: 0 14px 30px -12px var(--bad); }
+.verdict.pending .v-ico { color: #1a1203; }
+

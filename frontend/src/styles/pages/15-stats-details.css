@@ -1,0 +1,12 @@
+/* ----- Stats details ----- */
+.bar .track { height: 10px; border-radius: 6px; background: var(--surface-2); }
+.bar .fill { border-radius: 6px; transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.pair-row { padding: 12px 6px; border-radius: 12px; transition: background 0.15s; }
+.pair-row:hover { background: var(--soft); }
+.pair-row:first-child { padding-top: 12px; }
+.cal-day { border-radius: 12px; transition: transform 0.12s, border-color 0.15s; }
+.cal-day:hover { transform: scale(1.06); border-color: var(--primary); }
+.cal-title strong { font-size: 15px; }
+.icon-btn.small { color: var(--text); }
+.icon-btn.small:hover { border-color: rgba(var(--p-rgb), 0.5); color: var(--primary); }
+

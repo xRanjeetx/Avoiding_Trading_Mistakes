@@ -1,0 +1,46 @@
+/* ---------- Rules ---------- */
+.rules { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.rules li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  transition: border-color 0.2s, background 0.2s;
+}
+.rules li.pass { border-color: rgba(16, 185, 129, 0.35); background: rgba(16, 185, 129, 0.06); }
+.rules li.fail { border-color: rgba(244, 63, 94, 0.45); background: rgba(244, 63, 94, 0.07); }
+.num {
+  flex: none;
+  width: 30px; height: 30px;
+  border-radius: 10px;
+  display: grid; place-items: center;
+  font-size: 12px; font-weight: 800;
+  background: var(--surface-2);
+  color: var(--muted);
+}
+li.pass .num { background: var(--good); color: var(--on-good); }
+li.fail .num { background: var(--bad); color: #fff; }
+.rules .body { flex: 1; min-width: 0; }
+.rules .title { font-weight: 650; font-size: 14px; }
+.rules .sub { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+.status { flex: none; font-size: 18px; }
+
+.yn { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.yn button {
+  min-width: 58px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit; font-size: 14px; font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.08s, background 0.15s;
+}
+.yn button:active { transform: scale(0.95); }
+.yn button.on.yes { background: var(--good); border-color: var(--good); color: var(--on-good); }
+.yn button.on.no { background: var(--bad); border-color: var(--bad); color: #fff; }
+

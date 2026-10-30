@@ -6,3 +6,7 @@ __pycache__/
 *.db
 .env
 e2e-shots/
+.vscode/
+.idea/
+.DS_Store
+*.log

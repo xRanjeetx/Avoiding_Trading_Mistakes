@@ -1,0 +1,6 @@
+/* ----- Tab entrance ----- */
+.tab.active > .card, .tab.active > .ready, .tab.active > .stats-grid, .tab.active > .summary-bar { animation: lp-up 0.45s both; }
+.tab.active > :nth-child(2) { animation-delay: 0.05s; }
+.tab.active > :nth-child(3) { animation-delay: 0.1s; }
+.tab.active > :nth-child(4) { animation-delay: 0.15s; }
+
