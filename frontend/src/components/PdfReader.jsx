@@ -39,12 +39,16 @@ export default function PdfReader({ book, onClose, onProgress }) {
   // Fetch the file (with the login token) and open it.
   useEffect(() => {
     let cancelled = false;
-    let doc = null;
+    // Free the file through the loading task: pdf.js 6 removed destroy() from the document itself, and calling it threw while
+    // the reader was closing, which blanked the whole app.
+    let task = null;
     (async () => {
       try {
         const [lib, bytes] = await Promise.all([loadPdfjs(), api.libraryFile(book.id)]);
-        doc = await lib.getDocument({ data: bytes }).promise;
         if (cancelled) return;
+        task = lib.getDocument({ data: bytes });
+        const doc = await task.promise;
+        if (cancelled) { task.destroy(); return; } // closed while loading: free the file now, a phone has little memory
         const start = clampPage(book.lastPage, doc.numPages);
         live.current = { page: start, pages: doc.numPages, ready: true };
         setPdf(doc);
@@ -56,7 +60,7 @@ export default function PdfReader({ book, onClose, onProgress }) {
     })();
     return () => {
       cancelled = true;
-      doc?.destroy();
+      task?.destroy();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [book.id]);

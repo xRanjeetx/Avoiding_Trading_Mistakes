@@ -27,6 +27,9 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: vite
         update-types: ["version-update:semver-major"]
+      # pdfjs-dist 6 removed PDFDocumentProxy.destroy(), which blanked the app when a book was closed. Check the reader by hand.
+      - dependency-name: pdfjs-dist
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
