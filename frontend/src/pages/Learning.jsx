@@ -55,7 +55,7 @@ export default function Learning({ active, onExpired }) {
   const list = LISTS.find((l) => l.kind === view);
 
   // The reader reports where it is; keep it on the server so reading continues on any device.
-  const progress = useCallback(({ page, pages }) => {
+  const reportPage = useCallback(({ page, pages }) => {
     if (reading == null) return;
     const prev = saved.current[reading];
     if (prev && prev.page === page && prev.pages === pages) return;
@@ -114,7 +114,7 @@ export default function Learning({ active, onExpired }) {
 
       {open && (
         <Suspense fallback={null}>
-          <PdfReader key={open.id} book={open} onClose={() => setReading(null)} onProgress={progress} />
+          <PdfReader key={open.id} book={open} onClose={() => setReading(null)} onProgress={reportPage} />
         </Suspense>
       )}
     </section>

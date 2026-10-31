@@ -47,6 +47,7 @@ os.environ["ENVIRONMENT"] = ""  # tests never run with the production start-up c
 os.environ["RATE_LIMIT_ENABLED"] = "false"  # test_abuse_protection.py turns it on; elsewhere many logins come from one address
 os.environ["BREACH_CHECK_ENABLED"] = "false"  # tests never call the Have I Been Pwned service
 os.environ["TURNSTILE_SECRET"] = ""
+os.environ["TWO_FACTOR_ENABLED"] = "true"  # 2FA is off by default for now; the code is kept working and tested
 os.environ["PROXY_HOPS"] = "0"
 
 import pytest  # noqa: E402

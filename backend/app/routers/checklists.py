@@ -1,4 +1,4 @@
-"""Learning checklists: common mistakes, points to remember and trade management, taken from the strategy book.
+"""Learning checklists: common mistakes, points to remember, trading psychology and trade management, taken from the strategy book.
 
 The lines live in data/checklists.json (config.CHECKLIST_FILE). `sync_checklists` copies them into the database at startup,
 so editing the file and restarting is all it takes, and it can be run by hand:
@@ -24,7 +24,7 @@ log = logging.getLogger("tradeguard.checklists")
 
 router = APIRouter(prefix="/api/checklists", tags=["checklists"])
 
-KINDS = ("mistakes", "remember", "management")
+KINDS = ("mistakes", "remember", "psychology", "management")
 
 
 # ---------- Loading the file ----------

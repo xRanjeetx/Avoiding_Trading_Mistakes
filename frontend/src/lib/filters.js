@@ -6,9 +6,9 @@ const NO_FILTER = { result: "all", pair: "all", setup: "all", from: "", to: "", 
 function filterEntries(entries, f) {
   const q = (f.q || "").trim().toLowerCase();
   return entries.filter((e) => {
-    // "be" and "ctc" match the stored result, so they stay apart (BE: closed at cost by hand; CTC: reversed after 1:1.5 RR).
+    // "be", "ctc" and "manual" match the stored result, so they stay apart (BE: closed at cost by hand; CTC: reversed after 1:1.5 RR; EARLY: closed early).
     // The others match the outcome (win, loss, open...).
-    if (f.result === "be" || f.result === "ctc" ? e.result !== f.result : f.result !== "all" && outcome(e) !== f.result) return false;
+    if (f.result === "be" || f.result === "ctc" || f.result === "manual" ? e.result !== f.result : f.result !== "all" && outcome(e) !== f.result) return false;
     if (f.pair !== "all" && e.pair !== f.pair) return false;
     if (f.setup !== "all" && (e.setup || "none") !== f.setup) return false;
     const day = ymd(e.timestamp);

@@ -85,7 +85,8 @@ app.include_router(checklists.router)
 app.include_router(images.router)
 app.include_router(news_calendar.router)
 app.include_router(auth.router)
-app.include_router(twofactor.router)
+if config.TWO_FACTOR_ENABLED:
+    app.include_router(twofactor.router)
 app.include_router(settings.router)
 app.include_router(entries.router)
 

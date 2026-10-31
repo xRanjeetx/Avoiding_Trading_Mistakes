@@ -30,6 +30,8 @@
 .pills button[data-k="loss"] { --c: var(--bad); --on: var(--on-bad); }
 .pills button[data-k="be"] { --c: var(--warn); --on: #1f1300; }
 .pills button[data-k="ctc"] { --c: var(--ctc); --on: var(--on-ctc); }
+.pills button[data-k="manual"] { --c: #38bdf8; --on: #04202e; }
+:root[data-theme="light"] .pills button[data-k="manual"] { --c: #0369a1; --on: #ffffff; }
 :root[data-theme="light"] .pills button[data-k="be"] { --on: #ffffff; }
 .pills button[data-k]:not([data-k="all"]) {
   color: var(--c);

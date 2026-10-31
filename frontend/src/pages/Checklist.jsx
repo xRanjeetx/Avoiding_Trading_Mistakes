@@ -3,6 +3,7 @@ import { activeRules, isRuleOn } from "../lib/rules.js";
 import { cooldownFor, evaluate, lotFor, newsLock, newsWarning, ruleTitle, todayCounts } from "../lib/evaluate.js";
 import { fmtDuration } from "../lib/killzones.js";
 import { num } from "../lib/format.js";
+import Countdown from "../components/Countdown.jsx";
 import EmotionPicker from "../components/EmotionPicker.jsx";
 import { CardHead, Icon } from "../components/ui.jsx";
 
@@ -82,7 +83,7 @@ export default function Checklist({ active, entries, settings, calendar, now, on
       {lockMsg && <div className="banner lock"><Icon name="lock" size={20} />{lockMsg}</div>}
       {newsHold && <div className="banner lock"><Icon name="lock" size={20} />{newsHold.event.title || "High-impact news"} in {fmtDuration(newsHold.inMin)}. Trading is locked until it passes.</div>}
       {newsHeads && <div className="banner lock warn"><Icon name="alert" size={20} />{newsHeads.event.title || "Medium-impact news"} in {fmtDuration(newsHeads.inMin)} (medium impact). Trade with care.</div>}
-      {cooling && <div className="banner lock"><Icon name="lock" size={20} />{f.pair} lost a trade. Locked for {cooling.leftMin} more min. Breathe, or look at another pair.</div>}
+      {cooling && <div className="banner lock"><Countdown since={cooling.lostAt} until={cooling.until} /><span><b>{f.pair} lost a trade.</b> Cooldown in progress. Breathe, or look at another pair.</span></div>}
 
       <div className={`ready ${state}`}>
         <div className="ready-top">

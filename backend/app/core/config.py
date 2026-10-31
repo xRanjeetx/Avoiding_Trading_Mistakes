@@ -43,8 +43,13 @@ TRUSTED_HOSTS = [h.strip() for h in os.environ.get("TRUSTED_HOSTS", "").split(",
 # On by default in production. Accounts that already exist stay approved; admin-created accounts are approved.
 REQUIRE_APPROVAL = os.environ.get("REQUIRE_ADMIN_APPROVAL", str(IS_PRODUCTION)).lower() == "true"
 
+# Master switch for two-factor sign-in. Off for now: no code is asked at login, the /2fa endpoints are not mounted and
+# admins are not forced to use it. Set TWO_FACTOR_ENABLED=true to bring it all back (stored seeds are kept).
+TWO_FACTOR_ENABLED = os.environ.get("TWO_FACTOR_ENABLED", "false").lower() == "true"
+
 # Admins must use two-factor sign-in to reach the admin tools. On by default in production; off locally so a fresh checkout works.
-ADMIN_REQUIRE_2FA = os.environ.get("ADMIN_REQUIRE_2FA", str(IS_PRODUCTION)).lower() == "true"
+# Only applies while TWO_FACTOR_ENABLED is on.
+ADMIN_REQUIRE_2FA = TWO_FACTOR_ENABLED and os.environ.get("ADMIN_REQUIRE_2FA", str(IS_PRODUCTION)).lower() == "true"
 
 # ---------- Monitoring ----------
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()

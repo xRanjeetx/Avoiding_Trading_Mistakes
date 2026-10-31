@@ -43,6 +43,7 @@ def test_the_shipped_file_has_the_expected_lines():
     assert set(lines) == set(KINDS)
     assert len(lines["mistakes"]) == 37  # 20 in the book's diagram + 17 in detail
     assert len(lines["remember"]) == 32
+    assert len(lines["psychology"]) == 31  # 29 principles + 2 key rules
     assert len(lines["management"]) == 24
     for kind, items in lines.items():
         texts = [t for _, t in items]
