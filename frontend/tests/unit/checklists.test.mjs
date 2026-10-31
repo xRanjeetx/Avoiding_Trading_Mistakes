@@ -31,7 +31,7 @@ test("withDone and clearKind return new lists", () => {
 });
 
 test("every list the tab offers has what the screen needs", () => {
-  assert.deepEqual(LISTS.map((l) => l.kind), ["mistakes", "remember", "management"]);
+  assert.deepEqual(LISTS.map((l) => l.kind), ["mistakes", "remember", "psychology", "management"]);
   for (const l of LISTS) assert.ok(l.label && l.icon && l.title && l.blurb && l.done);
 });
 

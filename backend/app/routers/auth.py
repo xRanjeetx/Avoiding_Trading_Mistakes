@@ -146,7 +146,7 @@ def login(body: LoginIn, request: Request, response: Response, db: Session = Dep
         raise HTTPException(status.HTTP_403_FORBIDDEN, "This account has been disabled")
     if not user.approved:
         raise HTTPException(status.HTTP_403_FORBIDDEN, WAITING)
-    if user.totp_enabled:  # the password alone is not enough: no session until /login/2fa has a code
+    if config.TWO_FACTOR_ENABLED and user.totp_enabled:  # the password alone is not enough: no session until /login/2fa has a code
         return LoginOut(mfa_required=True, mfa_token=make_purpose_token(user, "mfa", 5))
     return _token(db, user, request, response)
 
@@ -191,7 +191,7 @@ def logout_all(response: Response, user: User = Depends(current_user), db: Sessi
 
 @router.get("/api/auth/me", response_model=MeOut)
 def me(user: User = Depends(current_user)):
-    return MeOut(email=user.email, is_admin=user.is_admin, two_factor=user.totp_enabled).model_dump(by_alias=True)
+    return MeOut(email=user.email, is_admin=user.is_admin, two_factor=config.TWO_FACTOR_ENABLED and user.totp_enabled).model_dump(by_alias=True)
 
 
 @router.get("/api/auth/export")
@@ -285,6 +285,6 @@ def reset_password(body: ResetIn, request: Request, response: Response, db: Sess
         raise HTTPException(status.HTTP_403_FORBIDDEN, "This account has been disabled")
     if not user.approved:
         return LoginOut(email=user.email, pending_approval=True)
-    if user.totp_enabled:  # a reset link must not get around the second factor
+    if config.TWO_FACTOR_ENABLED and user.totp_enabled:  # a reset link must not get around the second factor
         return LoginOut(mfa_required=True, mfa_token=make_purpose_token(user, "mfa", 5))
     return _token(db, user, request, response)

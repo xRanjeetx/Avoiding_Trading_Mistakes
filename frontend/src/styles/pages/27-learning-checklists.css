@@ -3,6 +3,7 @@
 .k-library { --a: var(--primary); }
 .k-mistakes { --a: var(--bad); }
 .k-remember { --a: var(--warn); }
+.k-psychology { --a: var(--ctc, #a78bfa); }
 .k-management { --a: var(--good); }
 
 /* Switcher */

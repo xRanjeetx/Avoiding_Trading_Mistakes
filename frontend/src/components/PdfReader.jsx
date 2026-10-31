@@ -126,10 +126,20 @@ export default function PdfReader({ book, onClose, onProgress }) {
     return ZOOMS[Math.min(ZOOMS.length - 1, Math.max(0, i + dir))];
   });
 
+  // The phone's Back button / swipe closes the book instead of leaving the app: opening adds a history entry, and every way of
+  // closing goes through it. (The guard keeps React StrictMode's double mount from adding two.)
+  useEffect(() => {
+    if (!window.history.state?.reader) window.history.pushState({ reader: true }, "");
+    window.addEventListener("popstate", onClose);
+    return () => window.removeEventListener("popstate", onClose);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const close = () => (window.history.state?.reader ? window.history.back() : onClose());
+
   useEffect(() => {
     const onKey = (e) => {
       if (e.target.tagName === "INPUT") return;
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") close();
       else if (e.key === "ArrowRight" || e.key === "PageDown") go(live.current.page + 1);
       else if (e.key === "ArrowLeft" || e.key === "PageUp") go(live.current.page - 1);
     };
@@ -156,7 +166,7 @@ export default function PdfReader({ book, onClose, onProgress }) {
   return createPortal(
     <div className="reader" role="dialog" aria-modal="true" aria-label={book.title}>
       <div className="reader-bar">
-        <button type="button" className="icon-btn small" aria-label="Close book" onClick={onClose}><Icon name="left" size={18} /></button>
+        <button type="button" className="icon-btn small" aria-label="Close book" onClick={close}><Icon name="left" size={18} /></button>
         <b className="reader-title" title={book.title}>{book.title}</b>
         <div className="reader-zoom">
           <button type="button" className="icon-btn small" aria-label="Zoom out" disabled={zoom <= ZOOMS[0]} onClick={() => zoomBy(-1)}>−</button>

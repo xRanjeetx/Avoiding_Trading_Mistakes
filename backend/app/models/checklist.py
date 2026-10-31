@@ -11,7 +11,7 @@ class ChecklistItem(Base):
     __table_args__ = (UniqueConstraint("kind", "position", name="uq_checklist_kind_position"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    kind: Mapped[str] = mapped_column(String(20))  # "mistakes", "remember" or "management"
+    kind: Mapped[str] = mapped_column(String(20))  # "mistakes", "remember", "psychology" or "management"
     group: Mapped[str] = mapped_column(String(60), default="")  # a heading inside the list, "" for none
     position: Mapped[int] = mapped_column(Integer)  # order within the kind
     text: Mapped[str] = mapped_column(String(500))

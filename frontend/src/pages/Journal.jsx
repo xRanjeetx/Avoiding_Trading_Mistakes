@@ -8,7 +8,7 @@ import EntryCard, { Empty } from "../components/EntryCard.jsx";
 import { Icon } from "../components/ui.jsx";
 
 const PAGE_SIZE = 10; // trades per page, counted over the whole (filtered) journal, not per day
-const FILTERS = [["all", "All"], ["open", "Open"], ["win", "Wins"], ["loss", "Losses"], ["be", "BE"], ["ctc", "CTC"]];
+const FILTERS = [["all", "All"], ["open", "Open"], ["win", "Wins"], ["loss", "Losses"], ["be", "BE"], ["ctc", "CTC"], ["manual", "EARLY"]];
 
 export default function Journal({ active, entries, settings, onEdit, onDelete }) {
   const [f, setF] = useState(NO_FILTER);

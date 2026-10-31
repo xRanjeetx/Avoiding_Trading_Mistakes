@@ -210,7 +210,11 @@ function Journalled({ session, onLogout }) {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, []);
-  useEffect(() => { document.body.classList.toggle("noscroll", menu); }, [menu]);
+  useEffect(() => {
+    document.body.classList.toggle("noscroll", menu);
+    // Logging out (or a 401) unmounts this screen with the menu open; don't leave the landing page locked.
+    return () => document.body.classList.remove("noscroll");
+  }, [menu]);
 
   // ---------- Actions ----------
   const logTrade = async (payload) => {

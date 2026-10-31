@@ -1,13 +1,14 @@
-// Helpers for the Learning checklists (common mistakes, points to remember, trade management).
+// Helpers for the Learning checklists (common mistakes, points to remember, psychology, trade management).
 // The three lists the Learning tab offers besides the books. `kind` matches the server and also names the colour in the CSS (k-<kind>).
 const LISTS = [
   { kind: "mistakes", label: "Mistakes", icon: "alert", title: "Common mistakes", blurb: "Tick each one you have read and will not repeat.", done: "Every mistake read. Keep them in front of you on every trade." },
   { kind: "remember", label: "Remember", icon: "bulb", title: "Points to always remember", blurb: "Read these before you open the chart.", done: "Every point read. Now trade the plan." },
+  { kind: "psychology", label: "Psychology", icon: "brain", title: "Trading psychology", blurb: "The mindset rules. Read them until they are habit.", done: "Every rule read. Trade the plan, not the emotion." },
   { kind: "management", label: "Management", icon: "sliders", title: "Trade management", blurb: "How to enter, protect and exit a trade.", done: "Every rule read. Decide the stop and target before you enter." },
 ];
 
 // The picture for a heading inside a list. Anything not listed gets a note.
-const GROUP_ICONS = { "Quick checklist": "bolt", "In detail": "note" };
+const GROUP_ICONS = { "Quick checklist": "bolt", "In detail": "note", "Key rules": "star" };
 const groupIcon = (group) => GROUP_ICONS[group] || "note";
 
 const itemsOf = (items, kind) => (items || []).filter((i) => i.kind === kind).sort((a, b) => a.position - b.position);
