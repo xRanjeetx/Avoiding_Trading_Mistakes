@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "../api/index.js";
 import { fmtSize, progressLabel } from "../lib/books.js";
-import { LISTS, clearKind, itemsOf, progress, withDone } from "../lib/checklists.js";
+import { LISTS, clearKind, itemsOf, progress, withDone, withItem, withText, withoutItem } from "../lib/checklists.js";
 import ChecklistPanel from "../components/ChecklistPanel.jsx";
 import { Empty } from "../components/EntryCard.jsx";
 import { CardHead, Icon } from "../components/ui.jsx";
@@ -11,7 +11,7 @@ const PdfReader = lazy(() => import("../components/PdfReader.jsx"));
 
 // The books everyone can read, and the checklists taken from the strategy book. Both are loaded from the server and shared;
 // you only keep your place in each book and which checklist lines you have ticked.
-export default function Learning({ active, onExpired }) {
+export default function Learning({ active, onExpired, confirm }) {
   const [view, setView] = useState("library"); // "library" or a checklist kind
   const [books, setBooks] = useState(null); // null while loading
   const [checks, setChecks] = useState(null); // null while loading
@@ -38,10 +38,43 @@ export default function Learning({ active, onExpired }) {
   useEffect(() => { if (active) load(); }, [active, load]);
 
   // Show the tick at once; put it back if the server refuses.
-  const tick = useCallback((id, done) => {
-    setChecks((list) => withDone(list, id, done));
-    api.tickChecklist(id, done).catch((err) => { setChecks((list) => withDone(list, id, !done)); fail(err); });
+  const tick = useCallback((id, done, mine = false) => {
+    setChecks((list) => withDone(list, id, done, mine));
+    (mine ? api.tickChecklistLine(id, done) : api.tickChecklist(id, done))
+      .catch((err) => { setChecks((list) => withDone(list, id, !done, mine)); fail(err); });
   }, [fail]);
+
+  // The user's own lines. Resolves true when the server took it, so the form can empty itself.
+  const add = useCallback(async (kind, text) => {
+    try {
+      const line = await api.addChecklistLine(kind, text);
+      setChecks((list) => withItem(list, line));
+      return true;
+    } catch (err) {
+      fail(err);
+      return false;
+    }
+  }, [fail]);
+
+  const edit = useCallback(async (id, text) => {
+    try {
+      await api.editChecklistLine(id, text);
+      setChecks((list) => withText(list, id, text));
+    } catch (err) {
+      fail(err);
+    }
+  }, [fail]);
+
+  const remove = useCallback(async (id) => {
+    const ok = await confirm({ title: "Delete this line?", text: "It will be removed from your list.", okLabel: "Delete" });
+    if (!ok) return;
+    try {
+      await api.deleteChecklistLine(id);
+      setChecks((list) => withoutItem(list, id));
+    } catch (err) {
+      fail(err);
+    }
+  }, [confirm, fail]);
 
   const clear = useCallback(async (kind) => {
     try {
@@ -85,7 +118,7 @@ export default function Learning({ active, onExpired }) {
 
       {list && (checks === null
         ? !error && <div className="card"><p className="muted">Loading…</p></div>
-        : <ChecklistPanel list={list} items={checks} onTick={tick} onClear={clear} />)}
+        : <ChecklistPanel list={list} items={checks} onTick={tick} onClear={clear} onAdd={add} onEdit={edit} onRemove={remove} />)}
 
       {view === "library" && <div className="card">
         <CardHead icon="book" title="Library" />

@@ -1,7 +1,7 @@
 ﻿import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  DEFAULT_KILLZONES, activeZones, fmtDuration, marketStatus, minutesLeft, nextZone, normalizeKillzones, nyClock, nyToLocal,
+  DEFAULT_KILLZONES, activeZones, fmtDuration, marketStatus, minutesLeft, nextZone, normalizeKillzones, nyClock, nyToLocal, openingLock,
 } from "../../src/lib/killzones.js";
 
 const Z = DEFAULT_KILLZONES;
@@ -102,3 +102,30 @@ test("the next session skips the weekend", () => {
   assert.equal(sat.inMin, 33 * 60);                    // Sun 20:00
 });
 
+
+test("trading waits a few minutes after a session opens, then is free", () => {
+  const lock = (iso, wait = 5) => openingLock(Z, wait, at(iso));
+  assert.equal(lock("2026-10-27T06:00:00Z").zone.key, "london");      // 02:00 NY, the very minute it opens
+  assert.equal(lock("2026-10-27T06:02:00Z").leftMin, 3);               // 02:02, three minutes to go
+  assert.equal(lock("2026-10-27T06:05:00Z"), null);                    // 02:05, free
+  assert.equal(lock("2026-10-27T06:02:00Z", 0), null);                 // switched off
+  assert.equal(lock("2026-10-27T07:00:00Z"), null);                    // mid-session
+});
+
+test("the wait also applies to Asian, which opens in the evening", () => {
+  assert.equal(openingLock(Z, 5, at("2026-10-28T00:03:00Z")).zone.key, "asian"); // 20:03 NY
+});
+
+test("no wait when one session hands over to the next", () => {
+  assert.equal(openingLock(Z, 5, at("2026-10-27T14:01:00Z")), null); // 10:01 NY: London Close starts as New York ends
+  const apart = Z.map((z) => (z.key === "newyork" ? { ...z, on: false } : z));
+  assert.equal(openingLock(apart, 5, at("2026-10-27T14:01:00Z")).zone.key, "londonclose"); // New York is off, so this is a fresh open
+});
+
+test("no wait during the weekend gap", () => {
+  assert.equal(openingLock(Z, 5, at("2026-10-31T06:01:00Z")), null); // Saturday 02:01 NY
+});
+
+test("the wait follows New York daylight saving", () => {
+  assert.equal(openingLock(Z, 5, at("2026-11-02T07:02:00Z")).zone.key, "london"); // 02:02 EST after the clocks changed
+});

@@ -115,10 +115,18 @@ def test_settings_defaults_and_full_roundtrip(client, auth):
                  "killzones": DEFAULT_KILLZONES, "pairs": [{**p, "value": None} for p in DEFAULT_PAIRS],
                  "rules": {"disabled": [], "custom": [], "nextId": 1000},
                  "news": {"leadMin": 120, "auto": True, "includeMedium": True, "events": []},
-                 "lossLimits": {"daily": None, "overall": None, "since": None}}
+                 "lossLimits": {"daily": None, "overall": None, "since": None}, "openWaitMin": 5}
     new = {**s, "lot": 0.1, "minRR": 1.5, "maxTrades": 2, "maxSL": 1, "balance": 5000.5, "currency": "€"}
     assert client.put("/api/settings", json=new, headers=auth).json() == new
     assert client.get("/api/settings", headers=auth).json() == new
+
+
+def test_open_wait_minutes_can_be_changed_or_switched_off(client, auth):
+    s = client.get("/api/settings", headers=auth).json()
+    for ok in (0, 10, 60):
+        assert client.put("/api/settings", json={**s, "openWaitMin": ok}, headers=auth).json()["openWaitMin"] == ok
+    for bad in (-1, 61, 2.5):
+        assert client.put("/api/settings", json={**s, "openWaitMin": bad}, headers=auth).status_code == 422
 
 
 def test_pairs_default_edit_and_validation(client, auth):

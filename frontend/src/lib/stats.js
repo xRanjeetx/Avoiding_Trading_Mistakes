@@ -16,10 +16,12 @@ function ymd(ts) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-// "win" | "loss" | "be" | "open" | "skipped". Real P&L wins over the result label.
+// "win" | "loss" | "be" | "open" | "skipped". Real P&L wins over the result label, except for BE and CTC: those are
+// closed at cost, so a few cents of slippage or commission typed as their amount does not turn them into a win or loss.
 function outcome(e) {
   if (!e.traded) return "skipped";
   if (e.result === "open") return "open";
+  if (e.result === "be" || e.result === "ctc") return "be";
   if (e.pnl != null) return e.pnl > 0 ? "win" : e.pnl < 0 ? "loss" : "be";
   if (e.result === "tp") return "win";
   if (e.result === "sl") return "loss";

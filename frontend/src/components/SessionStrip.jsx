@@ -3,22 +3,24 @@ import {
 } from "../lib/killzones.js";
 
 // Which market session is live right now, and when the next one opens (shown on the Check tab).
-export default function SessionStrip({ settings, now }) {
+export default function SessionStrip({ settings, now, closeLead = 5 }) {
   const zones = normalizeKillzones(settings.killzones);
   const live = activeZones(zones, now);
   const next = nextZone(zones, now);
   const market = marketStatus(now);
   const lead = live[0];
+  const left = lead ? minutesLeft(lead, now) : null;
+  const closing = lead && left <= closeLead;
 
   return (
-    <div className={`kz-strip ${lead ? "live" : ""}`} style={lead ? { "--kz": lead.color } : undefined}>
+    <div className={`kz-strip ${lead ? "live" : ""} ${closing ? "closing" : ""}`} style={lead ? { "--kz": closing ? "var(--warn)" : lead.color } : undefined}>
       <div className="kz-status">
         <span className="kz-pulse" aria-hidden="true" />
         <div>
           {lead ? (
             <>
-              <b>{KILLZONE_NAMES[lead.key]} is live</b>
-              <small>ends in {fmtDuration(minutesLeft(lead, now))}</small>
+              <b>{KILLZONE_NAMES[lead.key]} {closing ? "is closing" : "is live"}</b>
+              <small>{closing ? "closes" : "ends"} in {fmtDuration(left)}</small>
             </>
           ) : !market.open ? (
             <>

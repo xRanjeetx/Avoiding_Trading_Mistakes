@@ -10,7 +10,7 @@ const RESULTS = [["tp", "TP hit"], ["sl", "SL hit"], ["be", "BE (closed at cost)
 export default function CloseSheet({ entry, preset, onSave, onClose, onShotUpload, onShotRemove }) {
   const [result, setResult] = useState(preset || (entry.result === "open" ? null : entry.result));
   const [sign, setSign] = useState(entry.pnl != null && entry.pnl < 0 ? "loss" : "win");
-  const [amount, setAmount] = useState(entry.pnl != null && !isAtCost(entry.result) ? String(Math.abs(entry.pnl)) : "");
+  const [amount, setAmount] = useState(entry.pnl ? String(Math.abs(entry.pnl)) : "");
   const [exit, setExit] = useState(entry.exit ?? "");
   const [notes, setNotes] = useState(entry.notes || "");
   const [lesson, setLesson] = useState(entry.lesson || "");
@@ -29,14 +29,15 @@ export default function CloseSheet({ entry, preset, onSave, onClose, onShotUploa
   }, [onClose]);
 
   const closing = !!result;
-  const amountLabel = result === "sl" ? "Loss amount" : result === "tp" ? "Profit amount" : "P&L amount";
+  const amountLabel = "Amount";
 
   async function save() {
     const next = { ...entry, notes: notes.trim(), lesson: lesson.trim(), emotion, emotionAfter };
     if (result) {
       const amt = num(amount);
       let pnl = null;
-      if (isAtCost(result)) pnl = 0;
+      // Closed at cost: no amount means 0; a small one (slippage, commission) is signed by the Profit/Loss switch.
+      if (isAtCost(result) && amt == null) pnl = 0;
       else if (amt != null) {
         const a = Math.abs(amt);
         pnl = result === "tp" ? a : result === "sl" ? -a : sign === "loss" ? -a : a;
@@ -67,7 +68,7 @@ export default function CloseSheet({ entry, preset, onSave, onClose, onShotUploa
             <button key={val} type="button" data-val={val} className={result === val ? "on" : ""} onClick={() => setResult(val)}>{label}</button>
           ))}
         </div>
-        {result === "manual" && (
+        {(result === "manual" || isAtCost(result)) && (
           <div className="seg" id="shSign">
             <button type="button" data-val="win" className={sign === "win" ? "on" : ""} onClick={() => setSign("win")}>Profit</button>
             <button type="button" data-val="loss" className={sign === "loss" ? "on" : ""} onClick={() => setSign("loss")}>Loss</button>
@@ -76,10 +77,8 @@ export default function CloseSheet({ entry, preset, onSave, onClose, onShotUploa
 
         {closing && (
           <div className="grid2">
-            {!isAtCost(result) && (
-              <label className="field"><span>{amountLabel}</span>
-                <input type="number" step="any" inputMode="decimal" placeholder="e.g. 24.50" value={amount} onChange={(e) => setAmount(e.target.value)} /></label>
-            )}
+            <label className="field"><span>{amountLabel}</span>
+              <input type="number" step="any" inputMode="decimal" placeholder={isAtCost(result) ? "0 if none" : "e.g. 24.50"} value={amount} onChange={(e) => setAmount(e.target.value)} /></label>
             <label className="field"><span>Exit price</span>
               <input type="number" step="any" inputMode="decimal" placeholder="optional" value={exit} onChange={(e) => setExit(e.target.value)} /></label>
           </div>

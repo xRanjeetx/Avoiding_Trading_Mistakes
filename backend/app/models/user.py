@@ -58,3 +58,5 @@ class UserSettings(Base):
     news: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     # Money limits { daily, overall, since }: the most the user may lose in a day / in total (see lib/risk.js). NULL means none set.
     loss_limits: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    # Minutes after a market session opens during which the checklist refuses a trade (0 = off).
+    open_wait_min: Mapped[int] = mapped_column(Integer, default=5, server_default="5")

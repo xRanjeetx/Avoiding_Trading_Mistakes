@@ -6,8 +6,8 @@ from sqlalchemy import func, select
 
 from app.core import config
 from app.core.db import SessionLocal
-from app.models import ChecklistItem, ChecklistTick
-from app.routers.checklists import KINDS, sync_checklists
+from app.models import ChecklistItem, ChecklistTick, UserChecklistItem
+from app.routers.checklists import FILE_KINDS, KINDS, MINE_LIMIT, sync_checklists
 from conftest import signup
 from test_admin import signup_admin, user_id
 
@@ -40,7 +40,7 @@ def test_the_shipped_file_has_the_expected_lines():
 
     root = Path(__file__).resolve().parents[1] / "data" / "checklists.json"
     lines = read_checklist_file(root)
-    assert set(lines) == set(KINDS)
+    assert set(lines) == set(FILE_KINDS)
     assert len(lines["mistakes"]) == 37  # 20 in the book's diagram + 17 in detail
     assert len(lines["remember"]) == 32
     assert len(lines["psychology"]) == 31  # 29 principles + 2 key rules
@@ -143,3 +143,91 @@ def test_deleting_an_account_removes_its_ticks(client, tmp_path):
     assert count(ChecklistTick) == 1
     assert client.delete(f"/api/admin/users/{user_id('bob@example.com')}", headers=admin).status_code == 204
     assert count(ChecklistTick) == 0
+
+
+# ---------- a user's own lines ----------
+def add_mine(client, h, kind="rules", text="Never move my stop away"):
+    return client.post("/api/checklists/mine", json={"kind": kind, "text": text}, headers=h)
+
+
+def test_own_lines_are_added_listed_ticked_edited_and_deleted(client, tmp_path):
+    h = signup(client)
+    sync(write(tmp_path, SAMPLE))
+    made = add_mine(client, h, "remember", "  My own point  ")
+    assert made.status_code == 201
+    mine = made.json()
+    assert (mine["text"], mine["mine"], mine["group"], mine["position"], mine["done"]) == ("My own point", True, "My points", 2, False)
+    add_mine(client, h)  # a line for the user-only list
+
+    items = client.get("/api/checklists", headers=h).json()
+    assert [(i["kind"], i["mine"]) for i in items] == [
+        ("mistakes", False), ("mistakes", False), ("mistakes", False), ("remember", False), ("remember", True), ("rules", True)]
+    assert [i["position"] for i in items if i["kind"] == "remember"] == [1, 2]
+
+    assert client.put(f"/api/checklists/mine/{mine['id']}/tick", json={"done": True}, headers=h).json() == {"id": mine["id"], "done": True}
+    assert client.put(f"/api/checklists/mine/{mine['id']}", json={"text": "Changed"}, headers=h).json()["text"] == "Changed"
+    again = {i["text"]: i for i in client.get("/api/checklists", headers=h).json()}
+    assert again["Changed"]["done"] is True
+
+    assert client.delete(f"/api/checklists/mine/{mine['id']}", headers=h).status_code == 204
+    assert count(UserChecklistItem) == 1
+
+
+def test_own_lines_are_private(client, tmp_path):
+    a, b = signup(client, "alice"), signup(client, "bob")
+    sync(write(tmp_path, SAMPLE))
+    mine = add_mine(client, a).json()
+    assert [i for i in client.get("/api/checklists", headers=b).json() if i["mine"]] == []
+    for call in (
+        client.put(f"/api/checklists/mine/{mine['id']}/tick", json={"done": True}, headers=b),
+        client.put(f"/api/checklists/mine/{mine['id']}", json={"text": "x"}, headers=b),
+        client.delete(f"/api/checklists/mine/{mine['id']}", headers=b),
+    ):
+        assert call.status_code == 404
+    assert count(UserChecklistItem) == 1
+
+
+def test_own_line_validation_and_limit(client, tmp_path):
+    h = signup(client)
+    assert add_mine(client, h, "nope").status_code == 404
+    assert add_mine(client, h, "rules", "   ").status_code == 422
+    assert add_mine(client, h, "rules", "x" * 501).status_code == 422
+    with SessionLocal() as db:
+        db.add_all(UserChecklistItem(user_id=1, kind="rules", text=f"r{n}") for n in range(MINE_LIMIT))
+        db.commit()
+    assert add_mine(client, h).status_code == 409
+
+
+def test_reset_unticks_own_lines_of_that_list_only(client, tmp_path):
+    h = signup(client)
+    sync(write(tmp_path, SAMPLE))
+    r, m = add_mine(client, h).json(), add_mine(client, h, "mistakes", "Mine").json()
+    for i in (r, m):
+        client.put(f"/api/checklists/mine/{i['id']}/tick", json={"done": True}, headers=h)
+    client.delete("/api/checklists/rules/ticks", headers=h)
+    done = {i["text"]: i["done"] for i in client.get("/api/checklists", headers=h).json() if i["mine"]}
+    assert done == {"Never move my stop away": False, "Mine": True}
+
+
+def test_the_file_sync_leaves_own_lines_alone(client, tmp_path):
+    h = signup(client)
+    sync(write(tmp_path, SAMPLE))
+    add_mine(client, h, "mistakes", "Mine")
+    sync(write(tmp_path, {"remember": SAMPLE["remember"]}))  # drops every mistakes line
+    assert count(UserChecklistItem) == 1
+
+
+def test_deleting_an_account_removes_its_own_lines(client, tmp_path):
+    admin = signup_admin(client)
+    h = signup(client, "bob")
+    add_mine(client, h)
+    assert count(UserChecklistItem) == 1
+    assert client.delete(f"/api/admin/users/{user_id('bob@example.com')}", headers=admin).status_code == 204
+    assert count(UserChecklistItem) == 0
+
+
+def test_own_lines_are_in_the_data_export(client):
+    h = signup(client)
+    add_mine(client, h)
+    data = client.get("/api/auth/export", headers=h).json()
+    assert data["learningLines"] == [{"list": "rules", "text": "Never move my stop away", "done": False}]

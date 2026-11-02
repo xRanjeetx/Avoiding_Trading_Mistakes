@@ -167,6 +167,11 @@ export const api = {
   listChecklists: () => request("GET", "/checklists"),
   tickChecklist: (id, done) => request("PUT", `/checklists/${id}/tick`, { done }),
   clearChecklist: (kind) => request("DELETE", `/checklists/${kind}/ticks`),
+  // Lines the user wrote themselves (private to them).
+  addChecklistLine: (kind, text) => request("POST", "/checklists/mine", { kind, text }),
+  editChecklistLine: (id, text) => request("PUT", `/checklists/mine/${id}`, { text }),
+  tickChecklistLine: (id, done) => request("PUT", `/checklists/mine/${id}/tick`, { done }),
+  deleteChecklistLine: (id) => request("DELETE", `/checklists/mine/${id}`),
   // The file bytes, fetched with the login token (an <iframe> or link could not send it).
   async libraryFile(id) {
     const res = await send("GET", `/library/${id}/file`);

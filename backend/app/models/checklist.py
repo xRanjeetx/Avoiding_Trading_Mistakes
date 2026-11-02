@@ -1,4 +1,6 @@
-from sqlalchemy import ForeignKey, Integer, String, UniqueConstraint
+from datetime import datetime, timezone
+
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, UniqueConstraint, false
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..core.db import Base
@@ -24,3 +26,17 @@ class ChecklistTick(Base):
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     item_id: Mapped[int] = mapped_column(ForeignKey("checklist_items.id", ondelete="CASCADE"), primary_key=True)
+
+
+class UserChecklistItem(Base):
+    """A line one user added to a Learning list (including their own "rules" list). Private to that user, never touched by the file sync."""
+
+    __tablename__ = "user_checklist_items"
+    __table_args__ = (Index("ix_user_checklist_user_kind", "user_id", "kind"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    kind: Mapped[str] = mapped_column(String(20))
+    text: Mapped[str] = mapped_column(String(500))
+    done: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    created_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))

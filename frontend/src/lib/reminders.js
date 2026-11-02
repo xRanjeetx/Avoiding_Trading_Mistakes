@@ -3,13 +3,14 @@
 //
 // Reminders fire while the app is open (a tab, or the installed app, even in the background). A closed
 // app cannot be woken without a push server, which this project does not run.
-import { fmtDuration, nextZone, normalizeKillzones, KILLZONE_NAMES } from "./killzones.js";
+import { activeZones, fmtDuration, minutesLeft, nextZone, normalizeKillzones, KILLZONE_NAMES } from "./killzones.js";
+import { CTC_RR } from "./rules.js";
 import { ymd } from "./stats.js";
 
 const KEY_PREFS = "atm_reminders";
 const KEY_SENT = "atm_reminders_sent";
 
-export const REMINDER_DEFAULTS = { on: false, lead: 5, longMin: 120 };
+export const REMINDER_DEFAULTS = { on: false, lead: 5, closeLead: 5, longMin: 120 };
 
 export function loadPrefs() {
   try {
@@ -17,7 +18,8 @@ export function loadPrefs() {
     return {
       on: p.on === true,
       lead: clamp(p.lead, 1, 60, REMINDER_DEFAULTS.lead),
-      longMin: clamp(p.longMin, 15, 1440, REMINDER_DEFAULTS.longMin),
+      closeLead: clamp(p.closeLead, 1, 60, REMINDER_DEFAULTS.closeLead),
+      longMin: clamp(p.longMin, 5, 1440, REMINDER_DEFAULTS.longMin),
     };
   } catch {
     return { ...REMINDER_DEFAULTS };
@@ -53,6 +55,18 @@ export function dueReminders({ entries, settings, prefs, now = new Date() }) {
     });
   }
 
+  // A session about to close: close or protect trades, take no new entry.
+  for (const z of activeZones(normalizeKillzones(settings.killzones), now)) {
+    const left = minutesLeft(z, now);
+    if (!(left <= prefs.closeLead)) continue;
+    const closes = new Date(now.getTime() + left * 60000);
+    out.push({
+      key: `close:${z.key}:${ymd(closes)}`,
+      title: `${KILLZONE_NAMES[z.key]} session closes in ${fmtDuration(left)}`,
+      body: "Protect or close your open trades. Do not start a new one this close to the end.",
+    });
+  }
+
   const longMs = prefs.longMin * 60000;
   for (const e of entries) {
     if (!e.traded || e.result !== "open") continue;
@@ -61,10 +75,26 @@ export function dueReminders({ entries, settings, prefs, now = new Date() }) {
     out.push({
       key: `long:${e.id}:${Math.floor(age / longMs)}`,
       title: `${[e.pair, e.dir && e.dir.toUpperCase()].filter(Boolean).join(" ") || "Trade"} open for ${fmtDuration(Math.floor(age / 60000))}`,
-      body: "Is it still valid? Close it from the Today tab if it has finished, or stick to your plan.",
+      body: ctcAdvice(e),
     });
   }
   return out;
+}
+
+// The price at which a trade is 1.5 times its risk in profit, or null when entry, stop or direction is missing.
+// It carries the decimals of the entry and stop (at least 2), plus one when 1.5 times the risk needs it (1.0850 and 1.0800 give 1.0925).
+export function ctcPrice(e) {
+  if (e.entry == null || e.sl == null || e.entry === e.sl || !e.dir) return null;
+  const sign = e.dir === "buy" ? 1 : -1;
+  const places = (n) => (String(n).split(".")[1] || "").length;
+  const decimals = Math.max(2, places(e.entry), places(e.sl));
+  const price = (e.entry + sign * CTC_RR * Math.abs(e.entry - e.sl)).toFixed(decimals + 1);
+  return price.endsWith("0") ? price.slice(0, -1) : price;
+}
+
+function ctcAdvice(e) {
+  const price = ctcPrice(e);
+  return `If price reached ${CTC_RR} RR${price ? ` (${price})` : ""}, move your SL to cost (CTC). Otherwise stay with the plan.`;
 }
 
 const readSent = () => {

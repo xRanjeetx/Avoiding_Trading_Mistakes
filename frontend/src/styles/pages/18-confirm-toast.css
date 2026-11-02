@@ -15,6 +15,7 @@
   width: 46px; height: 46px; margin: 0 auto 12px; display: grid; place-items: center;
   border-radius: 50%; background: rgba(244, 63, 94, 0.14); color: var(--bad);
 }
+.confirm-ico.calm { background: rgba(var(--p-rgb), 0.16); color: var(--primary); }
 .confirm-ico svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .confirm-toast h3 { margin: 0 0 6px; font-size: 17px; }
 .confirm-toast p { margin: 0 0 18px; font-size: 14px; line-height: 1.45; opacity: 0.75; }
