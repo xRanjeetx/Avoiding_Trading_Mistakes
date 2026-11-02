@@ -15,23 +15,61 @@ function Tile({ label, value, sub = "", cls = "" }) {
   return <div className="stat"><small>{label}</small><span className={cls}>{value}</span>{sub && <em>{sub}</em>}</div>;
 }
 
-function Equity({ points, start }) {
+function Equity({ points, start, currency }) {
+  const [hover, setHover] = useState(null);
   if (points.length < 2) return <Empty icon="trend">Close a few trades with a P&amp;L amount<br />to see your equity curve.</Empty>;
-  const W = 320, H = 150, pad = 8;
+  const W = 320, H = 150, padX = 8, padTop = 14, padBot = 10;
   const vals = points.map((p) => p.v + start);
   const lo = Math.min(start, ...vals), hi = Math.max(start, ...vals);
   const span = hi - lo || 1;
-  const x = (i) => pad + (i / (points.length - 1)) * (W - pad * 2);
-  const y = (v) => H - pad - ((v - lo) / span) * (H - pad * 2);
+  const x = (i) => padX + (i / (points.length - 1)) * (W - padX * 2);
+  const y = (v) => H - padBot - ((v - lo) / span) * (H - padTop - padBot);
   const line = vals.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(" ");
-  const area = `${line} L${x(vals.length - 1).toFixed(1)} ${H - pad} L${x(0).toFixed(1)} ${H - pad} Z`;
+  const area = `${line} L${x(vals.length - 1).toFixed(1)} ${H - padBot} L${x(0).toFixed(1)} ${H - padBot} Z`;
   const up = vals[vals.length - 1] >= start;
+  const shown = hover ?? vals.length - 1;
+  const money = (v, sign) => fmtMoney(v, currency, sign);
+
+  const onMove = (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const sx = ((e.clientX - r.left) / r.width) * W;
+    const i = Math.round(((sx - padX) / (W - padX * 2)) * (points.length - 1));
+    setHover(Math.max(0, Math.min(points.length - 1, i)));
+  };
+
+  const tipLeft = (x(shown) / W) * 100;
+  const tipShift = tipLeft < 22 ? "0%" : tipLeft > 78 ? "-100%" : "-50%";
+  const when = (t) => new Date(t).toLocaleString([], { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  const pnl = points[shown].v;
+
   return (
-    <svg className={`eq ${up ? "up" : "down"}`} viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Equity curve">
-      <line className="eq-base" x1={pad} x2={W - pad} y1={y(start).toFixed(1)} y2={y(start).toFixed(1)} />
-      <path className="eq-area" d={area} /><path className="eq-line" d={line} />
-      <circle className="eq-dot" cx={x(vals.length - 1).toFixed(1)} cy={y(vals[vals.length - 1]).toFixed(1)} r="3.5" />
-    </svg>
+    <div className="eq-wrap">
+      <svg className={`eq ${up ? "up" : "down"} ${hover != null ? "live" : ""}`} viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Equity curve"
+        onPointerMove={onMove} onPointerDown={onMove} onPointerLeave={() => setHover(null)} onPointerCancel={() => setHover(null)}>
+        <defs>
+          <linearGradient id="eq-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="currentColor" stopOpacity="0.32" />
+            <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        {[0.25, 0.5, 0.75].map((f) => <line key={f} className="eq-grid" x1={padX} x2={W - padX} y1={(padTop + f * (H - padTop - padBot)).toFixed(1)} y2={(padTop + f * (H - padTop - padBot)).toFixed(1)} />)}
+        <line className="eq-base" x1={padX} x2={W - padX} y1={y(start).toFixed(1)} y2={y(start).toFixed(1)} />
+        <path className="eq-area" d={area} fill="url(#eq-fill)" /><path className="eq-line" d={line} />
+        {hover != null && <line className="eq-cross" x1={x(shown).toFixed(1)} x2={x(shown).toFixed(1)} y1={padTop - 6} y2={H - padBot} />}
+        <circle className="eq-halo" cx={x(shown).toFixed(1)} cy={y(vals[shown]).toFixed(1)} r="7" />
+        <circle className="eq-dot" cx={x(shown).toFixed(1)} cy={y(vals[shown]).toFixed(1)} r="3.5" />
+      </svg>
+      <span className="eq-axis hi">{money(hi, false)}</span>
+      <span className="eq-axis lo">{money(lo, false)}</span>
+      {hover != null && (
+        <div className="eq-tip" style={{ left: `${tipLeft}%`, transform: `translateX(${tipShift})` }}>
+          <small>{shown === 0 ? "Start" : `Trade ${shown} of ${points.length - 1}`}</small>
+          <b>{money(vals[shown], false)}</b>
+          <span className={signClass(pnl)}>{money(pnl)}{start ? ` · ${pnl >= 0 ? "+" : "−"}${Math.abs((pnl / start) * 100).toFixed(2)}%` : ""}</span>
+          {shown > 0 && <em>{when(points[shown].t)}</em>}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -70,7 +108,21 @@ export default function Stats({ active, entries, settings }) {
 
   const bal = settings.balance > 0 && all.hasPnl
     ? `Balance ${money(settings.balance + all.net, false)} (${all.net >= 0 ? "+" : "−"}${Math.abs((all.net / settings.balance) * 100).toFixed(1)}%)` : "";
-  const last = s.equity[s.equity.length - 1].v;
+
+  // Equity card filters. They sit on top of the page range unless the card's own range is picked.
+  const [eqRange, setEqRange] = useState(null);
+  const [eqPair, setEqPair] = useState("");
+  const [eqSetup, setEqSetup] = useState("");
+  const [eqResult, setEqResult] = useState("");
+  const eqFiltered = Boolean(eqRange != null || eqPair || eqSetup || eqResult);
+  const eqDays = eqRange ?? range;
+  const traded = entries.filter((e) => e.traded && e.result !== "open");
+  const eqPairs = [...new Set(traded.map((e) => e.pair).filter(Boolean))].sort();
+  const eqSetups = [...new Set(traded.map((e) => e.setup || "none"))];
+  const eq = computeStats(inRange(entries, eqDays).filter((e) =>
+    (!eqPair || e.pair === eqPair) && (!eqSetup || (e.setup || "none") === eqSetup) && (!eqResult || e.result === eqResult)));
+  const last = eq.equity[eq.equity.length - 1].v;
+  const resetEq = () => { setEqRange(null); setEqPair(""); setEqSetup(""); setEqResult(""); };
 
   const cal = calendarData(entries, month);
   const shiftMonth = (n) => setMonth(new Date(month.getFullYear(), month.getMonth() + n, 1));
@@ -97,7 +149,7 @@ export default function Stats({ active, entries, settings }) {
   return (
     <section id="stats" className={`tab ${active ? "active" : ""}`}>
       <div className="pills">
-        {RANGES.map(([d, label]) => <button key={d} className={range === d ? "on" : ""} onClick={() => setRange(d)}>{label}</button>)}
+        {RANGES.map(([d, label]) => <button key={d} className={range === d ? "on" : ""} onClick={() => { setRange(d); setEqRange(null); }}>{label}</button>)}
       </div>
       <Discipline entries={entries} settings={settings} days={range} />
       <div className="stats-grid two">
@@ -114,9 +166,29 @@ export default function Stats({ active, entries, settings }) {
 
       <div className="card">
         <CardHead icon="trend" title="Equity curve">
-          <span className={`chip ${s.hasPnl ? (last >= 0 ? "good" : "bad") : ""}`}>{s.hasPnl ? (start ? `${money(start + last, false)} (${money(last)})` : money(last)) : "–"}</span>
+          <span className={`chip ${eq.hasPnl ? (last >= 0 ? "good" : "bad") : ""}`}>{eq.hasPnl ? (start ? `${money(start + last, false)} (${money(last)})` : money(last)) : "–"}</span>
         </CardHead>
-        <div><Equity points={s.equity} start={start} /></div>
+        <div className="eq-filters">
+          <div className="pills">
+            {RANGES.map(([d, label]) => <button key={d} className={eqDays === d ? "on" : ""} onClick={() => setEqRange(d)}>{label}</button>)}
+          </div>
+          <div className="eq-selects">
+            <select aria-label="Filter by pair" value={eqPair} onChange={(e) => setEqPair(e.target.value)}>
+              <option value="">All pairs</option>
+              {eqPairs.map((p) => <option key={p} value={p}>{p}</option>)}
+            </select>
+            <select aria-label="Filter by setup" value={eqSetup} onChange={(e) => setEqSetup(e.target.value)}>
+              <option value="">All setups</option>
+              {eqSetups.map((k) => <option key={k} value={k}>{k === "none" ? "Not tagged" : SETUPS[k] || k}</option>)}
+            </select>
+            <select aria-label="Filter by result" value={eqResult} onChange={(e) => setEqResult(e.target.value)}>
+              <option value="">All results</option>
+              {RESULTS.filter(([, k]) => k !== "open").map(([label, k]) => <option key={k} value={k}>{label}</option>)}
+            </select>
+            <button type="button" className="eq-reset" disabled={!eqFiltered} onClick={resetEq}>Reset</button>
+          </div>
+        </div>
+        <div><Equity points={eq.equity} start={start} currency={cur} /></div>
       </div>
 
       <div className="card">
