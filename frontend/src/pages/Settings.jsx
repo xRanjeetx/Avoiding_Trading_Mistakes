@@ -214,11 +214,14 @@ export default function Settings({ active, settings, reminders, onReminders, onS
         <CardHead icon="bolt" title="Reminders"><span className="chip">This device</span></CardHead>
         <label className="rem-toggle">
           <input type="checkbox" checked={reminders.on && perm === "granted"} disabled={perm === "unsupported" || perm === "denied"} onChange={(e) => toggleReminders(e.target.checked)} />
-          <span><b>Notify me</b><small>Before a session opens, and when a trade stays open too long</small></span>
+          <span><b>Notify me</b><small>Before a session opens or closes, and while a trade stays open</small></span>
         </label>
         <div className="grid2">
           <label className="field"><span>Before a session opens (min)</span><input type="number" min="1" max="60" inputMode="numeric" key={`l${reminders.lead}`} defaultValue={reminders.lead} onChange={tick("lead", 1, 60)} /></label>
-          <label className="field"><span>Trade open longer than (min)</span><input type="number" min="15" max="1440" inputMode="numeric" key={`m${reminders.longMin}`} defaultValue={reminders.longMin} onChange={tick("longMin", 15, 1440)} /></label>
+          <label className="field"><span>Before a session closes (min)</span><input type="number" min="1" max="60" inputMode="numeric" key={`c${reminders.closeLead}`} defaultValue={reminders.closeLead} onChange={tick("closeLead", 1, 60)} /></label>
+          <label className="field"><span>Wait after a session opens (min)</span>
+            <input type="number" min="0" max="60" inputMode="numeric" {...bind("openWaitMin")} /></label>
+          <label className="field"><span>Open trade: remind me every (min)</span><input type="number" min="5" max="1440" inputMode="numeric" key={`m${reminders.longMin}`} defaultValue={reminders.longMin} onChange={tick("longMin", 5, 1440)} /></label>
         </div>
         {(perm === "unsupported" || perm === "denied") && (
           <p className="muted hint">

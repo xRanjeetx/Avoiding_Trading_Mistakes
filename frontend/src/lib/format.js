@@ -35,5 +35,5 @@ export const timeOf = (ts) => new Date(ts).toLocaleTimeString([], { hour: "2-dig
 export const fullDateTimeOf = (ts) => new Date(ts).toLocaleString([], { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 export const dateTimeOf = (ts) => new Date(ts).toLocaleString([], { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 
-// Break-even and CTC both close at cost, so their P&L is 0 and no amount is asked.
+// Break-even and CTC both close at cost, so their P&L is 0 unless a small amount (slippage, commission) is typed in.
 export const isAtCost = (result) => result === "be" || result === "ctc";

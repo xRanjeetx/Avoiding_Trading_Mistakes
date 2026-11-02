@@ -10,10 +10,12 @@ const RULES = [
   { id: 6,  title: "No Trade in Ranging Market",         type: "self", q: "Is the market trending, not ranging?" },
   { id: 7,  title: "No FOMO",                            type: "self", q: "Am I calm, and not chasing a move I missed?" },
   { id: 8,  title: "No Multiple Trades in Same Direction", type: "auto" },
+  { id: 35, title: "Re-analyse After 2 SL",              type: "auto" },
   { id: 30, title: "Cooldown After a Loss", type: "auto" },
   { id: 9,  title: "Full TP",                           type: "self", q: "Will I hold this trade until the full TP?" },
   { id: 10, title: "No Scalping",                        type: "self", q: "Is this a planned setup, not a quick scalp?" },
   { id: 11, title: "Trade Only in a Market Session",     type: "auto" },
+  { id: 34, title: "Wait After Session Opens",           type: "auto" },
   { id: 32, title: "No Trade Before High-Impact News",   type: "auto" },
   { id: 13, title: "No Revenge Trading",                 type: "self", q: "Am I taking this trade on its own merits, not to win back a loss?" },
   { id: 14, title: "Safe TP Always",                     type: "self", q: "Is my TP placed safely before the next key level?" },
@@ -56,7 +58,13 @@ const activeRules = (settings) => allRules(settings).filter((r) => isRuleOn(sett
 // The two entry setups. The checklist requires one of them to be picked.
 const SETUPS = { fvg: "5m FVG", wick: "5m Wick FVG" };
 
+// Once price has moved this many times the risk, the stop is moved to cost (CTC).
+const CTC_RR = 1.5;
+
+// After this many SL hits in a row on one pair and direction, the next trade the same way needs a fresh analysis.
+const SL_RUN = 2;
+
 // After a losing trade on a pair, that pair is locked for this many minutes (other pairs stay open).
 const COOLDOWN_MIN = 10;
 
-export { RULES, SETUPS, COOLDOWN_MIN, CUSTOM_LIMIT, NO_LOSS_LIMITS, NO_NEWS, NO_RULE_EDITS, activeRules, allRules, isRuleOn };
+export { RULES, SETUPS, COOLDOWN_MIN, CTC_RR, SL_RUN, CUSTOM_LIMIT, NO_LOSS_LIMITS, NO_NEWS, NO_RULE_EDITS, activeRules, allRules, isRuleOn };

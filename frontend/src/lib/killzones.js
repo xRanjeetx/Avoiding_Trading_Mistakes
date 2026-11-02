@@ -77,6 +77,22 @@ export function activeZones(zones, now = new Date()) {
   return zones.filter((z) => z.on && inRange(n, minutesOf(z.start), minutesOf(z.end)));
 }
 
+// Right after a session opens, price is at its most erratic, so trading waits `wait` minutes (0 = off). Returns
+// { zone, leftMin } while that wait is running, else null. A session that starts the moment another enabled one ends
+// (New York into London Close) is the same stretch of trading, so it has no wait of its own.
+export function openingLock(zones, wait, now = new Date()) {
+  if (!(wait > 0)) return null;
+  const n = nyClock(now).minutes;
+  for (const z of activeZones(zones, now)) {
+    const start = minutesOf(z.start);
+    const since = (n - start + 1440) % 1440;
+    if (since >= wait) continue;
+    if (zones.some((o) => o !== z && o.on && o.end === z.start)) continue;
+    return { zone: z, leftMin: wait - since, sinceMin: since };
+  }
+  return null;
+}
+
 export function minutesLeft(zone, now = new Date()) {
   const n = nyClock(now).minutes;
   return ((minutesOf(zone.end) - n + 1440) % 1440) || 1440;

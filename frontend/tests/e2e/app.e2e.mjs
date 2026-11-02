@@ -248,7 +248,7 @@ await step("closing with TP hit asks for an amount and saves a profit", async ()
   await page.getByRole("button", { name: /TP hit/ }).click();
   await page.locator("#sheet").waitFor();
   await shot("08-close-sheet-dark");
-  await page.locator("#sheet label.field", { hasText: "Profit amount" }).locator("input").fill("24.5");
+  await page.locator("#sheet label.field", { hasText: "Amount" }).locator("input").fill("24.5");
   await page.locator("#sheet").getByRole("button", { name: /^\s*Save/ }).click();
   await toast().filter({ hasText: "Saved" }).waitFor();
   const card = page.locator("#today .entry", { hasText: "XAUUSD" });
@@ -357,12 +357,15 @@ await step("Stats and Today show the discipline score and streaks", async () => 
   await nav("Today");
   assert.match(await page.locator("#today .disc").innerText(), /day streak/i);
 });
-await step("Settings has a Reminders card with the two limits", async () => {
+await step("Settings has a Reminders card with its four timings", async () => {
   await nav("Settings");
   const card = page.locator("#settings .card", { hasText: "Reminders" }).first();
   await card.waitFor();
-  assert.equal(await card.locator('input[type="number"]').first().inputValue(), "5");
-  assert.equal(await card.locator('input[type="number"]').nth(1).inputValue(), "120");
+  const value = (label) => card.locator("label.field", { hasText: label }).locator("input").inputValue();
+  assert.equal(await value("Before a session opens"), "5");
+  assert.equal(await value("Before a session closes"), "5");
+  assert.equal(await value("Wait after a session opens"), "5");
+  assert.equal(await value("remind me every"), "120");
   await shot("20-reminders-settings-dark");
 });
 await step("remove the extra test trade again", async () => {

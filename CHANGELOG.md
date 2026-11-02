@@ -1,6 +1,13 @@
 # Changelog
 
 ## Unreleased
+- New checklist rule 35 "Re-analyse After 2 SL": after two SL hits in a row today on the same pair and direction (a TP, BE, CTC or early close resets the run), a warning banner appears and the next trade the same way needs a confirmation that the bias and direction were re-analysed and that it is the second setup after the 5m ITL/ITH. Questions asked together (CTC and re-analysis) now show one after the other.
+- Rule 8 (no multiple trades in the same direction) now has an exception: if the open trade reached 1.5 RR and its SL was moved to cost, confirm it with the "SL is at cost (CTC)" button and another trade on that pair and direction can be logged. The confirmation is stored in the new trade's `answers` under rule 8.
+- BE and CTC can now carry a P&L amount (profit or loss, for slippage or commission) and an exit price when closed; they still count as break-even in the stats.
+- Open-trade reminders now say to move the SL to cost (CTC) if price reached 1.5 RR, with that price worked out from entry and SL, and repeat every N minutes (5 or more, set in Settings > Reminders).
+- A reminder 5 minutes (editable) before a market session closes, and a warm "closing" state on the session strip.
+- New checklist rule "Wait After Session Opens": no trading for the first N minutes (default 5, 0 = off, Settings > Market sessions) of a session; a session that follows another without a gap has no wait. New migration `0005`.
+- Learning: a new *My Rules* list for your own most important rules, and every Learning list lets you add, edit and delete your own points (private to you; stored in `user_checklist_items`, included in "Download my data").
 - Admin approval of new sign-ups (`REQUIRE_ADMIN_APPROVAL`, on in production): verified users wait in the Admin tab's *Sign-up requests* until approved or rejected; admins are emailed, approved users are emailed; unapproved accounts get no session from any path. New migration `0003` marks all existing users approved.
 - Database migrations now use Alembic (`backend/app/migrations`). A baseline revision adopts the existing database in place; `core/migrations.ensure_columns` is gone. Tests fail if models and revisions drift apart.
 - Two-factor sign-in (authenticator app + recovery codes), optional for users and required for admins in production. Seeds are encrypted at rest, codes cannot be replayed, a password reset cannot bypass it, and admins can reset a user's 2FA (audited) or use `python -m app.cli.reset_2fa`. `/api/auth/login` can now answer `mfa_required`; `/api/auth/me` includes `twoFactor`.

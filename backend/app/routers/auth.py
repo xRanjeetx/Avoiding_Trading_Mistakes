@@ -17,7 +17,7 @@ from ..core.sessions import (
 from ..core.security import (
     DUMMY_HASH, current_user, hash_password, make_purpose_token, make_token, user_from_purpose_token, verify_password,
 )
-from ..models import AuthSession, Entry, User, UserSettings
+from ..models import AuthSession, Entry, User, UserChecklistItem, UserSettings
 from ..schemas import (
     Credentials, DeleteAccountIn, EmailOnly, EntryOut, ForgotIn, LoginIn, LoginOut, MeOut, RegisterOut, ResetIn, SettingsOut, Token,
     TokenIn,
@@ -207,6 +207,10 @@ def export_data(user: User = Depends(current_user), db: Session = Depends(get_db
         "account": {"email": user.email, "createdAt": user.created_at.isoformat() if user.created_at else None},
         "settings": SettingsOut.model_validate(settings).model_dump(by_alias=True) if settings else None,
         "entries": [EntryOut.model_validate(e).model_dump(by_alias=True, exclude={"images"}) for e in entries],
+        "learningLines": [
+            {"list": i.kind, "text": i.text, "done": i.done}
+            for i in db.scalars(select(UserChecklistItem).where(UserChecklistItem.user_id == user.id).order_by(UserChecklistItem.id))
+        ],
     }
     return JSONResponse(data, headers={"Content-Disposition": 'attachment; filename="trade-guard-data.json"'})
 

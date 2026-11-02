@@ -19,6 +19,9 @@
   0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--kz) 60%, transparent); }
   100% { box-shadow: 0 0 0 10px transparent; }
 }
+/* Last minutes of a session: warm tint and a quicker pulse, same keyframes. */
+.kz-strip.closing { transition: border-color 0.3s, background 0.3s; } /* the colour switches to --warn in SessionStrip */
+.kz-strip.closing .kz-pulse { animation-duration: 0.9s; }
 .kz-chips { list-style: none; margin: 12px 0 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .kz-chips li {
   --kz: var(--muted);

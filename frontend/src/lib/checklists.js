@@ -5,10 +5,11 @@ const LISTS = [
   { kind: "remember", label: "Remember", icon: "bulb", title: "Points to always remember", blurb: "Read these before you open the chart.", done: "Every point read. Now trade the plan." },
   { kind: "psychology", label: "Psychology", icon: "brain", title: "Trading psychology", blurb: "The mindset rules. Read them until they are habit.", done: "Every rule read. Trade the plan, not the emotion." },
   { kind: "management", label: "Management", icon: "sliders", title: "Trade management", blurb: "How to enter, protect and exit a trade.", done: "Every rule read. Decide the stop and target before you enter." },
+  { kind: "rules", label: "My Rules", icon: "star", title: "Most important rules", blurb: "Your own non-negotiables. Write the rules that keep you out of trouble.", done: "Every rule read. Now trade the plan." },
 ];
 
 // The picture for a heading inside a list. Anything not listed gets a note.
-const GROUP_ICONS = { "Quick checklist": "bolt", "In detail": "note", "Key rules": "star" };
+const GROUP_ICONS = { "Quick checklist": "bolt", "In detail": "note", "Key rules": "star", "My points": "plus" };
 const groupIcon = (group) => GROUP_ICONS[group] || "note";
 
 const itemsOf = (items, kind) => (items || []).filter((i) => i.kind === kind).sort((a, b) => a.position - b.position);
@@ -29,7 +30,13 @@ function progress(items) {
   return { done, total: items.length, pct: items.length ? Math.round((done / items.length) * 100) : 0 };
 }
 
-const withDone = (items, id, done) => items.map((i) => (i.id === id ? { ...i, done } : i));
+// A line is told apart by its id and whether it is the user's own: shared lines and own lines are numbered separately.
+const isItem = (i, id, mine) => i.id === id && !!i.mine === !!mine;
+const withDone = (items, id, done, mine = false) => items.map((i) => (isItem(i, id, mine) ? { ...i, done } : i));
 const clearKind = (items, kind) => items.map((i) => (i.kind === kind ? { ...i, done: false } : i));
+const withText = (items, id, text) => items.map((i) => (isItem(i, id, true) ? { ...i, text } : i));
+const withoutItem = (items, id) => items.filter((i) => !isItem(i, id, true));
+// Adds one of the user's own lines at the end of its list.
+const withItem = (items, item) => [...items, { ...item, mine: true }];
 
-export { LISTS, clearKind, groupIcon, groupItems, itemsOf, progress, withDone };
+export { LISTS, clearKind, groupIcon, groupItems, itemsOf, progress, withDone, withItem, withText, withoutItem };

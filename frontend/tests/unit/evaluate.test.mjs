@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { RULES } from "../../src/lib/rules.js";
-import { evaluate, ruleTitle, todayCounts } from "../../src/lib/evaluate.js";
+import { evaluate, ruleTitle, slRun, todayCounts } from "../../src/lib/evaluate.js";
 
 const settings = { lot: 0.02, minRR: 2, maxTrades: 4, maxSL: 4 }; // killzones omitted: the default sessions apply
 // 26 Oct 2026 is EDT (UTC-4): 12:00Z is 08:00 in New York, inside the New York session (07:00-10:00).
@@ -200,4 +200,81 @@ test("lot rule uses the lot set for the pair, falling back to the default lot", 
   assert.equal(lot({ pair: "XAUUSD", lot: 0.02 }), true);
   assert.equal(lot({ pair: "XAUUSD", lot: 0.2 }), false);
   assert.equal(lot({ pair: "GBPUSD", lot: 0.02 }), true); // not listed: default lot
+});
+
+test("rule 34 holds trading for the first minutes of a session", () => {
+  const at = (iso, s = settings) => run({}, { now: new Date(iso), settings: s }).res[34];
+  const early = at("2026-10-26T12:02:00Z"); // 08:02 NY, mid-session
+  assert.equal(early.pass, true);
+  const fresh = at("2026-10-26T11:02:00Z"); // 07:02 NY, two minutes after New York opened
+  assert.equal(fresh.pass, false);
+  assert.match(fresh.detail, /New York opened 2m ago. Wait 3m more/);
+  assert.equal(at("2026-10-26T11:05:00Z").pass, true);
+  assert.equal(at("2026-10-26T11:02:00Z", { ...settings, openWaitMin: 0 }).pass, true);
+  assert.equal(at("2026-10-26T11:02:00Z", { ...settings, openWaitMin: 10 }).pass, false);
+  assert.equal(at("2026-10-26T14:01:00Z").pass, true); // 10:01 NY: London Close follows New York, so no new wait
+  assert.equal(at("2026-10-26T20:00:00Z").pass, true); // no session live: rule 11 reports that, not this one
+});
+
+test("a fresh open blocks the trade, and switching rule 34 off lets it through", () => {
+  const now = new Date("2026-10-26T11:02:00Z");
+  const blocked = run({}, { now });
+  assert.equal(blocked.ok, false);
+  assert.deepEqual(blocked.failed, [34]);
+  assert.equal(run({}, { now, settings: { ...settings, rules: { disabled: [34], custom: [], nextId: 1000 } } }).ok, true);
+});
+
+test("another trade the same way is allowed once the open one is confirmed at cost", () => {
+  const open = [trade({ id: "a", result: "open" })];
+  const blocked = run({}, { entries: open });
+  assert.equal(blocked.res[8].pass, false);
+  assert.deepEqual(blocked.res[8].needs, ["a"]);
+  assert.match(blocked.res[8].detail, /1\.5 RR.*SL to cost/);
+  const ok = run({}, { entries: open, ctcKept: ["a"] });
+  assert.equal(ok.res[8].pass, true);
+  assert.match(ok.res[8].detail, /at cost/);
+  // a second open trade the same way that was not confirmed still blocks
+  assert.equal(run({}, { entries: [...open, trade({ id: "b", result: "open" })], ctcKept: ["a"] }).res[8].pass, false);
+  // confirming a trade on another pair or direction changes nothing
+  assert.equal(run({ pair: "EURUSD" }, { entries: open }).res[8].pass, true);
+});
+
+// ---------- two SL in a row the same way (rule 35) ----------
+// "evening" is 08:00 New York on 26 Oct 2026; the trades below close earlier the same day.
+const sl = (id, minsAgo, over = {}) => trade({ id, result: "sl", closedAt: evening.getTime() - minsAgo * 60000, timestamp: evening.getTime() - (minsAgo + 20) * 60000, ...over });
+
+test("slRun counts SL hits in a row on the same pair and direction, and stops at any other close", () => {
+  assert.equal(slRun([], "XAUUSD", "buy", evening), 0);
+  assert.equal(slRun([sl("a", 60)], "XAUUSD", "buy", evening), 1);
+  assert.equal(slRun([sl("a", 90), sl("b", 30)], "XAUUSD", "buy", evening), 2);
+  assert.equal(slRun([sl("a", 90), sl("w", 60, { result: "tp" }), sl("b", 30)], "XAUUSD", "buy", evening), 1); // the TP ended the earlier run
+  assert.equal(slRun([sl("a", 90), sl("b", 60, { result: "ctc" }), sl("c", 30)], "XAUUSD", "buy", evening), 1);
+  assert.equal(slRun([sl("a", 90), sl("b", 30)], "XAUUSD", "sell", evening), 0);       // other direction
+  assert.equal(slRun([sl("a", 90), sl("b", 30)], "EURUSD", "buy", evening), 0);       // other pair
+  assert.equal(slRun([sl("a", 90), sl("b", 30, { traded: false })], "XAUUSD", "buy", evening), 1); // skipped trades do not count
+  assert.equal(slRun([sl("a", 90), sl("b", 30, { result: "open", closedAt: null })], "XAUUSD", "buy", evening), 1);
+  assert.equal(slRun([sl("a", 3000), sl("b", 2900)], "XAUUSD", "buy", evening), 0);   // yesterday
+});
+
+test("rule 35 asks for a fresh analysis after two SL, and passes once it is confirmed", () => {
+  const two = [sl("a", 90), sl("b", 30)];
+  const r = run({}, { entries: two }).res[35];
+  assert.equal(r.pass, false);
+  assert.equal(r.run, 2);
+  assert.deepEqual(r.needs, ["XAUUSD:buy"]);
+  assert.match(r.detail, /2 SL in a row on XAUUSD BUY.*second setup after the 5m ITL\/ITH/);
+  assert.equal(run({}, { entries: two, reanalysed: ["XAUUSD:buy"] }).res[35].pass, true);
+  assert.equal(run({}, { entries: two, reanalysed: ["XAUUSD:sell"] }).res[35].pass, false); // another direction's answer does not carry over
+  assert.equal(run({}, { entries: [sl("a", 30)] }).res[35].pass, true);                       // one SL is fine
+  assert.equal(run({ dir: "sell", entry: 100, sl: 102, tp: 96 }, { entries: two }).res[35].pass, true);
+  assert.equal(run({ pair: "", dir: null }, { entries: two }).res[35].pass, null);
+});
+
+test("an unanswered rule 35 blocks the trade and switching it off lets it through", () => {
+  const two = [sl("a", 90), sl("b", 30)];
+  const blocked = run({}, { entries: two });
+  assert.equal(blocked.ok, false);
+  assert.ok(blocked.failed.includes(35));
+  const off = run({}, { entries: two, settings: { ...settings, rules: { disabled: [35], custom: [], nextId: 1000 } } });
+  assert.equal(off.ok, true);
 });

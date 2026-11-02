@@ -5,6 +5,7 @@
 .k-remember { --a: var(--warn); }
 .k-psychology { --a: var(--ctc, #a78bfa); }
 .k-management { --a: var(--good); }
+.k-rules { --a: var(--warn); }
 
 /* Switcher */
 .learn-tabs { display: flex; gap: 6px; overflow-x: auto; padding: 5px; margin-bottom: 14px; border: 1px solid var(--border); border-radius: 16px; background: var(--inset); scrollbar-width: none; }
@@ -69,6 +70,22 @@
 .k-mistakes .chk-item.done .chk-text { color: var(--muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--a) 60%, transparent); }
 .k-mistakes .chk-item.done .chk-no { opacity: 0.6; }
 
+/* The user's own lines: the row keeps the item card and adds edit/delete beside it. */
+.chk-row { display: flex; align-items: stretch; gap: 6px; }
+.chk-row .chk-item { flex: 1; min-width: 0; }
+.chk-acts { flex: none; display: flex; align-items: center; gap: 4px; }
+.chk-act { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 1px solid var(--border); border-radius: 10px; background: color-mix(in srgb, var(--text) 3%, transparent); color: var(--muted); cursor: pointer; transition: border-color 0.18s, background 0.18s, color 0.18s, transform 0.12s; }
+.chk-act:hover { color: var(--a); border-color: color-mix(in srgb, var(--a) 50%, transparent); background: color-mix(in srgb, var(--a) 8%, transparent); }
+.chk-act.del:hover { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 55%, transparent); background: color-mix(in srgb, var(--bad) 8%, transparent); }
+.chk-act:active { transform: scale(0.94); }
+.chk-act:focus-visible { outline: 2px solid var(--a); outline-offset: 1px; }
+.chk-edit { flex: 1; display: flex; gap: 6px; align-items: center; animation: chk-pop 0.25s ease-out both; }
+.chk-edit input { flex: 1; min-width: 0; }
+.chk-add { display: flex; gap: 8px; align-items: center; margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--border); }
+.chk-add input { flex: 1; min-width: 0; }
+.chk-add input:focus { border-color: color-mix(in srgb, var(--a) 60%, transparent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--a) 22%, transparent); }
+.chk-add .btn { flex: none; }
+
 @keyframes chk-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @keyframes chk-pop { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: none; } }
 
@@ -79,8 +96,9 @@
   .chk-ring { width: 50px; height: 50px; }
   .chk-ring::before { inset: 5px; }
   .chk-item { padding: 10px; gap: 9px; }
+  .chk-act { width: 30px; height: 30px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .chk-list li, .chk-win { animation: none; }
-  .chk-item, .chk-box, .chk-box .ic, .chk-ring, .learn-tabs button, .learn-tabs button .ic { transition: none; }
+  .chk-list li, .chk-win, .chk-edit { animation: none; }
+  .chk-item, .chk-act, .chk-box, .chk-box .ic, .chk-ring, .learn-tabs button, .learn-tabs button .ic { transition: none; }
 }

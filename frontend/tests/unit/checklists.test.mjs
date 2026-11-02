@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { LISTS, clearKind, groupIcon, groupItems, itemsOf, progress, withDone } from "../../src/lib/checklists.js";
+import { LISTS, clearKind, groupIcon, groupItems, itemsOf, progress, withDone, withItem, withText, withoutItem } from "../../src/lib/checklists.js";
 
 const item = (id, kind, position, group = "", done = false) => ({ id, kind, position, group, text: `t${id}`, done });
 
@@ -31,7 +31,7 @@ test("withDone and clearKind return new lists", () => {
 });
 
 test("every list the tab offers has what the screen needs", () => {
-  assert.deepEqual(LISTS.map((l) => l.kind), ["mistakes", "remember", "psychology", "management"]);
+  assert.deepEqual(LISTS.map((l) => l.kind), ["mistakes", "remember", "psychology", "management", "rules"]);
   for (const l of LISTS) assert.ok(l.label && l.icon && l.title && l.blurb && l.done);
 });
 
@@ -39,4 +39,17 @@ test("groupIcon falls back to a note", () => {
   assert.equal(groupIcon("Quick checklist"), "bolt");
   assert.equal(groupIcon("In detail"), "note");
   assert.equal(groupIcon("Something new"), "note");
+});
+
+test("own lines are told apart from shared ones that happen to share an id", () => {
+  const all = [item(1, "rules", 1), { ...item(1, "rules", 2), mine: true }];
+  assert.deepEqual(withDone(all, 1, true, true).map((i) => i.done), [false, true]);
+  assert.deepEqual(withDone(all, 1, true).map((i) => i.done), [true, false]);
+  assert.deepEqual(withText(all, 1, "new").map((i) => i.text), ["t1", "new"]);
+  assert.deepEqual(withoutItem(all, 1).map((i) => !!i.mine), [false]);
+  assert.equal(withItem(all, item(7, "rules", 3)).at(-1).mine, true);
+});
+
+test("the My Rules list is offered last", () => {
+  assert.equal(LISTS.at(-1).kind, "rules");
 });

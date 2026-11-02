@@ -13,3 +13,7 @@
 .yn button.on.yes { box-shadow: 0 6px 14px -6px var(--good); }
 .yn button.on.no { box-shadow: 0 6px 14px -6px var(--bad); }
 
+
+/* Rule 8: unlock another same-direction trade once the open one is at cost. */
+.rules .ctc-confirm { margin-top: 8px; color: var(--primary); border-color: rgba(var(--p-rgb), 0.5); }
+.rules .ctc-confirm:hover { background: rgba(var(--p-rgb), 0.14); }

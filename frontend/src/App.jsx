@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Loader from "./components/Loader.jsx";
+import { Icon } from "./components/ui.jsx";
 import { api, ApiError, clearSession, getSession, setSession } from "./api/index.js";
 import { NO_NEWS, NO_RULE_EDITS, activeRules } from "./lib/rules.js";
 import { parseCsv } from "./lib/csv.js";
@@ -17,7 +18,7 @@ import News from "./pages/News.jsx";
 import { compressImage } from "./lib/image.js";
 import { dueReminders, loadInbox, loadPrefs, markSent, notify, saveInbox, savePrefs, wasSent } from "./lib/reminders.js";
 
-const DEFAULT_SETTINGS = { lot: 0.02, minRR: 2, maxTrades: 4, maxSL: 4, balance: 0, currency: "$",
+const DEFAULT_SETTINGS = { lot: 0.02, minRR: 2, maxTrades: 4, maxSL: 4, balance: 0, currency: "$", openWaitMin: 5,
   pairs: [{ pair: "XAUUSD", lot: 0.02 }, { pair: "EURUSD", lot: 0.2 }], rules: NO_RULE_EDITS, news: NO_NEWS };
 const KEY_THEME = "atm_theme";
 
@@ -98,7 +99,13 @@ function Journalled({ session, onLogout }) {
 
   // In-app replacement for window.confirm: resolves true on confirm, false on cancel/Escape/backdrop.
   const [ask, setAsk] = useState(null); // { title, text, okLabel, resolve }
-  const confirmToast = useCallback((opts) => new Promise((resolve) => setAsk({ ...opts, resolve })), []);
+  // Questions wait their turn: two asked at once (CTC and re-analysis) show one after the other, and neither is lost.
+  const askQueue = useRef(Promise.resolve());
+  const confirmToast = useCallback((opts) => {
+    const turn = askQueue.current.then(() => new Promise((resolve) => setAsk({ ...opts, resolve })));
+    askQueue.current = turn;
+    return turn;
+  }, []);
   const answerAsk = (ok) => { ask.resolve(ok); setAsk(null); };
   useEffect(() => {
     if (!ask) return undefined;
@@ -390,14 +397,14 @@ function Journalled({ session, onLogout }) {
       </header>
 
       <main>
-        {tab === "checklist" && <SessionStrip settings={settings} now={now} />}
-        <Checklist active={tab === "checklist"} entries={entries} settings={settings} calendar={calendar} now={now} onLog={logTrade} onProgress={setProgress} />
+        {tab === "checklist" && <SessionStrip settings={settings} now={now} closeLead={reminders.closeLead} />}
+        <Checklist active={tab === "checklist"} entries={entries} settings={settings} calendar={calendar} now={now} onLog={logTrade} onProgress={setProgress} confirm={confirmToast} />
         <Today active={tab === "today"} entries={entries} settings={settings} onQuick={(id, preset) => setSheet({ id, preset })} />
         <Journal active={tab === "log"} entries={entries} settings={settings} onEdit={(id) => setSheet({ id, preset: null })}
           onDelete={deleteEntry} />
         <Stats active={tab === "stats"} entries={entries} settings={settings} />
         <News active={tab === "news"} settings={settings} calendar={calendar} now={now} onSave={saveNews} onRefresh={loadCalendar} />
-        <Learning active={tab === "learn"} onExpired={onLogout} />
+        <Learning active={tab === "learn"} onExpired={onLogout} confirm={confirmToast} />
         <Settings active={tab === "settings"} settings={settings} reminders={reminders} onReminders={changeReminders} onSave={saveSettings} onClearAll={clearAll}
           entries={entries} onImport={importCsv} onDeleteAccount={deleteAccount} onLogoutAll={logoutEverywhere} onExport={exportData} isAdmin={session.isAdmin} />
         {session.isAdmin && <Admin active={tab === "admin"} confirm={confirmToast} say={say} onExpired={onLogout} />}
@@ -437,14 +444,14 @@ function Journalled({ session, onLogout }) {
       {ask && (
         <div className="confirm-backdrop" onClick={() => answerAsk(false)}>
           <div className="confirm-toast" role="alertdialog" aria-labelledby="confirmTitle" aria-describedby="confirmText" onClick={(e) => e.stopPropagation()}>
-            <div className="confirm-ico" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6" /></svg>
+            <div className={`confirm-ico ${ask.icon ? "calm" : ""}`} aria-hidden="true">
+              {ask.icon ? <Icon name={ask.icon} size={22} /> : <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6" /></svg>}
             </div>
             <h3 id="confirmTitle">{ask.title}</h3>
             <p id="confirmText">{ask.text}</p>
             <div className="confirm-btns">
               <button type="button" className="btn ghost" autoFocus onClick={() => answerAsk(false)}>Cancel</button>
-              <button type="button" className="btn danger-outline" onClick={() => answerAsk(true)}>{ask.okLabel}</button>
+              <button type="button" className={`btn ${ask.icon ? "primary" : "danger-outline"}`} onClick={() => answerAsk(true)}>{ask.okLabel}</button>
             </div>
           </div>
         </div>

@@ -109,6 +109,7 @@ class SettingsOut(CamelModel):
     rules: RulesConfig = Field(default_factory=RulesConfig)
     news: NewsConfig = Field(default_factory=NewsConfig)
     loss_limits: LossLimits = Field(default_factory=LossLimits)
+    open_wait_min: int = Field(5, ge=0, le=60)  # no trading for this many minutes after a session opens (0 = off)
 
     @field_validator("loss_limits", mode="before")
     @classmethod

@@ -2,7 +2,7 @@ import { num } from "./format.js";
 import { CUSTOM_LIMIT, NO_NEWS, NO_RULE_EDITS } from "./rules.js";
 import { normalizeKillzones } from "./killzones.js";
 
-const DEFAULTS = { lot: 0.02, minRR: 2, maxTrades: 4, maxSL: 4, balance: 0, currency: "$" };
+const DEFAULTS = { lot: 0.02, minRR: 2, maxTrades: 4, maxSL: 4, balance: 0, currency: "$", openWaitMin: 5 };
 
 // The form is plain state; these pure helpers turn it into what gets saved, so the form can also be compared with
 // the saved settings (Save is only enabled when they differ). A half-typed "add" row counts as part of the form.
@@ -20,7 +20,7 @@ const withRuleDraft = (rules, d) => {
 function stateFromSettings(s) {
   return {
     v: {
-      ...s, balance: s.balance || "", killzones: normalizeKillzones(s.killzones),
+      ...s, balance: s.balance || "", openWaitMin: s.openWaitMin ?? DEFAULTS.openWaitMin, killzones: normalizeKillzones(s.killzones),
       dailyLimit: s.lossLimits?.daily ?? "", overallLimit: s.lossLimits?.overall ?? "", lossSince: s.lossLimits?.since ?? null,
     },
     pairs: (s.pairs || []).map((p) => ({ pair: p.pair, lot: String(p.lot), value: p.value == null ? "" : String(p.value) })),
@@ -41,6 +41,7 @@ function buildPayload({ v, pairs, draft, rules, ruleDraft, news }) {
     balance: Math.max(0, num(v.balance) ?? 0),
     currency: String(v.currency || "").trim() || DEFAULTS.currency,
     killzones: normalizeKillzones(v.killzones),
+    openWaitMin: Math.min(60, Math.max(0, Math.round(num(v.openWaitMin) ?? DEFAULTS.openWaitMin))),
     pairs: withPairDraft(pairs, draft).filter((p) => p.pair && num(p.lot) > 0).map((p) => ({ pair: p.pair, lot: num(p.lot), value: num(p.value) > 0 ? num(p.value) : null })),
     // blank or 0 switches a limit off
     lossLimits: { daily: num(v.dailyLimit) > 0 ? num(v.dailyLimit) : null, overall: num(v.overallLimit) > 0 ? num(v.overallLimit) : null, since: v.lossSince ?? null },

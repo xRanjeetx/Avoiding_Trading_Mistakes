@@ -185,3 +185,13 @@ test("ymd pads month and day", () => {
   assert.equal(ymd(new Date(2026, 0, 5).getTime()), "2026-01-05");
   assert.equal(ymd(new Date(2026, 11, 31).getTime()), "2026-12-31");
 });
+
+test("BE and CTC stay break-even when a small amount is typed, and the amount still counts in the total", () => {
+  assert.equal(outcome(mk({ result: "be", pnl: 0.4 })), "be");
+  assert.equal(outcome(mk({ result: "ctc", pnl: -0.6 })), "be");
+  const s = computeStats([mk({ result: "be", pnl: 0.4 }), mk({ result: "ctc", pnl: -0.15 }), mk({ result: "tp", pnl: 20 })]);
+  assert.equal(s.be, 2);
+  assert.equal(s.wins, 1);
+  assert.equal(s.losses, 0);
+  assert.ok(Math.abs(s.net - 20.25) < 1e-9);
+});

@@ -1,9 +1,9 @@
-import { COOLDOWN_MIN, SETUPS, activeRules, allRules } from "./rules.js";
+import { COOLDOWN_MIN, CTC_RR, SETUPS, SL_RUN, activeRules, allRules } from "./rules.js";
 import { fmtMoney, isToday } from "./format.js";
 import { NEWS_PAIRS, blocks, calendarState, eventsForPair, newsOf } from "./news.js";
 import { limitsOf, lossStatus, tradeRisk } from "./risk.js";
-import { closeTime } from "./stats.js";
-import { KILLZONE_NAMES, activeZones, fmtDuration, marketStatus, minutesLeft, nextZone, normalizeKillzones } from "./killzones.js";
+import { closeTime, ymd } from "./stats.js";
+import { KILLZONE_NAMES, activeZones, fmtDuration, marketStatus, minutesLeft, nextZone, normalizeKillzones, openingLock } from "./killzones.js";
 
 // The fixed lot for a pair: its own entry in Settings > Pairs, else the general fixed lot.
 export function lotFor(settings, pair) {
@@ -12,10 +12,32 @@ export function lotFor(settings, pair) {
   return hit ? hit.lot : settings.lot;
 }
 
+// Minutes to wait after a session opens (0 = off). Older saved settings without the value get the default.
+export const openWait = (settings) => (Number.isFinite(settings?.openWaitMin) ? settings.openWaitMin : 5);
+
 export function ruleTitle(id, settings) {
   const r = allRules(settings).find((r) => r.id === id);
   if (!r) return `Rule #${id}`; // a rule that was removed, still referenced by old journal entries
   return id === 3 ? "Lot Size Fixed" : r.title;
+}
+
+// How many SL hits in a row today on this pair and direction, newest first. Any other close (TP, BE, CTC, closed early) ends the run,
+// and trades still open are not counted.
+export function slRun(entries, pair, dir, now = new Date()) {
+  const p = String(pair || "").trim().toUpperCase();
+  if (!p || !dir) return 0;
+  const nowMs = now.getTime();
+  const today = ymd(nowMs);
+  const closed = entries
+    .filter((e) => e.traded && e.result !== "open" && e.dir === dir && String(e.pair || "").trim().toUpperCase() === p
+      && closeTime(e) <= nowMs && ymd(closeTime(e)) === today)
+    .sort((a, b) => closeTime(b) - closeTime(a));
+  let n = 0;
+  for (const e of closed) {
+    if (e.result !== "sl") break;
+    n++;
+  }
+  return n;
 }
 
 // The latest loss on `pair` that is still inside its cooldown, or null. Other pairs are never locked.
@@ -92,7 +114,9 @@ export function todayCounts(entries) {
 
 // f: { pair, dir, setup, lot, entry, sl, tp } (numbers or null). answers: { [ruleId]: boolean }.
 // Each result: { pass: true | false | null (not filled yet), detail }
-export function evaluate({ f, answers, entries, settings, now = new Date(), calendar = null }) {
+// ctcKept: ids of open trades the user has confirmed are at cost (SL moved to cost after 1.5 RR).
+// reanalysed: "PAIR:dir" keys the user has confirmed they re-analysed after an SL run.
+export function evaluate({ f, answers, entries, settings, now = new Date(), calendar = null, ctcKept = [], reanalysed = [] }) {
   const c = todayCounts(entries);
   const res = {};
   let rr = null;
@@ -135,6 +159,13 @@ export function evaluate({ f, answers, entries, settings, now = new Date(), cale
     };
   }
 
+  // 34: wait a few minutes after a session opens (Settings > Market sessions)
+  const wait = openWait(settings);
+  const hold = market.open ? openingLock(zones, wait, now) : null;
+  res[34] = hold
+    ? { pass: false, detail: `${KILLZONE_NAMES[hold.zone.key]} opened ${hold.sinceMin}m ago. Wait ${fmtDuration(hold.leftMin)} more for the open to settle` }
+    : { pass: true, detail: !wait ? "No wait after a session opens" : live ? `${KILLZONE_NAMES[live.key]} opened more than ${wait} min ago` : "No session live" };
+
   // 32: no trading in the hours before high-impact news (set in the News tab). Only news that affects this pair counts, and
   // medium-impact news is a warning that never fails the rule.
   const lock = newsLock(settings, now, calendar, f.pair);
@@ -159,8 +190,25 @@ export function evaluate({ f, answers, entries, settings, now = new Date(), cale
   if (!f.pair || !f.dir) {
     res[8] = { pass: null, detail: "Enter pair and direction" };
   } else {
-    const open = entries.some((e) => e.traded && e.result === "open" && e.pair === f.pair && e.dir === f.dir);
-    res[8] = { pass: !open, detail: open ? `You already have an open ${f.dir.toUpperCase()} on ${f.pair}` : "No open trade in the same direction" };
+    // Another trade the same way is allowed only once the open one is safe: price reached 1.5 RR and its SL was moved to cost.
+    const open = entries.filter((e) => e.traded && e.result === "open" && e.pair === f.pair && e.dir === f.dir);
+    const waiting = open.filter((e) => !ctcKept.includes(e.id));
+    const side = `${f.dir.toUpperCase()} on ${f.pair}`;
+    res[8] = !open.length ? { pass: true, detail: "No open trade in the same direction" }
+      : waiting.length ? { pass: false, needs: waiting.map((e) => e.id), detail: `You already have an open ${side}. Another is allowed only if price reached ${CTC_RR} RR and you moved its SL to cost (CTC)` }
+      : { pass: true, detail: `Open ${side} is at cost (CTC kept after ${CTC_RR} RR)` };
+  }
+
+  // 35: two SL in a row the same way: look at the bias again and take only the second 5m setup after the ITL/ITH
+  if (!f.pair || !f.dir) {
+    res[35] = { pass: null, detail: "Enter pair and direction", run: 0 };
+  } else {
+    const run = slRun(entries, f.pair, f.dir, now);
+    const key = `${f.pair}:${f.dir}`;
+    const side = `${f.pair} ${f.dir.toUpperCase()}`;
+    res[35] = run < SL_RUN ? { pass: true, detail: run ? `${run} SL in a row on ${side}` : `No SL run on ${side}`, run }
+      : reanalysed.includes(key) ? { pass: true, detail: `Re-analysed after ${run} SL on ${side}`, run }
+      : { pass: false, run, needs: [key], detail: `${run} SL in a row on ${side}. Re-analyse the bias and direction, and take only the second setup after the 5m ITL/ITH` };
   }
 
   // 30: cooldown after a loss on the same pair

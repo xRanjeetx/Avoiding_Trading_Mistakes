@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { activeRules, isRuleOn } from "../lib/rules.js";
-import { cooldownFor, evaluate, lotFor, newsLock, newsWarning, ruleTitle, todayCounts } from "../lib/evaluate.js";
-import { fmtDuration } from "../lib/killzones.js";
+import { SL_RUN, activeRules, isRuleOn } from "../lib/rules.js";
+import { cooldownFor, evaluate, lotFor, newsLock, newsWarning, openWait, ruleTitle, todayCounts } from "../lib/evaluate.js";
+import { KILLZONE_NAMES, fmtDuration, marketStatus, normalizeKillzones, openingLock } from "../lib/killzones.js";
 import { num } from "../lib/format.js";
 import Countdown from "../components/Countdown.jsx";
 import EmotionPicker from "../components/EmotionPicker.jsx";
 import { CardHead, Icon } from "../components/ui.jsx";
 
-const fresh = (lot) => ({ pair: "", dir: null, setup: null, emotion: null, lot: String(lot), entry: "", sl: "", tp: "", notes: "", answers: {} });
+const fresh = (lot) => ({ pair: "", dir: null, setup: null, emotion: null, lot: String(lot), entry: "", sl: "", tp: "", notes: "", answers: {}, ctcKept: [], reanalysed: [] });
 
 function Status({ pass }) {
   return pass === true
@@ -16,7 +16,7 @@ function Status({ pass }) {
     : <span className="st wait"><Icon name="clock" size={16} /></span>;
 }
 
-export default function Checklist({ active, entries, settings, calendar, now, onLog, onProgress }) {
+export default function Checklist({ active, entries, settings, calendar, now, onLog, onProgress, confirm }) {
   // Only the rules switched on in Settings are checked; the user's own rules come after the built-in ones.
   const rules = activeRules(settings);
   const AUTO = rules.filter((r) => r.type === "auto");
@@ -32,7 +32,7 @@ export default function Checklist({ active, entries, settings, calendar, now, on
     pair: form.pair.trim().toUpperCase(), dir: form.dir, setup: form.setup,
     lot: num(form.lot), entry: num(form.entry), sl: num(form.sl), tp: num(form.tp),
   };
-  const ev = evaluate({ f, answers: form.answers, entries, settings, now, calendar });
+  const ev = evaluate({ f, answers: form.answers, entries, settings, now, calendar, ctcKept: form.ctcKept, reanalysed: form.reanalysed });
 
   const passed = rules.length - ev.failed.length - ev.pending.length;
   const state = ev.failed.length ? "no" : ev.ok ? "ok" : "pending";
@@ -46,10 +46,56 @@ export default function Checklist({ active, entries, settings, calendar, now, on
   const cooling = isRuleOn(settings, 30) ? cooldownFor(entries, f.pair, now) : null;
   const newsHold = isRuleOn(settings, 32) ? newsLock(settings, now, calendar, f.pair) : null;
   const newsHeads = isRuleOn(settings, 32) && !newsHold ? newsWarning(settings, now, calendar, f.pair) : null;
+  const wait = openWait(settings);
+  const settling = isRuleOn(settings, 34) && marketStatus(now).open ? openingLock(normalizeKillzones(settings.killzones), wait, now) : null;
+  // The opening minute, so the ring fills from the open to the end of the wait.
+  const openedAt = settling ? Math.floor(now.getTime() / 60000) * 60000 - settling.sinceMin * 60000 : 0;
+  const rerun = isRuleOn(settings, 35) && ev.res[35].run >= SL_RUN ? ev.res[35] : null;
   const c = todayCounts(entries);
   const lockMsg = isRuleOn(settings, 19) && c.sl >= settings.maxSL
     ? `${c.sl} SL hit today. Trading is done for today. Close the charts.`
     : isRuleOn(settings, 15) && c.trades >= settings.maxTrades ? `${c.trades} trades taken today. Daily limit reached.` : "";
+
+  // Another trade the same way is allowed only while the open one is safe. The user confirms it, and that is kept on the new trade.
+  async function confirmCtc(ids) {
+    const what = `${f.pair} ${f.dir.toUpperCase()}`;
+    const ok = await confirm({
+      icon: "shield", title: "Have you kept CTC?",
+      text: `Your ${what} is still open. Did price reach 1.5 RR, and have you moved its SL to cost (CTC)? Choose Yes to log another trade the same way.`,
+      okLabel: "Yes, CTC kept",
+    });
+    if (ok) set({ ctcKept: [...form.ctcKept, ...ids] });
+  }
+
+  // Two SL in a row the same way: the user confirms they looked at the chart again. Kept on the new trade like the CTC answer.
+  async function confirmRerun(keys) {
+    const ok = await confirm({
+      icon: "shield", title: "Re-analyse before you enter",
+      text: `${ev.res[35].run} SL in a row on ${f.pair} ${f.dir.toUpperCase()}. Have you re-analysed the bias and direction, and is this the second setup after the 5m ITL/ITH? Choose Yes only if it is.`,
+      okLabel: "Yes, re-analysed",
+    });
+    if (ok) set({ reanalysed: [...form.reanalysed, ...keys] });
+  }
+
+  // Picking a pair and direction that already has an open trade asks the question once, without a click. Cancel keeps the
+  // rule failing, and the button under the rule asks again.
+  const needsKey = (ev.res[8].needs || []).join(",");
+  const asked = useRef("");
+  useEffect(() => {
+    if (!needsKey) { asked.current = ""; return; }
+    if (!active || asked.current === needsKey) return;
+    asked.current = needsKey;
+    confirmCtc(ev.res[8].needs);
+  }, [needsKey, active]);
+
+  const rerunKey = (ev.res[35].needs || []).join(",");
+  const askedRerun = useRef("");
+  useEffect(() => {
+    if (!rerunKey) { askedRerun.current = ""; return; }
+    if (!active || askedRerun.current === rerunKey) return;
+    askedRerun.current = rerunKey;
+    confirmRerun(ev.res[35].needs);
+  }, [rerunKey, active]);
 
   async function log() {
     if (!ev.ok || busy) return;
@@ -58,7 +104,7 @@ export default function Checklist({ active, entries, settings, calendar, now, on
       timestamp: Date.now(),
       pair: f.pair, dir: f.dir, setup: f.setup, lot: f.lot, entry: f.entry, sl: f.sl, tp: f.tp,
       rr: ev.rr ? +ev.rr.toFixed(2) : null,
-      answers: { ...form.answers },
+      answers: { ...form.answers, ...(form.ctcKept.length && ev.res[8].pass ? { 8: true } : {}), ...(form.reanalysed.length && ev.res[35].run >= SL_RUN && ev.res[35].pass ? { 35: true } : {}) },
       emotion: form.emotion,
       failedRules: [],
       traded: true, result: "open", pnl: null, exit: null, closedAt: null,
@@ -83,6 +129,8 @@ export default function Checklist({ active, entries, settings, calendar, now, on
       {lockMsg && <div className="banner lock"><Icon name="lock" size={20} />{lockMsg}</div>}
       {newsHold && <div className="banner lock"><Icon name="lock" size={20} />{newsHold.event.title || "High-impact news"} in {fmtDuration(newsHold.inMin)}. Trading is locked until it passes.</div>}
       {newsHeads && <div className="banner lock warn"><Icon name="alert" size={20} />{newsHeads.event.title || "Medium-impact news"} in {fmtDuration(newsHeads.inMin)} (medium impact). Trade with care.</div>}
+      {settling && <div className="banner lock"><Countdown since={openedAt} until={openedAt + wait * 60000} /><span><b>{KILLZONE_NAMES[settling.zone.key]} just opened.</b> Wait {fmtDuration(settling.leftMin)} for the open to settle before you enter.</span></div>}
+      {rerun && <div className="banner lock warn"><Icon name="alert" size={20} /><span><b>{rerun.run} SL in a row on {f.pair} {f.dir.toUpperCase()}.</b> Re-analyse the bias and direction. Take the trade only on the second setup after the 5m ITL/ITH.</span></div>}
       {cooling && <div className="banner lock"><Countdown since={cooling.lostAt} until={cooling.until} /><span><b>{f.pair} lost a trade.</b> Cooldown in progress. Breathe, or look at another pair.</span></div>}
 
       <div className={`ready ${state}`}>
@@ -140,7 +188,10 @@ export default function Checklist({ active, entries, settings, calendar, now, on
             return (
               <li key={r.id} className={pass === true ? "pass" : pass === false ? "fail" : ""}>
                 <span className="num">{i + 1}</span>
-                <div className="body"><div className="title">{ruleTitle(r.id, settings)}</div><div className="sub">{detail}</div></div>
+                <div className="body"><div className="title">{ruleTitle(r.id, settings)}</div><div className="sub">{detail}</div>
+                  {ev.res[r.id].needs && (r.id === 35
+                    ? <button type="button" className="btn small ctc-confirm" onClick={() => confirmRerun(ev.res[r.id].needs)}><Icon name="shield" size={15} /> I have re-analysed</button>
+                    : <button type="button" className="btn small ctc-confirm" onClick={() => confirmCtc(ev.res[r.id].needs)}><Icon name="shield" size={15} /> SL is at cost (CTC)</button>)}</div>
                 <Status pass={pass} />
               </li>
             );
