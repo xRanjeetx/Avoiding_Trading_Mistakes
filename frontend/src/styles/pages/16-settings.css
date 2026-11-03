@@ -8,3 +8,11 @@
 .danger-zone .ch-ico { color: var(--bad); background: rgba(244, 63, 94, 0.12); }
 .danger-zone .btn { margin-top: 12px; }
 
+/* Highlighted tags in Settings ("This device" on Reminders, "New York time" on Market sessions): they say something easy to miss */
+.chip.device {
+  display: inline-flex; align-items: center; gap: 7px; font-weight: 700; letter-spacing: 0.02em;
+  color: var(--primary); background: color-mix(in srgb, var(--primary) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 55%, transparent);
+  box-shadow: 0 0 14px -2px rgba(var(--p-rgb), 0.45);
+}
+.chip.device::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--primary); box-shadow: 0 0 6px var(--primary); }

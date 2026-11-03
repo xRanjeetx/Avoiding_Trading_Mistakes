@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { SL_RUN, activeRules, isRuleOn } from "../lib/rules.js";
 import { cooldownFor, evaluate, lotFor, newsLock, newsWarning, openWait, ruleTitle, todayCounts } from "../lib/evaluate.js";
-import { KILLZONE_NAMES, fmtDuration, marketStatus, normalizeKillzones, openingLock } from "../lib/killzones.js";
+import { KILLZONE_NAMES, activeZones, fmtDuration, marketStatus, normalizeKillzones, openingLock } from "../lib/killzones.js";
 import { num } from "../lib/format.js";
+import { autoTp } from "../lib/takeProfit.js";
 import Countdown from "../components/Countdown.jsx";
 import EmotionPicker from "../components/EmotionPicker.jsx";
+import Dropdown from "../components/Dropdown.jsx";
+import PairPicker from "../components/PairPicker.jsx";
 import { CardHead, Icon } from "../components/ui.jsx";
 
-const fresh = (lot) => ({ pair: "", dir: null, setup: null, emotion: null, lot: String(lot), entry: "", sl: "", tp: "", notes: "", answers: {}, ctcKept: [], reanalysed: [] });
+const fresh = (lot) => ({ pair: "", dir: null, setup: null, session: null, emotion: null, lot: String(lot), entry: "", sl: "", tp: "", tpAuto: true, notes: "", answers: {}, ctcKept: [], reanalysed: [] });
 
 function Status({ pass }) {
   return pass === true
@@ -24,9 +27,17 @@ export default function Checklist({ active, entries, settings, calendar, now, on
   const [form, setForm] = useState(() => fresh(settings.lot));
   const [busy, setBusy] = useState(false);
   const verdictRef = useRef(null);
-  const set = (patch) => setForm((f) => ({ ...f, ...patch }));
+  // The take profit follows entry, stop and direction (1:2) until the user types their own. Emptying the box hands it back: it fills again when entry, stop or direction next changes.
+  const set = (patch) => setForm((f) => {
+    const next = { ...f, ...patch };
+    return next.tpAuto ? { ...next, tp: autoTp(next.dir, next.entry, next.sl) } : next;
+  });
 
   useEffect(() => { set({ lot: String(lotFor(settings, form.pair)) }); }, [settings.lot, settings.pairs]);
+
+  // The session is filled in from the clock (the killzones from Settings). Picking one by hand keeps it; null means follow the clock.
+  const liveSession = activeZones(normalizeKillzones(settings.killzones), now)[0]?.key || "";
+  const session = form.session ?? liveSession;
 
   const f = {
     pair: form.pair.trim().toUpperCase(), dir: form.dir, setup: form.setup,
@@ -102,7 +113,7 @@ export default function Checklist({ active, entries, settings, calendar, now, on
     setBusy(true);
     const ok = await onLog({
       timestamp: Date.now(),
-      pair: f.pair, dir: f.dir, setup: f.setup, lot: f.lot, entry: f.entry, sl: f.sl, tp: f.tp,
+      pair: f.pair, dir: f.dir, setup: f.setup, session: session || null, lot: f.lot, entry: f.entry, sl: f.sl, tp: f.tp,
       rr: ev.rr ? +ev.rr.toFixed(2) : null,
       answers: { ...form.answers, ...(form.ctcKept.length && ev.res[8].pass ? { 8: true } : {}), ...(form.reanalysed.length && ev.res[35].run >= SL_RUN && ev.res[35].pass ? { 35: true } : {}) },
       emotion: form.emotion,
@@ -143,11 +154,7 @@ export default function Checklist({ active, entries, settings, calendar, now, on
 
       <div className="card">
         <CardHead icon="sliders" title="Trade setup"><span className={`chip ${rrChip.cls}`}>{rrChip.text}</span></CardHead>
-        <label className="field">
-          <span>Pair</span>
-          <input list="pair-options" value={form.pair} onChange={(e) => set({ pair: e.target.value, lot: String(lotFor(settings, e.target.value)) })} placeholder="e.g. XAUUSD" autoComplete="off" autoCapitalize="characters" spellCheck="false" />
-          <datalist id="pair-options">{(settings.pairs || []).map((p) => <option key={p.pair} value={p.pair} />)}</datalist>
-        </label>
+        <PairPicker value={form.pair} pairs={settings.pairs || []} onChange={(pair) => set({ pair, lot: String(lotFor(settings, pair)) })} />
         <div className="field">
           <span>Direction</span>
           <div className="seg" id="dir">
@@ -163,6 +170,12 @@ export default function Checklist({ active, entries, settings, calendar, now, on
           </div>
         </div>
         <div className="field">
+          <span>Session</span>
+          <Dropdown label="Session" value={session} onChange={(v) => set({ session: v })}
+            options={[{ value: "", label: form.session === null && !liveSession ? "Outside sessions · auto" : "Outside sessions" },
+              ...Object.entries(KILLZONE_NAMES).map(([key, name]) => ({ value: key, label: form.session === null && key === liveSession ? `${name} · auto` : name }))]} />
+        </div>
+        <div className="field">
           <span>How do I feel right now?</span>
           <EmotionPicker stage="before" value={form.emotion} onChange={(v) => set({ emotion: v })} />
         </div>
@@ -170,7 +183,7 @@ export default function Checklist({ active, entries, settings, calendar, now, on
           <label className="field"><span>Lot size</span><input type="number" step="0.01" inputMode="decimal" value={form.lot} onChange={(e) => set({ lot: e.target.value })} /></label>
           <label className="field"><span>Entry</span><input type="number" step="any" inputMode="decimal" placeholder="0.00" value={form.entry} onChange={(e) => set({ entry: e.target.value })} /></label>
           <label className="field"><span>Stop loss</span><input type="number" step="any" inputMode="decimal" placeholder="0.00" value={form.sl} onChange={(e) => set({ sl: e.target.value })} /></label>
-          <label className="field"><span>Take profit</span><input type="number" step="any" inputMode="decimal" placeholder="0.00" value={form.tp} onChange={(e) => set({ tp: e.target.value })} /></label>
+          <label className="field"><span>Take profit</span><input type="number" step="any" inputMode="decimal" placeholder="0.00" value={form.tp} onChange={(e) => (e.target.value === "" ? setForm((f) => ({ ...f, tp: "", tpAuto: true })) : set({ tp: e.target.value, tpAuto: false }))} /></label>
         </div>
         <label className="field">
           <span>Why this trade?</span>

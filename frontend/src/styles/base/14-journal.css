@@ -100,6 +100,9 @@ textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 
 @media (min-width: 560px) {
   .eq-selects { grid-template-columns: repeat(3, minmax(0, 1fr)) auto; }
 }
+/* The shared filter bar at the top of Stats: five dropdowns and Reset */
+.st-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 12px; }
+@media (min-width: 560px) { .st-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .eq-wrap { position: relative; }
 svg.eq { width: 100%; height: auto; display: block; touch-action: pan-y; cursor: crosshair; overflow: visible; }
 .eq.up { color: var(--good); }

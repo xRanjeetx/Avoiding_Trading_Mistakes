@@ -1,11 +1,13 @@
 ﻿import { useState } from "react";
 import { SETUPS } from "../lib/rules.js";
+import { KILLZONE_NAMES } from "../lib/killzones.js";
 import { STAGE_TITLE, emotionInsight, emotionOf } from "../lib/emotions.js";
 import { computeStats, dailyPnl, inRange, ymd } from "../lib/stats.js";
 import { compactMoney, fmtMoney, fmtR, signClass } from "../lib/format.js";
 import { Empty } from "../components/EntryCard.jsx";
 import Discipline from "../components/Discipline.jsx";
 import { CardHead, Icon } from "../components/ui.jsx";
+import Dropdown from "../components/Dropdown.jsx";
 
 const RANGES = [[7, "7D"], [30, "30D"], [90, "90D"], [0, "All time"]];
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -102,34 +104,37 @@ export default function Stats({ active, entries, settings }) {
   const [month, setMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const cur = settings.currency;
   const all = computeStats(entries);
-  const s = computeStats(inRange(entries, range));
+  // One filter bar for the page. It narrows everything below it except Discipline, and it works on top of the period.
+  const [filter, setFilter] = useState({ pair: "", setup: "", session: "", dir: "", result: "" });
+  const setF = (patch) => setFilter((f) => ({ ...f, ...patch }));
+  const filtered = Object.values(filter).some(Boolean);
+  const pick = (list) => list.filter((e) =>
+    (!filter.pair || e.pair === filter.pair) && (!filter.setup || (e.setup || "none") === filter.setup) && (!filter.session || e.session === filter.session)
+    && (!filter.dir || e.dir === filter.dir) && (!filter.result || e.result === filter.result));
+  const s = computeStats(pick(inRange(entries, range)));
+  const noTrades = filtered ? "No trades match these filters." : "No trades in this period.";
   const start = settings.balance > 0 ? settings.balance : 0;
   const money = (v, sign) => fmtMoney(v, cur, sign);
 
   const bal = settings.balance > 0 && all.hasPnl
     ? `Balance ${money(settings.balance + all.net, false)} (${all.net >= 0 ? "+" : "−"}${Math.abs((all.net / settings.balance) * 100).toFixed(1)}%)` : "";
 
-  // Equity card filters. They sit on top of the page range unless the card's own range is picked.
+  // The equity card can pick its own period; the shared filters still apply to it.
   const [eqRange, setEqRange] = useState(null);
-  const [eqPair, setEqPair] = useState("");
-  const [eqSetup, setEqSetup] = useState("");
-  const [eqResult, setEqResult] = useState("");
-  const eqFiltered = Boolean(eqRange != null || eqPair || eqSetup || eqResult);
   const eqDays = eqRange ?? range;
   const traded = entries.filter((e) => e.traded && e.result !== "open");
-  const eqPairs = [...new Set(traded.map((e) => e.pair).filter(Boolean))].sort();
-  const eqSetups = [...new Set(traded.map((e) => e.setup || "none"))];
-  const eq = computeStats(inRange(entries, eqDays).filter((e) =>
-    (!eqPair || e.pair === eqPair) && (!eqSetup || (e.setup || "none") === eqSetup) && (!eqResult || e.result === eqResult)));
+  const filterPairs = [...new Set(traded.map((e) => e.pair).filter(Boolean))].sort();
+  const filterSetups = [...new Set(traded.map((e) => e.setup || "none"))];
+  const eq = computeStats(pick(inRange(entries, eqDays)));
   const last = eq.equity[eq.equity.length - 1].v;
-  const resetEq = () => { setEqRange(null); setEqPair(""); setEqSetup(""); setEqResult(""); };
 
-  const cal = calendarData(entries, month);
+  const cal = calendarData(pick(entries), month);
   const shiftMonth = (n) => setMonth(new Date(month.getFullYear(), month.getMonth() + n, 1));
 
   const resultTotal = RESULTS.reduce((a, [, k]) => a + (s.byResult[k] || 0), 0);
   const pairs = Object.entries(s.byPair).sort((a, b) => b[1].pnl - a[1].pnl || b[1].n - a[1].n);
   const setups = Object.entries(s.bySetup).sort((a, b) => b[1].pnl - a[1].pnl || b[1].n - a[1].n);
+  const sessions = Object.entries(s.bySession).sort((a, b) => b[1].pnl - a[1].pnl || b[1].n - a[1].n);
   // Win rate per emotion, best first. Emotions with no win or loss yet go last.
   const emoBy = emoStage === "before" ? s.byEmotion : s.byEmotionAfter;
   const rate = (p) => (p.wins + p.losses ? p.wins / (p.wins + p.losses) : -1);
@@ -138,9 +143,9 @@ export default function Stats({ active, entries, settings }) {
   const emoLabel = (key) => { const e = emotionOf(key, emoStage); return `${e.emoji} ${e.label}`; };
   const maxAbs = Math.max(...s.byWeekday.map(Math.abs), 0);
 
-  const groupRow = (name, p) => (
+  const groupRow = (name, p, label = name === "none" ? "Not tagged" : SETUPS[name] || name) => (
     <div className="pair-row" key={name}>
-      <div><b>{name === "none" ? "Not tagged" : SETUPS[name] || name}</b>
+      <div><b>{label}</b>
         <small>{p.n} trade{p.n > 1 ? "s" : ""}{p.wins + p.losses ? ` · ${Math.round((p.wins / (p.wins + p.losses)) * 100)}% win` : ""}</small></div>
       <div className={`pnl ${s.hasPnl ? signClass(p.pnl) : ""}`}>{s.hasPnl ? money(p.pnl) : ""}</div>
     </div>
@@ -150,6 +155,14 @@ export default function Stats({ active, entries, settings }) {
     <section id="stats" className={`tab ${active ? "active" : ""}`}>
       <div className="pills">
         {RANGES.map(([d, label]) => <button key={d} className={range === d ? "on" : ""} onClick={() => { setRange(d); setEqRange(null); }}>{label}</button>)}
+      </div>
+      <div className="eq-selects st-filters">
+        <Dropdown label="Filter by pair" value={filter.pair} onChange={(v) => setF({ pair: v })} options={[{ value: "", label: "All pairs" }, ...filterPairs.map((p) => ({ value: p, label: p }))]} />
+        <Dropdown label="Filter by setup" value={filter.setup} onChange={(v) => setF({ setup: v })} options={[{ value: "", label: "All setups" }, ...filterSetups.map((k) => ({ value: k, label: k === "none" ? "Not tagged" : SETUPS[k] || k }))]} />
+        <Dropdown label="Filter by session" value={filter.session} onChange={(v) => setF({ session: v })} options={[{ value: "", label: "All sessions" }, ...Object.entries(KILLZONE_NAMES).map(([key, name]) => ({ value: key, label: name }))]} />
+        <Dropdown label="Filter by direction" value={filter.dir} onChange={(v) => setF({ dir: v })} options={[{ value: "", label: "Buy and sell" }, { value: "buy", label: "Buy" }, { value: "sell", label: "Sell" }]} />
+        <Dropdown label="Filter by result" value={filter.result} onChange={(v) => setF({ result: v })} options={[{ value: "", label: "All results" }, ...RESULTS.filter(([, k]) => k !== "open").map(([label, k]) => ({ value: k, label }))]} />
+        <button type="button" className="eq-reset" disabled={!filtered} onClick={() => setFilter({ pair: "", setup: "", session: "", dir: "", result: "" })}>Reset</button>
       </div>
       <Discipline entries={entries} settings={settings} days={range} />
       <div className="stats-grid two">
@@ -171,21 +184,6 @@ export default function Stats({ active, entries, settings }) {
         <div className="eq-filters">
           <div className="pills">
             {RANGES.map(([d, label]) => <button key={d} className={eqDays === d ? "on" : ""} onClick={() => setEqRange(d)}>{label}</button>)}
-          </div>
-          <div className="eq-selects">
-            <select aria-label="Filter by pair" value={eqPair} onChange={(e) => setEqPair(e.target.value)}>
-              <option value="">All pairs</option>
-              {eqPairs.map((p) => <option key={p} value={p}>{p}</option>)}
-            </select>
-            <select aria-label="Filter by setup" value={eqSetup} onChange={(e) => setEqSetup(e.target.value)}>
-              <option value="">All setups</option>
-              {eqSetups.map((k) => <option key={k} value={k}>{k === "none" ? "Not tagged" : SETUPS[k] || k}</option>)}
-            </select>
-            <select aria-label="Filter by result" value={eqResult} onChange={(e) => setEqResult(e.target.value)}>
-              <option value="">All results</option>
-              {RESULTS.filter(([, k]) => k !== "open").map(([label, k]) => <option key={k} value={k}>{label}</option>)}
-            </select>
-            <button type="button" className="eq-reset" disabled={!eqFiltered} onClick={resetEq}>Reset</button>
           </div>
         </div>
         <div><Equity points={eq.equity} start={start} currency={cur} /></div>
@@ -224,7 +222,7 @@ export default function Stats({ active, entries, settings }) {
                 <div className="track"><div className="fill" style={{ width: `${(n / resultTotal) * 100}%` }} /></div>
               </div>
             );
-          }) : <Empty icon="bars">No trades in this period.</Empty>}
+          }) : <Empty icon="bars">{noTrades}</Empty>}
         </div>
       </div>
 
@@ -235,12 +233,17 @@ export default function Stats({ active, entries, settings }) {
             <div><b>{pair}</b><small>{p.n} trade{p.n > 1 ? "s" : ""}{p.wins + p.losses ? ` · ${Math.round((p.wins / (p.wins + p.losses)) * 100)}% win` : ""}</small></div>
             <div className={`pnl ${s.hasPnl ? signClass(p.pnl) : ""}`}>{s.hasPnl ? money(p.pnl) : ""}</div>
           </div>
-        )) : <Empty icon="swap">No trades in this period.</Empty>}</div>
+        )) : <Empty icon="swap">{noTrades}</Empty>}</div>
       </div>
 
       <div className="card">
         <CardHead icon="target" title="By setup" />
-        <div>{setups.length ? setups.map(([key, p]) => groupRow(key, p)) : <Empty icon="target">No trades in this period.</Empty>}</div>
+        <div>{setups.length ? setups.map(([key, p]) => groupRow(key, p)) : <Empty icon="target">{noTrades}</Empty>}</div>
+      </div>
+
+      <div className="card">
+        <CardHead icon="clock" title="By session" />
+        <div>{sessions.length ? sessions.map(([key, p]) => groupRow(key, p, KILLZONE_NAMES[key] || "Not recorded")) : <Empty icon="clock">{noTrades}</Empty>}</div>
       </div>
 
       <div className="card">

@@ -97,6 +97,17 @@ function computeStats(all) {
     s.pnl += e.pnl ?? 0;
   }
 
+  // Per market session the trade was taken in ("none" = outside a session, or not recorded).
+  const bySession = {};
+  for (const e of closed) {
+    const s = (bySession[e.session || "none"] ??= { n: 0, wins: 0, losses: 0, pnl: 0 });
+    s.n++;
+    const o = outcome(e);
+    if (o === "win") s.wins++;
+    if (o === "loss") s.losses++;
+    s.pnl += e.pnl ?? 0;
+  }
+
   // Per emotion tag, for closed trades that carry one: how often you win when you feel that way.
   const groupByEmotion = (field) => {
     const out = {};
@@ -156,6 +167,7 @@ function computeStats(all) {
     curLossStreak: curType === "loss" ? curLen : 0,
     curCtcStreak: ctcRun,
     bySetup,
+    bySession,
     byEmotion: groupByEmotion("emotion"),
     byEmotionAfter: groupByEmotion("emotionAfter"),
     totalR: rs.length ? sum(rs) : null,

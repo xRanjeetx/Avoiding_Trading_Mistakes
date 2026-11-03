@@ -2,10 +2,13 @@ import { useMemo, useState } from "react";
 import { computeStats, sum, ymd } from "../lib/stats.js";
 import { NO_FILTER, filterEntries, isFiltered } from "../lib/filters.js";
 import { SETUPS } from "../lib/rules.js";
+import { KILLZONE_NAMES } from "../lib/killzones.js";
 import { paginate } from "../lib/news.js";
 import { fmtMoney, signClass } from "../lib/format.js";
 import EntryCard, { Empty } from "../components/EntryCard.jsx";
 import { Icon } from "../components/ui.jsx";
+import DatePicker from "../components/DatePicker.jsx";
+import Dropdown from "../components/Dropdown.jsx";
 
 const PAGE_SIZE = 10; // trades per page, counted over the whole (filtered) journal, not per day
 const FILTERS = [["all", "All"], ["open", "Open"], ["win", "Wins"], ["loss", "Losses"], ["be", "BE"], ["ctc", "CTC"], ["manual", "EARLY"]];
@@ -61,20 +64,17 @@ export default function Journal({ active, entries, settings, onEdit, onDelete })
         {FILTERS.map(([key, label]) => <button key={key} data-k={key} className={f.result === key ? "on" : ""} onClick={() => set({ result: key })}>{label}</button>)}
       </div>
       <div className="jr-filters">
-        <label className="field"><span>From</span><input type="date" value={f.from} max={f.to || undefined} onChange={(e) => set({ from: e.target.value })} /></label>
-        <label className="field"><span>To</span><input type="date" value={f.to} min={f.from || undefined} onChange={(e) => set({ to: e.target.value })} /></label>
-        <label className="field"><span>Pair</span>
-          <select value={f.pair} onChange={(e) => set({ pair: e.target.value })}>
-            <option value="all">All pairs</option>
-            {pairs.map((p) => <option key={p} value={p}>{p}</option>)}
-          </select>
-        </label>
-        <label className="field"><span>Setup</span>
-          <select value={f.setup} onChange={(e) => set({ setup: e.target.value })}>
-            <option value="all">All setups</option>
-            {Object.entries(SETUPS).map(([key, name]) => <option key={key} value={key}>{name}</option>)}
-          </select>
-        </label>
+        <div className="field"><span>From</span><DatePicker label="From date" placeholder="Any day" value={f.from} max={f.to || undefined} onChange={(v) => set({ from: v })} /></div>
+        <div className="field"><span>To</span><DatePicker label="To date" placeholder="Any day" value={f.to} min={f.from || undefined} onChange={(v) => set({ to: v })} /></div>
+        <div className="field"><span>Pair</span>
+          <Dropdown label="Pair" value={f.pair} onChange={(v) => set({ pair: v })} options={[{ value: "all", label: "All pairs" }, ...pairs.map((p) => ({ value: p, label: p }))]} />
+        </div>
+        <div className="field"><span>Setup</span>
+          <Dropdown label="Setup" value={f.setup} onChange={(v) => set({ setup: v })} options={[{ value: "all", label: "All setups" }, ...Object.entries(SETUPS).map(([key, name]) => ({ value: key, label: name }))]} />
+        </div>
+        <div className="field jr-session"><span>Session</span>
+          <Dropdown label="Session" value={f.session} onChange={(v) => set({ session: v })} options={[{ value: "all", label: "All sessions" }, ...Object.entries(KILLZONE_NAMES).map(([key, name]) => ({ value: key, label: name }))]} />
+        </div>
       </div>
       {isFiltered(f) && (
         <div className="jr-count">

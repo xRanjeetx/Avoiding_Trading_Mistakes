@@ -136,6 +136,9 @@ export const api = {
   adminReject: (id) => request("POST", `/admin/users/${id}/reject`),
   adminVerify: (id) => request("POST", `/admin/users/${id}/verify`),
   adminSendReset: (id) => request("POST", `/admin/users/${id}/send-reset`),
+  pushKey: () => request("GET", "/push/key"),
+  pushSave: (subscription, prefs) => request("PUT", "/push/subscription", { ...subscription, prefs }),
+  pushRemove: (endpoint) => request("POST", "/push/unsubscribe", { endpoint }),
   getSettings: () => request("GET", "/settings"),
   putSettings: (s) => request("PUT", "/settings", s),
   listEntries: () => request("GET", "/entries"),
@@ -171,6 +174,9 @@ export const api = {
   addChecklistLine: (kind, text) => request("POST", "/checklists/mine", { kind, text }),
   editChecklistLine: (id, text) => request("PUT", `/checklists/mine/${id}`, { text }),
   tickChecklistLine: (id, done) => request("PUT", `/checklists/mine/${id}/tick`, { done }),
+  editSharedLine: (id, text) => request("PUT", `/checklists/${id}/override`, { text }),
+  hideSharedLine: (id) => request("DELETE", `/checklists/${id}`),
+  restoreChecklist: (kind) => request("POST", `/checklists/${kind}/restore`),
   deleteChecklistLine: (id) => request("DELETE", `/checklists/mine/${id}`),
   // The file bytes, fetched with the login token (an <iframe> or link could not send it).
   async libraryFile(id) {

@@ -91,6 +91,15 @@ REQUIRE_EMAIL_VERIFICATION = IS_PRODUCTION or os.environ.get("REQUIRE_EMAIL_VERI
 VERIFY_HOURS = int(os.environ.get("VERIFY_HOURS", "48"))
 RESET_MINUTES = int(os.environ.get("RESET_MINUTES", "60"))
 
+# ---------- Push reminders (notifications while the app is closed) ----------
+# Web Push needs a VAPID key pair; make one with `python -m app.cli.generate_vapid`. Without both keys, push is off and the
+# app still shows reminders while it is open. PUSH_SCHEDULER=false stops the background sender (tests).
+VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY", "").strip()
+VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "").strip()
+VAPID_SUBJECT = os.environ.get("VAPID_SUBJECT", "").strip() or "mailto:no-reply@localhost"
+PUSH_ENABLED = bool(VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY)
+PUSH_SCHEDULER = os.environ.get("PUSH_SCHEDULER", "true").lower() == "true"
+
 # ---------- News calendar ----------
 # High-impact events come from the free ForexFactory-style weekly JSON feeds (unofficial; they refresh about hourly and
 # allow only a few downloads per few minutes per IP). The server downloads them for everyone, at most once per

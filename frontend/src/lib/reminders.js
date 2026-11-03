@@ -1,8 +1,9 @@
 // Phone / desktop reminders. They are device-local (a notification permission belongs to one browser),
 // so the preferences live in localStorage, not in the account settings.
 //
-// Reminders fire while the app is open (a tab, or the installed app, even in the background). A closed
-// app cannot be woken without a push server, which this project does not run.
+// While the app is open (a tab, or the installed app, even in the background) the reminders are worked out here.
+// For a closed app the server sends the same reminders as web push (see syncPush); the notification tag is the
+// reminder key, so a device never shows one twice.
 import { activeZones, fmtDuration, minutesLeft, nextZone, normalizeKillzones, KILLZONE_NAMES } from "./killzones.js";
 import { CTC_RR } from "./rules.js";
 import { ymd } from "./stats.js";
@@ -145,4 +146,36 @@ export async function enable() {
     try { await navigator.serviceWorker?.register("/sw.js"); } catch {}
   }
   return p;
+}
+
+const b64ToBytes = (b64) => {
+  const raw = atob((b64 + "=".repeat((4 - (b64.length % 4)) % 4)).replace(/-/g, "+").replace(/_/g, "/"));
+  return Uint8Array.from(raw, (c) => c.charCodeAt(0));
+};
+
+// Keeps this device's push subscription and the server's copy of the reminder preferences in step, so reminders arrive
+// while the app is closed. Quietly does nothing where push is unavailable (no support, permission not granted, or the
+// server has no push keys). `api` is the fetch client (passed in so this file stays free of imports from api/).
+export async function syncPush(api, prefs) {
+  try {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window) || permission() !== "granted") return false;
+    const reg = (await navigator.serviceWorker.getRegistration()) || (await navigator.serviceWorker.register("/sw.js"));
+    await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!prefs.on) {
+      if (sub) { await api.pushRemove(sub.endpoint).catch(() => {}); await sub.unsubscribe(); }
+      return false;
+    }
+    if (!sub) {
+      const { publicKey } = await api.pushKey();
+      if (!publicKey) return false;
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(publicKey) });
+    }
+    const json = sub.toJSON();
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    await api.pushSave({ endpoint: json.endpoint, keys: json.keys }, { on: prefs.on, lead: prefs.lead, closeLead: prefs.closeLead, longMin: prefs.longMin, tz });
+    return true;
+  } catch {
+    return false;
+  }
 }

@@ -1,5 +1,5 @@
 import { SETUPS } from "../lib/rules.js";
-import { fmtDuration } from "../lib/killzones.js";
+import { KILLZONE_NAMES, fmtDuration } from "../lib/killzones.js";
 import { outcome, tradeR } from "../lib/stats.js";
 import { fmtMoney, fmtR, fullDateTimeOf, signClass } from "../lib/format.js";
 import { ruleTitle } from "../lib/evaluate.js";
@@ -42,6 +42,7 @@ export default function EntryCard({ e, mode, settings, open, onToggle, onQuick, 
           {e.dir && <span className={`tag ${e.dir}`}>{e.dir.toUpperCase()}</span>}
           <span className={`tag ${TAG_BY_OUTCOME[out]}`}>{out === "skipped" ? "SKIPPED" : RESULT_LABEL[e.result] || e.result.toUpperCase()}</span>
           {e.setup && SETUPS[e.setup] && <span className="tag setup">{SETUPS[e.setup]}</span>}
+          {e.session && KILLZONE_NAMES[e.session] && <span className="tag session">{KILLZONE_NAMES[e.session]}</span>}
           {Object.keys(e.images || {}).length > 0 && <span className="tag emo-tag" title="Has screenshots"><Icon name="image" size={14} /></span>}
           {(before.length > 0 || after.length > 0) && (
             <span className="tag emo-tag" title={[before.length && `Before: ${labels(before)}`, after.length && `After: ${labels(after)}`].filter(Boolean).join(" · ")}>

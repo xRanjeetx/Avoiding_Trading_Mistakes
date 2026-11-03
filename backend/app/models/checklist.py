@@ -40,3 +40,15 @@ class UserChecklistItem(Base):
     text: Mapped[str] = mapped_column(String(500))
     done: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     created_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+
+
+class ChecklistOverride(Base):
+    """One user's change to a shared line: their own wording (`text`) and/or the line removed from their list (`hidden`).
+    The shared line itself is never touched, so everyone else keeps it as it is."""
+
+    __tablename__ = "checklist_overrides"
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    item_id: Mapped[int] = mapped_column(ForeignKey("checklist_items.id", ondelete="CASCADE"), primary_key=True)
+    text: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    hidden: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())

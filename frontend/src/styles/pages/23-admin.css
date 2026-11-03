@@ -56,7 +56,8 @@
 /* Journal filters, data export/import, account deletion */
 .jr-filters { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
 .jr-filters .field { margin-bottom: 0; }
-@media (min-width: 720px) { .jr-filters { grid-template-columns: repeat(4, 1fr); } }
+.jr-filters .jr-session { grid-column: 1 / -1; }
+@media (min-width: 720px) { .jr-filters { grid-template-columns: repeat(5, 1fr); } .jr-filters .jr-session { grid-column: auto; } }
 .jr-count { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 2px 12px; font-size: 13px; }
 select {
   width: 100%;

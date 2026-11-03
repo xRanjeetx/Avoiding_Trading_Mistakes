@@ -5,7 +5,8 @@ so editing the file and restarting is all it takes, and it can be run by hand:
 
     python -m app.routers.checklists
 
-Everyone sees the same lines; each user only owns which ones they have ticked."""
+Everyone sees the same lines; each user owns which ones they have ticked, and may reword or remove a line for themselves
+(ChecklistOverride), which changes nothing for anybody else."""
 import json
 import logging
 from pathlib import Path
@@ -18,7 +19,7 @@ from sqlalchemy.orm import Session
 from ..core import config
 from ..core.db import get_db
 from ..core.security import current_user
-from ..models import ChecklistItem, ChecklistTick, User, UserChecklistItem
+from ..models import ChecklistItem, ChecklistOverride, ChecklistTick, User, UserChecklistItem
 from ..schemas import CamelModel
 
 log = logging.getLogger("tradeguard.checklists")
@@ -78,6 +79,7 @@ def sync_checklists(db: Session, file: str | None = None) -> dict:
     for key, item in have.items():
         if key not in keep:
             db.execute(delete(ChecklistTick).where(ChecklistTick.item_id == item.id))
+            db.execute(delete(ChecklistOverride).where(ChecklistOverride.item_id == item.id))
             db.delete(item)
             out["removed"] += 1
     db.commit()
@@ -88,6 +90,7 @@ def sync_checklists(db: Session, file: str | None = None) -> dict:
 def delete_ticks_for(db: Session, user_id: int) -> None:
     """Used when an account is deleted. Explicit, because SQLite (dev/tests) does not enforce ON DELETE CASCADE."""
     db.execute(delete(ChecklistTick).where(ChecklistTick.user_id == user_id))
+    db.execute(delete(ChecklistOverride).where(ChecklistOverride.user_id == user_id))
     db.execute(delete(UserChecklistItem).where(UserChecklistItem.user_id == user_id))
 
 
@@ -126,14 +129,20 @@ def clean_text(text: str) -> str:
 @router.get("")
 def list_checklists(user: User = Depends(current_user), db: Session = Depends(get_db)):
     ticked = set(db.scalars(select(ChecklistTick.item_id).where(ChecklistTick.user_id == user.id)))
+    changes = {o.item_id: o for o in db.scalars(select(ChecklistOverride).where(ChecklistOverride.user_id == user.id))}
     items = db.scalars(select(ChecklistItem).order_by(ChecklistItem.kind, ChecklistItem.position))
-    out = [
-        {"id": i.id, "kind": i.kind, "group": i.group, "position": i.position, "text": i.text, "done": i.id in ticked, "mine": False}
-        for i in items
-    ]
-    last = {}  # kind -> highest position so far, so a user's own lines carry on the numbering
-    for o in out:
-        last[o["kind"]] = max(last.get(o["kind"], 0), o["position"])
+    out = []
+    last = {}  # kind -> number of the last line shown, so the lines the user kept (and their own) are numbered 1, 2, 3...
+    for i in items:
+        change = changes.get(i.id)
+        hidden = bool(change and change.hidden)
+        if not hidden:
+            last[i.kind] = last.get(i.kind, 0) + 1
+        out.append({
+            "id": i.id, "kind": i.kind, "group": i.group, "position": 0 if hidden else last[i.kind],
+            "text": change.text if change and change.text else i.text, "done": i.id in ticked, "mine": False,
+            "edited": bool(change and change.text), "hidden": hidden,
+        })
     for i in db.scalars(select(UserChecklistItem).where(UserChecklistItem.user_id == user.id).order_by(UserChecklistItem.id)):
         last[i.kind] = last.get(i.kind, 0) + 1
         out.append(mine_out(i, last[i.kind]))
@@ -176,6 +185,52 @@ def tick_mine(item_id: int, body: TickIn, user: User = Depends(current_user), db
 @router.delete("/mine/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_mine(item_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
     db.delete(own_item(db, user, item_id))
+    db.commit()
+
+
+def shared_item(db: Session, item_id: int) -> ChecklistItem:
+    item = db.get(ChecklistItem, item_id)
+    if item is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Checklist item not found")
+    return item
+
+
+def override_row(db: Session, user: User, item_id: int) -> ChecklistOverride:
+    row = db.get(ChecklistOverride, (user.id, item_id))
+    if row is None:
+        row = ChecklistOverride(user_id=user.id, item_id=item_id, hidden=False)
+        db.add(row)
+    return row
+
+
+@router.put("/{item_id}/override")
+def reword_shared(item_id: int, body: MineEdit, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Rewords a shared line for this user only. The original wording is kept: Restore brings it back."""
+    item = shared_item(db, item_id)
+    text = clean_text(body.text)
+    row = override_row(db, user, item_id)
+    row.text = None if text == item.text else text
+    if row.text is None and not row.hidden:
+        db.delete(row)
+    db.commit()
+    return {"id": item_id, "text": text}
+
+
+@router.delete("/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_shared(item_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Removes a shared line from this user's list only."""
+    shared_item(db, item_id)
+    override_row(db, user, item_id).hidden = True
+    db.commit()
+
+
+@router.post("/{kind}/restore", status_code=status.HTTP_204_NO_CONTENT)
+def restore_kind(kind: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Brings back every line this user removed or reworded in one list, with its original wording."""
+    if kind not in KINDS:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Checklist not found")
+    ids = select(ChecklistItem.id).where(ChecklistItem.kind == kind)
+    db.execute(delete(ChecklistOverride).where(ChecklistOverride.user_id == user.id, ChecklistOverride.item_id.in_(ids)))
     db.commit()
 
 

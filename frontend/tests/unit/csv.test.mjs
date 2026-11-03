@@ -3,13 +3,13 @@ import assert from "node:assert/strict";
 import { parseCsv, toCsv } from "../../src/lib/csv.js";
 
 const entry = (over = {}) => ({
-  id: "e1", timestamp: Date.UTC(2026, 9, 5, 9, 0), pair: "XAUUSD", dir: "buy", setup: "fvg", lot: 0.02, entry: 100, sl: 98,
+  id: "e1", timestamp: Date.UTC(2026, 9, 5, 9, 0), pair: "XAUUSD", dir: "buy", setup: "fvg", session: "london", lot: 0.02, entry: 100, sl: 98,
   tp: 104, rr: 2, traded: true, result: "tp", exit: 104, pnl: -12.5, closedAt: Date.UTC(2026, 9, 5, 10, 0),
   failedRules: [3, 7], answers: { 1: true, 2: false }, emotion: "calm", emotionAfter: "relieved", notes: "plain", lesson: "", ...over,
 });
 
 test("export then import gives back the same trades", () => {
-  const list = [entry(), entry({ id: "e2", timestamp: Date.UTC(2026, 9, 6), pair: "EURUSD", dir: null, setup: null, pnl: null, exit: null, closedAt: null, result: "open", failedRules: [], answers: {}, emotion: null, emotionAfter: null })];
+  const list = [entry(), entry({ id: "e2", timestamp: Date.UTC(2026, 9, 6), pair: "EURUSD", dir: null, setup: null, session: null, pnl: null, exit: null, closedAt: null, result: "open", failedRules: [], answers: {}, emotion: null, emotionAfter: null })];
   assert.deepEqual(parseCsv(toCsv(list)), list.map((e) => ({ ...e, answers: JSON.parse(JSON.stringify(e.answers)) })));
 });
 
@@ -72,4 +72,9 @@ test("emotion tags survive, and an unusable one is dropped instead of rejecting 
   const [odd] = parseCsv("timestamp,emotion,emotionAfter\n1700000000000,Very Happy!,\n");
   assert.equal(odd.emotion, null);
   assert.equal(odd.emotionAfter, null);
+});
+
+test("an unknown session in a CSV is left empty", () => {
+  const text = toCsv([entry()]).replace(",london,", ",lunch,");
+  assert.equal(parseCsv(text)[0].session, null);
 });

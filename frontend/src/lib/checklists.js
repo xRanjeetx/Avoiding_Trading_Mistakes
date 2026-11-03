@@ -12,7 +12,11 @@ const LISTS = [
 const GROUP_ICONS = { "Quick checklist": "bolt", "In detail": "note", "Key rules": "star", "My points": "plus" };
 const groupIcon = (group) => GROUP_ICONS[group] || "note";
 
-const itemsOf = (items, kind) => (items || []).filter((i) => i.kind === kind).sort((a, b) => a.position - b.position);
+// The lines of one list in order. Lines the user removed (hidden) are left out.
+const itemsOf = (items, kind) => (items || []).filter((i) => i.kind === kind && !i.hidden).sort((a, b) => a.position - b.position);
+
+// How many lines of one list the user removed or reworded, i.e. what Restore would bring back.
+const changedCount = (items, kind) => (items || []).filter((i) => i.kind === kind && !i.mine && (i.hidden || i.edited)).length;
 
 // A list split under its headings, in order: [{ group: "Quick checklist", items: [...] }]. A list with no headings is one group named "".
 function groupItems(items) {
@@ -36,7 +40,18 @@ const withDone = (items, id, done, mine = false) => items.map((i) => (isItem(i, 
 const clearKind = (items, kind) => items.map((i) => (i.kind === kind ? { ...i, done: false } : i));
 const withText = (items, id, text) => items.map((i) => (isItem(i, id, true) ? { ...i, text } : i));
 const withoutItem = (items, id) => items.filter((i) => !isItem(i, id, true));
+// A shared line reworded for this user.
+const withSharedText = (items, id, text) => items.map((i) => (isItem(i, id, false) ? { ...i, text, edited: true } : i));
+// A shared line removed for this user; the lines after it (and the user's own) move up one number.
+function withHidden(items, id) {
+  const kind = items.find((i) => isItem(i, id, false))?.kind;
+  let n = 0;
+  return items
+    .map((i) => (isItem(i, id, false) ? { ...i, hidden: true, position: 0 } : i))
+    .sort((a, b) => a.position - b.position)
+    .map((i) => (i.kind === kind && !i.hidden ? { ...i, position: ++n } : i));
+}
 // Adds one of the user's own lines at the end of its list.
 const withItem = (items, item) => [...items, { ...item, mine: true }];
 
-export { LISTS, clearKind, groupIcon, groupItems, itemsOf, progress, withDone, withItem, withText, withoutItem };
+export { LISTS, changedCount, clearKind, groupIcon, groupItems, itemsOf, progress, withDone, withHidden, withItem, withSharedText, withText, withoutItem };
