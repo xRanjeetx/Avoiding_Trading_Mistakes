@@ -18,6 +18,7 @@
 .tag.buy, .tag.tp { background: rgba(16, 185, 129, 0.16); color: var(--good); }
 .tag.sell, .tag.sl { background: rgba(244, 63, 94, 0.16); color: var(--bad); }
 .tag.be { background: rgba(245, 158, 11, 0.16); color: var(--warn); }
+.tag.session { background: rgba(var(--p-rgb), 0.12); color: var(--primary); }
 .tag.open { background: rgba(var(--p-rgb), 0.18); color: var(--tag-open); }
 .tag.skipped { background: rgba(16, 185, 129, 0.12); color: var(--caught-text); }
 .tag.broke { background: transparent; border: 1px solid rgba(244, 63, 94, 0.5); color: var(--bad); }

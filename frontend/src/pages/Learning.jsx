@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "../api/index.js";
 import { fmtSize, progressLabel } from "../lib/books.js";
-import { LISTS, clearKind, itemsOf, progress, withDone, withItem, withText, withoutItem } from "../lib/checklists.js";
+import { LISTS, clearKind, itemsOf, progress, withDone, withHidden, withItem, withSharedText, withText, withoutItem } from "../lib/checklists.js";
 import ChecklistPanel from "../components/ChecklistPanel.jsx";
 import { Empty } from "../components/EntryCard.jsx";
 import { CardHead, Icon } from "../components/ui.jsx";
@@ -56,25 +56,38 @@ export default function Learning({ active, onExpired, confirm }) {
     }
   }, [fail]);
 
-  const edit = useCallback(async (id, text) => {
+  // A line of the user's own, or a shared line reworded for this user only.
+  const edit = useCallback(async (id, text, mine = true) => {
     try {
-      await api.editChecklistLine(id, text);
-      setChecks((list) => withText(list, id, text));
+      await (mine ? api.editChecklistLine(id, text) : api.editSharedLine(id, text));
+      setChecks((list) => (mine ? withText(list, id, text) : withSharedText(list, id, text)));
     } catch (err) {
       fail(err);
     }
   }, [fail]);
 
-  const remove = useCallback(async (id) => {
-    const ok = await confirm({ title: "Delete this line?", text: "It will be removed from your list.", okLabel: "Delete" });
+  const remove = useCallback(async (id, mine = true) => {
+    const ok = await confirm(mine
+      ? { title: "Delete this line?", text: "It will be removed from your list.", okLabel: "Delete" }
+      : { title: "Remove this line?", text: "It leaves your list only. Restore brings it back.", okLabel: "Remove" });
     if (!ok) return;
     try {
-      await api.deleteChecklistLine(id);
-      setChecks((list) => withoutItem(list, id));
+      if (mine) await api.deleteChecklistLine(id); else await api.hideSharedLine(id);
+      setChecks((list) => (mine ? withoutItem(list, id) : withHidden(list, id)));
     } catch (err) {
       fail(err);
     }
   }, [confirm, fail]);
+
+  // Brings back every line removed or reworded in one list.
+  const restore = useCallback(async (kind) => {
+    try {
+      await api.restoreChecklist(kind);
+      setChecks(await api.listChecklists());
+    } catch (err) {
+      fail(err);
+    }
+  }, [fail]);
 
   const clear = useCallback(async (kind) => {
     try {
@@ -118,7 +131,7 @@ export default function Learning({ active, onExpired, confirm }) {
 
       {list && (checks === null
         ? !error && <div className="card"><p className="muted">Loading…</p></div>
-        : <ChecklistPanel list={list} items={checks} onTick={tick} onClear={clear} onAdd={add} onEdit={edit} onRemove={remove} />)}
+        : <ChecklistPanel list={list} items={checks} onTick={tick} onClear={clear} onAdd={add} onEdit={edit} onRemove={remove} onRestore={restore} />)}
 
       {view === "library" && <div className="card">
         <CardHead icon="book" title="Library" />

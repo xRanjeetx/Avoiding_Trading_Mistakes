@@ -46,3 +46,11 @@ services:
         sync: false
       - key: SMTP_FROM # a sender verified with your email provider
         sync: false
+
+      # Push reminders while the app is closed. Make the pair with `python -m app.cli.generate_vapid`; leave empty to turn push off.
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT # e.g. mailto:you@example.com
+        sync: false

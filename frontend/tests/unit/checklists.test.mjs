@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { LISTS, clearKind, groupIcon, groupItems, itemsOf, progress, withDone, withItem, withText, withoutItem } from "../../src/lib/checklists.js";
+import { LISTS, changedCount, clearKind, groupIcon, groupItems, itemsOf, progress, withDone, withHidden, withItem, withSharedText, withText, withoutItem } from "../../src/lib/checklists.js";
 
 const item = (id, kind, position, group = "", done = false) => ({ id, kind, position, group, text: `t${id}`, done });
 
@@ -52,4 +52,22 @@ test("own lines are told apart from shared ones that happen to share an id", () 
 
 test("the My Rules list is offered last", () => {
   assert.equal(LISTS.at(-1).kind, "rules");
+});
+
+test("a removed shared line leaves the list and the rest move up one number", () => {
+  const all = [item(1, "mistakes", 1), item(2, "mistakes", 2), item(3, "mistakes", 3), { ...item(9, "mistakes", 4), mine: true }, item(4, "remember", 1)];
+  const next = withHidden(all, 2);
+  assert.deepEqual(itemsOf(next, "mistakes").map((i) => [i.id, i.position]), [[1, 1], [3, 2], [9, 3]]);
+  assert.equal(itemsOf(next, "remember")[0].position, 1); // another list is untouched
+  assert.equal(changedCount(next, "mistakes"), 1);
+  assert.equal(changedCount(next, "remember"), 0);
+});
+
+test("a reworded shared line is marked edited, and own lines are not counted as changed", () => {
+  const all = [item(1, "mistakes", 1), { ...item(1, "mistakes", 2), mine: true }];
+  const next = withSharedText(all, 1, "New words");
+  assert.equal(next[0].text, "New words");
+  assert.equal(next[0].edited, true);
+  assert.equal(next[1].text, "t1"); // the own line with the same id is a different line
+  assert.equal(changedCount(next, "mistakes"), 1);
 });

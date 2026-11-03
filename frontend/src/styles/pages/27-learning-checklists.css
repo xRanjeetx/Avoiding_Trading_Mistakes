@@ -42,6 +42,9 @@
 .chk-win { display: flex; align-items: center; gap: 10px; margin: 8px 0 4px; padding: 12px 14px; border-radius: 14px; font-size: 14px; font-weight: 600; color: var(--text); background: linear-gradient(135deg, color-mix(in srgb, var(--good) 22%, transparent), color-mix(in srgb, var(--a) 10%, transparent)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--good) 45%, transparent); animation: chk-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 .chk-win .ic { flex: none; color: var(--good); }
 
+.chk-meta-acts { display: inline-flex; align-items: center; gap: 6px; }
+.chk-edited { margin-left: 8px; padding: 1px 7px; border-radius: 999px; font-style: normal; font-family: var(--mono); font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; vertical-align: 2px; color: var(--a); background: color-mix(in srgb, var(--a) 14%, transparent); }
+
 /* Sub-headings */
 .chk-group { margin-top: 14px; }
 .chk-group-title { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-size: 12px; font-weight: 750; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text); }
@@ -70,15 +73,32 @@
 .k-mistakes .chk-item.done .chk-text { color: var(--muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--a) 60%, transparent); }
 .k-mistakes .chk-item.done .chk-no { opacity: 0.6; }
 
-/* The user's own lines: the row keeps the item card and adds edit/delete beside it. */
-.chk-row { display: flex; align-items: stretch; gap: 6px; }
-.chk-row .chk-item { flex: 1; min-width: 0; }
-.chk-acts { flex: none; display: flex; align-items: center; gap: 4px; }
-.chk-act { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 1px solid var(--border); border-radius: 10px; background: color-mix(in srgb, var(--text) 3%, transparent); color: var(--muted); cursor: pointer; transition: border-color 0.18s, background 0.18s, color 0.18s, transform 0.12s; }
-.chk-act:hover { color: var(--a); border-color: color-mix(in srgb, var(--a) 50%, transparent); background: color-mix(in srgb, var(--a) 8%, transparent); }
-.chk-act.del:hover { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 55%, transparent); background: color-mix(in srgb, var(--bad) 8%, transparent); }
-.chk-act:active { transform: scale(0.94); }
+/* The user's own lines: drag the line left to show Edit and Delete behind it. On a laptop two small icons show on hover or focus. */
+.chk-row { position: relative; overflow: hidden; border-radius: 14px; }
+.chk-slide { position: relative; z-index: 1; transition: transform 0.2s ease; }
+.chk-slide.drag { transition: none; }
+.chk-row .chk-item { background: color-mix(in srgb, var(--text) 3%, var(--surface)); }
+.chk-row .chk-item.done { background: color-mix(in srgb, var(--a) 6%, var(--surface)); }
+.chk-row .chk-item:has(input:focus-visible) { box-shadow: inset 0 0 0 2px var(--a); }
+.chk-under { position: absolute; inset: 0 0 0 auto; display: flex; }
+.chk-under button { width: 66px; display: grid; place-items: center; align-content: center; gap: 2px; padding: 0; border: 0; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; }
+.chk-under .u-edit { background: var(--primary); color: var(--on-primary); }
+.chk-under .u-del { background: var(--bad); color: var(--on-bad); }
+.chk-under button:focus-visible { outline: 2px solid var(--text); outline-offset: -3px; }
+.chk-hint { position: absolute; z-index: 2; right: 8px; top: 50%; width: 4px; height: 28px; margin-top: -14px; border-radius: 2px; background: color-mix(in srgb, var(--muted) 45%, transparent); pointer-events: none; transition: opacity 0.15s; }
+.chk-row:has(.chk-slide[style*="translateX"]) .chk-hint { opacity: 0; }
+.chk-hov { display: none; }
+.chk-act { display: grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--muted); cursor: pointer; transition: border-color 0.18s, background 0.18s, color 0.18s; }
+.chk-act:hover { color: var(--a); border-color: color-mix(in srgb, var(--a) 50%, transparent); background: color-mix(in srgb, var(--a) 8%, var(--surface)); }
+.chk-act.del:hover { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 55%, transparent); background: color-mix(in srgb, var(--bad) 8%, var(--surface)); }
 .chk-act:focus-visible { outline: 2px solid var(--a); outline-offset: 1px; }
+@media (hover: hover) {
+  .chk-hint { display: none; }
+  .chk-hov { display: flex; gap: 4px; position: absolute; z-index: 2; right: 8px; top: 8px; padding: 3px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border); opacity: 0; pointer-events: none; transition: opacity 0.15s; }
+  .chk-row:hover .chk-hov, .chk-row:focus-within .chk-hov { opacity: 1; pointer-events: auto; }
+  .chk-row:has(.chk-slide[style*="translateX"]) .chk-hov { opacity: 0; pointer-events: none; } /* the row is open: the real buttons are showing */
+  .chk-row .chk-text { padding-right: 66px; } /* room for the hover icons */
+}
 .chk-edit { flex: 1; display: flex; gap: 6px; align-items: center; animation: chk-pop 0.25s ease-out both; }
 .chk-edit input { flex: 1; min-width: 0; }
 .chk-add { display: flex; gap: 8px; align-items: center; margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--border); }
@@ -96,9 +116,8 @@
   .chk-ring { width: 50px; height: 50px; }
   .chk-ring::before { inset: 5px; }
   .chk-item { padding: 10px; gap: 9px; }
-  .chk-act { width: 30px; height: 30px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .chk-list li, .chk-win, .chk-edit { animation: none; }
-  .chk-item, .chk-act, .chk-box, .chk-box .ic, .chk-ring, .learn-tabs button, .learn-tabs button .ic { transition: none; }
+  .chk-item, .chk-act, .chk-slide, .chk-box, .chk-box .ic, .chk-ring, .learn-tabs button, .learn-tabs button .ic { transition: none; }
 }

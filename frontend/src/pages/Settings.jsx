@@ -190,7 +190,7 @@ export default function Settings({ active, settings, reminders, onReminders, onS
         </div>
       </div>
       <div className="card">
-        <CardHead icon="clock" title="Market sessions"><span className="chip">New York time</span></CardHead>
+        <CardHead icon="clock" title="Market sessions"><span className="chip device" title="Session times are entered in New York time">New York time</span></CardHead>
         <div className="kz-list">
           {zones.map((z) => (
             <div key={z.key} className={`kz-row ${z.on ? "" : "off"}`} style={{ "--kz": z.color }}>
@@ -211,7 +211,7 @@ export default function Settings({ active, settings, reminders, onReminders, onS
         </div>
       </div>
       <div className="card">
-        <CardHead icon="bolt" title="Reminders"><span className="chip">This device</span></CardHead>
+        <CardHead icon="bolt" title="Reminders"><span className="chip device" title="These reminders are saved on this device only">This device</span></CardHead>
         <label className="rem-toggle">
           <input type="checkbox" checked={reminders.on && perm === "granted"} disabled={perm === "unsupported" || perm === "denied"} onChange={(e) => toggleReminders(e.target.checked)} />
           <span><b>Notify me</b><small>Before a session opens or closes, and while a trade stays open</small></span>
@@ -247,8 +247,8 @@ export default function Settings({ active, settings, reminders, onReminders, onS
         <CardHead icon="shield" title="Security" />
         {TWO_FACTOR && <><TwoFactor /><hr className="tf-sep" /></>}
         <div className="dz-actions">
-          <button type="button" className="btn ghost" onClick={onLogoutAll}><Icon name="logout" size={16} /> Log out of all devices</button>
-          <button type="button" className="btn ghost" onClick={onExport}><Icon name="download" size={16} /> Download my data</button>
+          <button type="button" className="btn small ghost" onClick={onLogoutAll}><Icon name="logout" size={16} /> Log out of all devices</button>
+          <button type="button" className="btn small ghost" onClick={onExport}><Icon name="download" size={16} /> Download my data</button>
         </div>
       </div>
 

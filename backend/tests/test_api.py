@@ -41,3 +41,15 @@ def test_clear_all(client):
     assert len(client.get("/api/entries", headers=h).json()) == 2
     client.delete("/api/entries", headers=h)
     assert client.get("/api/entries", headers=h).json() == []
+
+
+def test_entry_session_is_saved_and_validated(client):
+    h = signup(client)
+    body = {"timestamp": 1_700_000_000_000, "pair": "XAUUSD", "dir": "buy", "session": "london"}
+    created = client.post("/api/entries", json=body, headers=h).json()
+    assert created["session"] == "london"
+    assert client.get("/api/entries", headers=h).json()[0]["session"] == "london"
+    body["session"] = None  # outside any session
+    assert client.put(f"/api/entries/{created['id']}", json=body, headers=h).json()["session"] is None
+    assert client.post("/api/entries", json={**body, "session": "lunch"}, headers=h).status_code == 422
+    assert client.post("/api/entries", json={"timestamp": 1_700_000_000_000}, headers=h).json()["session"] is None  # older clients omit it

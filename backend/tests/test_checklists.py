@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 
 from app.core import config
 from app.core.db import SessionLocal
-from app.models import ChecklistItem, ChecklistTick, UserChecklistItem
+from app.models import ChecklistItem, ChecklistOverride, ChecklistTick, UserChecklistItem
 from app.routers.checklists import FILE_KINDS, KINDS, MINE_LIMIT, sync_checklists
 from conftest import signup
 from test_admin import signup_admin, user_id
@@ -231,3 +231,62 @@ def test_own_lines_are_in_the_data_export(client):
     add_mine(client, h)
     data = client.get("/api/auth/export", headers=h).json()
     assert data["learningLines"] == [{"list": "rules", "text": "Never move my stop away", "done": False}]
+
+
+# ---------- a user's changes to the shared lines ----------
+def lines(client, h, kind="mistakes"):
+    return [i for i in client.get("/api/checklists", headers=h).json() if i["kind"] == kind]
+
+
+def test_a_shared_line_can_be_reworded_for_one_user_only(client, tmp_path):
+    a, b = signup(client, "alice"), signup(client, "bob")
+    sync(write(tmp_path, SAMPLE))
+    first = lines(client, a)[0]
+    assert client.put(f"/api/checklists/{first['id']}/override", json={"text": "  Never chase price  "}, headers=a).json() == {"id": first["id"], "text": "Never chase price"}
+    mine = lines(client, a)[0]
+    assert (mine["text"], mine["edited"]) == ("Never chase price", True)
+    assert (lines(client, b)[0]["text"], lines(client, b)[0]["edited"]) == ("No FOMO", False)
+    # writing the original wording back is not a change
+    client.put(f"/api/checklists/{first['id']}/override", json={"text": "No FOMO"}, headers=a)
+    assert lines(client, a)[0]["edited"] is False
+    assert count(ChecklistOverride) == 0
+    assert client.put(f"/api/checklists/{first['id']}/override", json={"text": "   "}, headers=a).status_code == 422
+    assert client.put("/api/checklists/9999/override", json={"text": "x"}, headers=a).status_code == 404
+
+
+def test_a_shared_line_can_be_removed_for_one_user_and_the_rest_renumber(client, tmp_path):
+    a, b = signup(client, "alice"), signup(client, "bob")
+    sync(write(tmp_path, SAMPLE))
+    first = lines(client, a)[0]
+    assert client.delete(f"/api/checklists/{first['id']}", headers=a).status_code == 204
+    got = lines(client, a)
+    assert [(i["text"], i["hidden"], i["position"]) for i in got] == [("No FOMO", True, 0), ("No revenge trading", False, 1), ("No gambling.", False, 2)]
+    assert [(i["hidden"], i["position"]) for i in lines(client, b)] == [(False, 1), (False, 2), (False, 3)]
+    assert client.delete("/api/checklists/9999", headers=a).status_code == 404
+    # the user's own lines carry on after the visible shared ones
+    add_mine(client, a, kind="mistakes", text="Mine")
+    assert lines(client, a)[-1]["position"] == 3
+
+
+def test_restore_brings_back_removed_and_reworded_lines_of_one_list(client, tmp_path):
+    h = signup(client)
+    sync(write(tmp_path, SAMPLE))
+    m = lines(client, h)
+    client.delete(f"/api/checklists/{m[0]['id']}", headers=h)
+    client.put(f"/api/checklists/{m[1]['id']}/override", json={"text": "Changed"}, headers=h)
+    other = lines(client, h, "remember")[0]
+    client.delete(f"/api/checklists/{other['id']}", headers=h)
+    assert client.post("/api/checklists/mistakes/restore", headers=h).status_code == 204
+    assert [(i["text"], i["hidden"], i["edited"]) for i in lines(client, h)] == [("No FOMO", False, False), ("No revenge trading", False, False), ("No gambling.", False, False)]
+    assert lines(client, h, "remember")[0]["hidden"] is True  # another list is untouched
+    assert client.post("/api/checklists/nope/restore", headers=h).status_code == 404
+
+
+def test_deleting_an_account_removes_its_overrides(client, tmp_path):
+    admin = signup_admin(client)
+    h = signup(client, "bob")
+    sync(write(tmp_path, SAMPLE))
+    client.delete(f"/api/checklists/{lines(client, h)[0]['id']}", headers=h)
+    assert count(ChecklistOverride) == 1
+    assert client.delete(f"/api/admin/users/{user_id('bob@example.com')}", headers=admin).status_code == 204
+    assert count(ChecklistOverride) == 0

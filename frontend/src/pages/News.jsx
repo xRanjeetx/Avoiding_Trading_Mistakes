@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { fmtDuration } from "../lib/killzones.js";
 import { blocks, calendarState, newsEvents, newsOf, paginate, pruneEvents, withNewsDraft } from "../lib/news.js";
 import { CardHead, Icon } from "../components/ui.jsx";
+import DatePicker from "../components/DatePicker.jsx";
 
 const when = (at) => new Date(at).toLocaleString([], { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 const ago = (ms) => {
@@ -120,7 +121,7 @@ export default function News({ active, settings, calendar, now, onSave, onRefres
       <div className="card">
         <CardHead icon="plus" title="Add your own news" />
         <div className="rule-add">
-          <input type="datetime-local" aria-label="News date and time" value={draft.when} onChange={(e) => setDraft((d) => ({ ...d, when: e.target.value }))} />
+          <DatePicker time label="News date and time" placeholder="Date and time" value={draft.when} onChange={(v) => setDraft((d) => ({ ...d, when: v }))} />
           <input placeholder="Name, e.g. NFP or FOMC" maxLength={60} aria-label="News name" value={draft.title} onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))} />
           <button type="button" className="btn small" disabled={!canAdd} onClick={add}><Icon name="plus" size={16} /> Add news</button>
         </div>

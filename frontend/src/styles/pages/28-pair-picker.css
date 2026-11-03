@@ -1,0 +1,26 @@
+/* ----- Pair picker: the registered pairs under the checklist's pair box ----- */
+.pair-picker { position: relative; }
+.pair-picker input { width: 100%; padding-right: 48px; }
+.pair-toggle {
+  position: absolute; top: 50%; right: 6px; transform: translateY(-50%);
+  display: grid; place-items: center; width: 34px; height: 34px; padding: 0;
+  border: 0; border-radius: 10px; background: transparent; color: var(--muted); cursor: pointer;
+}
+.pair-toggle:hover:not(:disabled) { color: var(--primary); background: var(--soft); }
+.pair-toggle:disabled { opacity: 0.4; cursor: default; }
+.pair-toggle svg { transition: transform 0.2s; }
+.pair-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+.pair-menu {
+  position: fixed; z-index: 60; width: max-content; max-width: min(320px, calc(100vw - 16px));
+  list-style: none; margin: 0; padding: 6px; max-height: min(260px, var(--menu-max, 260px)); overflow-y: auto;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+  box-shadow: var(--shadow), 0 18px 40px -12px rgba(0, 0, 0, 0.6);
+}
+.pair-menu button {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 11px 12px; border: 0; border-radius: 10px; background: transparent; color: var(--text); cursor: pointer; font: inherit; text-align: left;
+}
+.pair-menu button:hover { background: var(--soft); }
+.pair-menu button.on { background: color-mix(in srgb, var(--primary) 14%, transparent); color: var(--primary); }
+.pair-menu b { font-size: 14.5px; }
+.pair-menu small { font-size: 12px; color: var(--muted); }

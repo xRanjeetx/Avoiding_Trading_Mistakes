@@ -14,6 +14,7 @@ class EntryIn(CamelModel):
     pair: str = Field("", max_length=30)
     dir: Literal["buy", "sell"] | None = None
     setup: str | None = Field(None, max_length=20)
+    session: Literal["asian", "london", "newyork", "londonclose"] | None = None
     lot: FiniteFloat | None = None
     entry: FiniteFloat | None = None
     sl: FiniteFloat | None = None

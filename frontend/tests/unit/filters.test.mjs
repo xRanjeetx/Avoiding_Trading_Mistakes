@@ -5,8 +5,8 @@ import { NO_FILTER, filterEntries, isFiltered } from "../../src/lib/filters.js";
 // Local times, so the day keys match what the Journal shows.
 const at = (d, h = 9) => new Date(2026, 9, d, h, 0).getTime();
 const list = [
-  { id: "a", timestamp: at(5), pair: "XAUUSD", setup: "fvg", traded: true, result: "tp", pnl: 20, notes: "Clean breakout", lesson: "" },
-  { id: "b", timestamp: at(6), pair: "EURUSD", setup: "wick", traded: true, result: "sl", pnl: -10, notes: "", lesson: "Too early entry" },
+  { id: "a", timestamp: at(5), pair: "XAUUSD", setup: "fvg", session: "london", traded: true, result: "tp", pnl: 20, notes: "Clean breakout", lesson: "" },
+  { id: "b", timestamp: at(6), pair: "EURUSD", setup: "wick", session: "newyork", traded: true, result: "sl", pnl: -10, notes: "", lesson: "Too early entry" },
   { id: "c", timestamp: at(7, 23), pair: "XAUUSD", setup: null, traded: true, result: "open", pnl: null, notes: "", lesson: "" },
   { id: "d", timestamp: at(8), pair: "GBPUSD", setup: "fvg", traded: false, result: "open", pnl: null, notes: "skipped, news", lesson: "" },
 ];
@@ -50,4 +50,11 @@ test("isFiltered", () => {
   assert.equal(isFiltered(NO_FILTER), false);
   assert.equal(isFiltered({ ...NO_FILTER, pair: "XAUUSD" }), true);
   assert.equal(isFiltered({ ...NO_FILTER, from: "2026-10-01" }), true);
+});
+
+test("filter by session, with none for trades that have no session", () => {
+  assert.deepEqual(ids({ session: "london" }), ["a"]);
+  assert.deepEqual(ids({ session: "newyork" }), ["b"]);
+  assert.deepEqual(ids({ session: "none" }), ["c", "d"]);
+  assert.equal(isFiltered({ ...NO_FILTER, session: "asian" }), true);
 });

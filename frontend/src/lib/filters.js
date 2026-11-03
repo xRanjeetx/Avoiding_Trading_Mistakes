@@ -1,8 +1,8 @@
 import { outcome, ymd } from "./stats.js";
 
-const NO_FILTER = { result: "all", pair: "all", setup: "all", from: "", to: "", q: "" };
+const NO_FILTER = { result: "all", pair: "all", setup: "all", session: "all", from: "", to: "", q: "" };
 
-// Journal filters. `from` / `to` are "YYYY-MM-DD" (local days, both included); `setup` may be "none" for untagged trades.
+// Journal filters. `from` / `to` are "YYYY-MM-DD" (local days, both included); `setup` may be "none" for untagged trades, and `session` "none" for trades with no session recorded.
 function filterEntries(entries, f) {
   const q = (f.q || "").trim().toLowerCase();
   return entries.filter((e) => {
@@ -11,6 +11,7 @@ function filterEntries(entries, f) {
     if (f.result === "be" || f.result === "ctc" || f.result === "manual" ? e.result !== f.result : f.result !== "all" && outcome(e) !== f.result) return false;
     if (f.pair !== "all" && e.pair !== f.pair) return false;
     if (f.setup !== "all" && (e.setup || "none") !== f.setup) return false;
+    if (f.session !== "all" && (e.session || "none") !== f.session) return false;
     const day = ymd(e.timestamp);
     if (f.from && day < f.from) return false;
     if (f.to && day > f.to) return false;

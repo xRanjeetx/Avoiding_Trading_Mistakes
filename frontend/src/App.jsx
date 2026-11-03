@@ -16,7 +16,7 @@ import SessionStrip from "./components/SessionStrip.jsx";
 import CloseSheet from "./components/CloseSheet.jsx";
 import News from "./pages/News.jsx";
 import { compressImage } from "./lib/image.js";
-import { dueReminders, loadInbox, loadPrefs, markSent, notify, saveInbox, savePrefs, wasSent } from "./lib/reminders.js";
+import { dueReminders, loadInbox, loadPrefs, markSent, notify, saveInbox, savePrefs, syncPush, wasSent } from "./lib/reminders.js";
 
 const DEFAULT_SETTINGS = { lot: 0.02, minRR: 2, maxTrades: 4, maxSL: 4, balance: 0, currency: "$", openWaitMin: 5,
   pairs: [{ pair: "XAUUSD", lot: 0.02 }, { pair: "EURUSD", lot: 0.2 }], rules: NO_RULE_EDITS, news: NO_NEWS };
@@ -185,6 +185,13 @@ function Journalled({ session, onLogout }) {
       notify(r.title, r.body, r.key);
     }
   }, [now, status, entries, settings, reminders, say, updateInbox]);
+
+  // Tell the server about this device and its reminder settings so the reminders also arrive while the app is closed.
+  useEffect(() => {
+    if (status !== "ready") return undefined;
+    const id = setTimeout(() => syncPush(api, reminders), 800);
+    return () => clearTimeout(id);
+  }, [status, reminders]);
 
   // Opening the bell shows what is waiting; closing it removes what was seen.
   const closeBell = useCallback(() => { setBellOpen(false); updateInbox(() => []); }, [updateInbox]);

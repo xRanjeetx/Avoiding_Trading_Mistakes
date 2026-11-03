@@ -131,6 +131,7 @@ test("groups: by pair, by setup (untagged = none), by weekday (Monday = 0)", () 
   assert.ok(s.byPair["—"]);
   assert.equal(s.bySetup.fvg.n, 2);
   assert.equal(s.bySetup.none.n, 1);
+  assert.deepEqual(Object.keys(s.bySession), ["none"]); // no session recorded on these
   assert.equal(s.byWeekday[0], 30);   // Monday
   assert.equal(s.byWeekday[1], -10);  // Tuesday
   assert.equal(s.byWeekday[6], 5);    // Sunday
@@ -194,4 +195,16 @@ test("BE and CTC stay break-even when a small amount is typed, and the amount st
   assert.equal(s.wins, 1);
   assert.equal(s.losses, 0);
   assert.ok(Math.abs(s.net - 20.25) < 1e-9);
+});
+
+test("trades are grouped by the session they were taken in", () => {
+  const s = computeStats([
+    mk({ session: "london", result: "tp", pnl: 20 }),
+    mk({ session: "london", result: "sl", pnl: -5 }),
+    mk({ session: "newyork", result: "tp", pnl: 8 }),
+    mk({ session: null, result: "sl", pnl: -2 }),
+  ]);
+  assert.deepEqual(s.bySession.london, { n: 2, wins: 1, losses: 1, pnl: 15 });
+  assert.equal(s.bySession.newyork.pnl, 8);
+  assert.equal(s.bySession.none.n, 1);
 });

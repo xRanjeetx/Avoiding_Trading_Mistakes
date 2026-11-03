@@ -15,6 +15,8 @@ class Entry(Base):
     pair: Mapped[str] = mapped_column(String(30), default="")
     dir: Mapped[str | None] = mapped_column(String(4), nullable=True)
     setup: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # The market session the trade was taken in: "asian", "london", "newyork" or "londonclose". NULL when outside a session or not recorded.
+    session: Mapped[str | None] = mapped_column(String(20), nullable=True)
     lot: Mapped[float | None] = mapped_column(Float, nullable=True)
     entry: Mapped[float | None] = mapped_column(Float, nullable=True)
     sl: Mapped[float | None] = mapped_column(Float, nullable=True)

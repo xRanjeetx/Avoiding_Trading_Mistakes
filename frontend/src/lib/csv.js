@@ -1,9 +1,10 @@
 // Journal <-> CSV. Columns match the API's entry fields, so an export can be imported again (also into another account).
 const COLUMNS = [
-  "id", "timestamp", "date", "pair", "dir", "setup", "lot", "entry", "sl", "tp", "rr", "traded", "result",
+  "id", "timestamp", "date", "pair", "dir", "setup", "session", "lot", "entry", "sl", "tp", "rr", "traded", "result",
   "exit", "pnl", "closedAt", "failedRules", "answers", "emotion", "emotionAfter", "notes", "lesson",
 ];
 const RESULTS = ["open", "tp", "sl", "be", "ctc", "manual"];
+const SESSIONS = ["asian", "london", "newyork", "londonclose"];
 const TEXT_COLUMNS = new Set(["pair", "notes", "lesson"]);
 
 // A cell that starts with = + - @ is run as a formula by Excel / Sheets, so free text gets a leading apostrophe.
@@ -100,6 +101,7 @@ function parseCsv(text) {
       pair: unguard(get("pair")).trim().toUpperCase(),
       dir: dir === "buy" || dir === "sell" ? dir : null,
       setup: get("setup").trim() || null,
+      session: SESSIONS.includes(get("session").trim()) ? get("session").trim() : null,
       lot: toNum(get("lot"), line, "lot"),
       entry: toNum(get("entry"), line, "entry"),
       sl: toNum(get("sl"), line, "sl"),
