@@ -1,0 +1,58 @@
+/* ---------- The 4 big mistakes: a chip row under the hero copy, each chip opens a small popover ---------- */
+.lp-fears { position: relative; margin-top: clamp(10px, 2.2vh, 22px); animation: lp-up 0.7s 0.85s both; }
+.lp-fears-l { display: block; margin-bottom: 8px; font-size: 11.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.lp-fears ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+
+.lp-fear, .lp-fear-tip { --c: var(--primary); }
+.lp-fear.fomo, .lp-fear-tip.fomo { --c: var(--warn); }
+.lp-fear.fol, .lp-fear-tip.fol { --c: var(--bad); }
+.lp-fear.wrong, .lp-fear-tip.wrong { --c: var(--primary-2); }
+
+.lp-fear > button {
+  display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 8px;
+  font: inherit; font-size: 13px; font-weight: 650; color: var(--text); cursor: pointer; white-space: nowrap;
+  background: color-mix(in srgb, var(--c) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--c) 35%, transparent);
+  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+.lp-fear > button:hover, .lp-fear > button:focus-visible, .lp-fear > button[aria-expanded="true"] {
+  transform: translateY(-2px);
+  background: color-mix(in srgb, var(--c) 18%, transparent);
+  border-color: color-mix(in srgb, var(--c) 70%, transparent);
+  box-shadow: 0 10px 22px -12px color-mix(in srgb, var(--c) 80%, transparent);
+}
+.lp-fear > button i {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--c);
+  animation: lp-fear-dot 2.4s ease-out infinite; animation-delay: calc(var(--i, 0) * 0.35s);
+}
+@keyframes lp-fear-dot { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--c) 55%, transparent); } 70%, 100% { box-shadow: 0 0 0 7px transparent; } }
+
+/* The popover is placed against the whole row (left is set from the script and clamped to the row), so it can never leave a narrow screen. */
+.lp-fear-tip {
+  position: absolute; bottom: calc(100% + 6px); z-index: 5;
+  width: min(250px, 100%); padding: 12px 14px; border-radius: 12px;
+  background: var(--surface); border: 1px solid color-mix(in srgb, var(--c) 50%, transparent);
+  box-shadow: var(--shadow), 0 18px 40px -20px color-mix(in srgb, var(--c) 70%, transparent);
+  animation: lp-fear-in 0.18s both;
+}
+.lp-fear-tip b { display: block; font-size: 13.5px; font-weight: 750; color: var(--c); }
+.lp-fear-tip p { margin: 3px 0 9px; font-size: 13px; line-height: 1.4; color: var(--muted); }
+.lp-fear-tip small { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 650; color: var(--text); }
+.lp-fear-tip svg { flex: none; width: 14px; height: 14px; color: var(--good); stroke-width: 2.6; }
+@keyframes lp-fear-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* Phones: a tidy 2 x 2 grid, each chip filling its column. */
+@media (max-width: 600px) {
+  .lp-fears ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lp-fear > button { width: 100%; }
+}
+
+/* Desktop is locked to one screen and its hero copy is centred, so the row hangs below the copy without adding to its height:
+   everything that was already there stays exactly where it was. */
+@media (min-width: 960px) {
+  .lp-hero-copy { position: relative; }
+  .lp-fears { position: absolute; left: 0; right: 0; top: 100%; margin-top: clamp(8px, 1.8vh, 18px); }
+}
+/* Short desktop windows: drop the label first, then the whole row, before anything else is squeezed. */
+@media (min-width: 960px) and (max-height: 700px) { .lp-fears-l { display: none; } }
+@media (min-width: 960px) and (max-height: 560px) { .lp-fears { display: none; } }

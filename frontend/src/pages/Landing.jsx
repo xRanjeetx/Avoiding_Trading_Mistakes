@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { RULES } from "../lib/rules.js";
 import Login from "./Login.jsx";
 import MarketBackdrop from "../components/MarketBackdrop.jsx";
@@ -19,6 +19,14 @@ const FEATURES = [
     title: "Daily lock", text: "Locks you out after max trades or SLs" },
   { icon: <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />,
     title: "Journal & stats", text: "Equity curve, win rate, drawdown" },
+];
+
+// The four feelings behind most losing trades. `rule` names the part of the app that counters each one.
+const FEARS = [
+  { key: "fomo", name: "FOMO", text: "Chasing a move that already left, because you cannot watch it run without you.", rule: "No FOMO rule" },
+  { key: "fol", name: "Fear of loss", text: "Moving the stop so a loss never counts, or skipping a clean setup after a loss.", rule: "Fixed lot and loss limits" },
+  { key: "fop", name: "Fear of profit", text: "Closing a winner early because giving the gain back feels worse than leaving the rest.", rule: "Full TP and CTC rules" },
+  { key: "wrong", name: "Being wrong", text: "Refusing to take the stop, because a loss feels like a verdict on you.", rule: "Discipline rule and emotion tags" },
 ];
 
 function Check() {
@@ -44,6 +52,26 @@ export default function Landing({ onAuth }) {
   const [link] = useState(readEmailLink);
   const [mode, setMode] = useState(link ? "login" : "register");
   const authRef = useRef(null);
+  const [fear, setFear] = useState(null); // { key, left } of the mistake whose popover is open, left = where it sits in the row
+  const fearsRef = useRef(null);
+
+  // The popover is positioned against the whole row and clamped to it, so it never runs off a narrow screen.
+  function showFear(f, e) {
+    const row = fearsRef.current.getBoundingClientRect();
+    const width = Math.min(250, row.width);
+    const left = Math.max(0, Math.min(e.currentTarget.getBoundingClientRect().left - row.left, row.width - width));
+    setFear({ key: f.key, left });
+  }
+
+  // Touch screens have no mouse-leave, so a tap anywhere else (or Escape) closes the popover.
+  useEffect(() => {
+    if (!fear) return undefined;
+    const away = (e) => { if (!e.target.closest?.(".lp-fears")) setFear(null); };
+    const esc = (e) => { if (e.key === "Escape") setFear(null); };
+    document.addEventListener("pointerdown", away);
+    document.addEventListener("keydown", esc);
+    return () => { document.removeEventListener("pointerdown", away); document.removeEventListener("keydown", esc); };
+  }, [fear]);
 
   // On stacked (phone/tablet) layouts the form sits below the fold, so bring it into view
   function openAuth(next) {
@@ -87,6 +115,30 @@ export default function Landing({ onAuth }) {
             <li><Check /> Your rules, your limits</li>
             <li><Check /> Phone and desktop</li>
           </ul>
+          <div className="lp-fears" ref={fearsRef}>
+            <span className="lp-fears-l">Built to stop the 4 big mistakes</span>
+            <ul>
+              {FEARS.map((f, i) => (
+                <li key={f.key} className={`lp-fear ${f.key}`} style={{ "--i": i }}>
+                  <button type="button" aria-expanded={fear?.key === f.key} aria-controls={`fear-${f.key}`}
+                    onMouseEnter={(e) => showFear(f, e)} onMouseLeave={() => setFear(null)}
+                    onFocus={(e) => showFear(f, e)} onBlur={() => setFear(null)} onClick={(e) => showFear(f, e)}>
+                    <i /> {f.name}
+                  </button>
+                </li>
+              ))}
+            </ul>
+            {fear && (() => {
+              const f = FEARS.find((x) => x.key === fear.key);
+              return (
+                <div className={`lp-fear-tip ${f.key}`} id={`fear-${f.key}`} role="note" style={{ left: fear.left }}>
+                  <b>{f.name}</b>
+                  <p>{f.text}</p>
+                  <small><Check /> {f.rule}</small>
+                </div>
+              );
+            })()}
+          </div>
         </div>
 
         <div className="lp-visual">
