@@ -3,14 +3,14 @@ import { SL_RUN, activeRules, isRuleOn } from "../lib/rules.js";
 import { cooldownFor, evaluate, lotFor, newsLock, newsWarning, openWait, ruleTitle, todayCounts } from "../lib/evaluate.js";
 import { KILLZONE_NAMES, activeZones, fmtDuration, marketStatus, normalizeKillzones, openingLock } from "../lib/killzones.js";
 import { num } from "../lib/format.js";
-import { autoTp } from "../lib/takeProfit.js";
+import { autoTp, autoSl } from "../lib/takeProfit.js";
 import Countdown from "../components/Countdown.jsx";
 import EmotionPicker from "../components/EmotionPicker.jsx";
 import Dropdown from "../components/Dropdown.jsx";
 import PairPicker from "../components/PairPicker.jsx";
 import { CardHead, Icon } from "../components/ui.jsx";
 
-const fresh = (lot) => ({ pair: "", dir: null, setup: null, session: null, emotion: null, lot: String(lot), entry: "", sl: "", tp: "", tpAuto: true, notes: "", answers: {}, ctcKept: [], reanalysed: [] });
+const fresh = (lot) => ({ pair: "", dir: null, setup: null, session: null, emotion: null, lot: String(lot), entry: "", sl: "", tp: "", tpAuto: true, slAuto: true, notes: "", answers: {}, ctcKept: [], reanalysed: [] });
 
 function Status({ pass }) {
   return pass === true
@@ -30,7 +30,10 @@ export default function Checklist({ active, entries, settings, calendar, now, on
   // The take profit follows entry, stop and direction (1:2) until the user types their own. Emptying the box hands it back: it fills again when entry, stop or direction next changes.
   const set = (patch) => setForm((f) => {
     const next = { ...f, ...patch };
-    return next.tpAuto ? { ...next, tp: autoTp(next.dir, next.entry, next.sl) } : next;
+    if (next.tpAuto) return { ...next, tp: autoTp(next.dir, next.entry, next.sl) };
+    // The target was typed by hand and the stop wasn't: work the stop out from it (1:2).
+    if (next.slAuto) return { ...next, sl: autoSl(next.dir, next.entry, next.tp) };
+    return next;
   });
 
   useEffect(() => { set({ lot: String(lotFor(settings, form.pair)) }); }, [settings.lot, settings.pairs]);
@@ -182,7 +185,7 @@ export default function Checklist({ active, entries, settings, calendar, now, on
         <div className="grid2">
           <label className="field"><span>Lot size</span><input type="number" step="0.01" inputMode="decimal" value={form.lot} onChange={(e) => set({ lot: e.target.value })} /></label>
           <label className="field"><span>Entry</span><input type="number" step="any" inputMode="decimal" placeholder="0.00" value={form.entry} onChange={(e) => set({ entry: e.target.value })} /></label>
-          <label className="field"><span>Stop loss</span><input type="number" step="any" inputMode="decimal" placeholder="0.00" value={form.sl} onChange={(e) => set({ sl: e.target.value })} /></label>
+          <label className="field"><span>Stop loss</span><input type="number" step="any" inputMode="decimal" placeholder="0.00" value={form.sl} onChange={(e) => (e.target.value === "" ? setForm((f) => ({ ...f, sl: "", slAuto: true })) : set({ sl: e.target.value, slAuto: false }))} /></label>
           <label className="field"><span>Take profit</span><input type="number" step="any" inputMode="decimal" placeholder="0.00" value={form.tp} onChange={(e) => (e.target.value === "" ? setForm((f) => ({ ...f, tp: "", tpAuto: true })) : set({ tp: e.target.value, tpAuto: false }))} /></label>
         </div>
         <label className="field">
