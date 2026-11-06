@@ -1,0 +1,24 @@
+/* ----- Greeting (header, Checklist tab): app icon + serif line, centred in the free space ----- */
+.head-mid { flex: 1 1 0; min-width: 0; display: flex; justify-content: center; padding: 0 6px; }
+.greeting { display: flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%;
+  font-family: "Fraunces", Georgia, "Times New Roman", serif; font-weight: 500; font-size: clamp(15px, 1.25vw, 20px);
+  letter-spacing: -0.01em; line-height: 1.2; color: var(--text); }
+.greeting > svg { flex: none; color: var(--primary); }
+.greeting > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Phones and tablets: its own row between the controls and the title */
+@media (max-width: 899px) {
+  .app-header .head-mid { order: 4; flex: 1 0 100%; justify-content: flex-start; padding: 2px 2px 0; }
+  .app-header .head-title { order: 5; }
+  .greeting { font-size: 19px; gap: 10px; }
+}
+
+/* Motion: the line slides in once with a brief teal glow; the sun turns slowly and pulses. */
+.greeting > svg { animation: greet-sun-spin 18s linear infinite, greet-sun-glow 3.5s ease-in-out infinite; }
+.greeting > span { animation: greet-in 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both, greet-flash 1.6s ease-out 0.5s 1; }
+@keyframes greet-in { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
+@keyframes greet-flash { 0% { text-shadow: 0 0 0 rgba(var(--p-rgb), 0); } 35% { text-shadow: 0 0 14px rgba(var(--p-rgb), 0.85); } 100% { text-shadow: 0 0 0 rgba(var(--p-rgb), 0); } }
+@keyframes greet-sun-spin { to { transform: rotate(360deg); } }
+@keyframes greet-sun-glow { 0%, 100% { filter: drop-shadow(0 0 0 rgba(var(--p-rgb), 0)); } 50% { filter: drop-shadow(0 0 6px rgba(var(--p-rgb), 0.7)); } }
+@media (prefers-reduced-motion: reduce) {
+  .greeting > svg, .greeting > span { animation: none; }
+}
