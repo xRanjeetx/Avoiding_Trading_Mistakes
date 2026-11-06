@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Loader from "./components/Loader.jsx";
 import { Icon } from "./components/ui.jsx";
+import Greeting from "./components/Greeting.jsx";
 import { api, ApiError, clearSession, getSession, setSession } from "./api/index.js";
 import { NO_NEWS, NO_RULE_EDITS, activeRules } from "./lib/rules.js";
 import { parseCsv } from "./lib/csv.js";
@@ -377,6 +378,7 @@ function Journalled({ session, onLogout }) {
             )}
           </div>
         </div>
+        {tab === "checklist" && <div className="head-mid"><Greeting email={session.email} /></div>}
         <div className="head-right">
           <div className="clock" title="Your local time">
             <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
